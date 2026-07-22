@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.superpowers/
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
