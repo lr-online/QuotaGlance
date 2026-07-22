@@ -5,9 +5,6 @@ import QuotaGlanceCore
 @MainActor
 @Observable
 final class AppModel {
-    static let appGroupIdentifier = "group.com.liangrui.QuotaGlance"
-    static let snapshotFileName = "quota-snapshot-v1.json"
-
     private(set) var accounts: [Account]
     private(set) var preferences: AppPreferences
     private(set) var latestEnvelope: WidgetSnapshotEnvelope?
@@ -36,7 +33,7 @@ final class AppModel {
 
         let credentialStore = KeychainStore()
         let provider = APIInfoProvider()
-        let sharedStore = Self.makeSharedSnapshotStore()
+        let sharedStore = QuotaGlanceShared.snapshotStore()
         let cachedEnvelope = sharedStore.flatMap { try? $0.read() }
         let snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)?
         if let sharedStore {
@@ -204,17 +201,6 @@ final class AppModel {
 }
 
 private extension AppModel {
-    static func makeSharedSnapshotStore() -> SharedSnapshotStore? {
-        guard let containerURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupIdentifier
-        ) else {
-            return nil
-        }
-        return SharedSnapshotStore(
-            fileURL: containerURL.appending(path: snapshotFileName)
-        )
-    }
-
     func addAccount(validated: ValidatedAccountDraft) async throws {
         guard let apiKey = validated.apiKey else {
             throw AccountValidationError.emptyAPIKey

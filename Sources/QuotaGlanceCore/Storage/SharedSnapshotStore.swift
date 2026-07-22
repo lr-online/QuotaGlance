@@ -4,6 +4,22 @@ public enum SharedSnapshotStoreError: Error, Equatable, Sendable {
     case invalidFileURL
 }
 
+public enum QuotaGlanceShared {
+    public static let appGroupIdentifier = "group.com.liangrui.QuotaGlance"
+    public static let snapshotFileName = "quota-snapshot-v1.json"
+
+    public static func snapshotStore() -> SharedSnapshotStore? {
+        guard let containerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupIdentifier
+        ) else {
+            return nil
+        }
+        return SharedSnapshotStore(
+            fileURL: containerURL.appending(path: snapshotFileName)
+        )
+    }
+}
+
 public struct SharedSnapshotStore: Sendable {
     public let fileURL: URL
 

@@ -1,28 +1,58 @@
+import AppIntents
+import QuotaGlanceCore
 import SwiftUI
 import WidgetKit
 
-struct QuotaGlanceEntry: TimelineEntry {
+struct QuotaGlanceWidgetEntry: TimelineEntry {
     let date: Date
+    let presentation: WidgetPresentation
 }
 
-struct QuotaGlanceTimelineProvider: TimelineProvider {
-    func placeholder(in context: Context) -> QuotaGlanceEntry {
-        QuotaGlanceEntry(date: .now)
+struct QuotaGlanceTimelineProvider: AppIntentTimelineProvider {
+    func placeholder(in context: Context) -> QuotaGlanceWidgetEntry {
+        QuotaGlanceWidgetEntry(
+            date: .now,
+            presentation: WidgetPresenter.make(
+                selection: .allAccounts,
+                envelope: nil
+            )
+        )
     }
 
-    func getSnapshot(
+    func snapshot(
+        for configuration: QuotaGlanceWidgetConfigurationIntent,
         in context: Context,
-        completion: @escaping (QuotaGlanceEntry) -> Void
-    ) {
-        completion(QuotaGlanceEntry(date: .now))
+    ) async -> QuotaGlanceWidgetEntry {
+        makeEntry(configuration: configuration)
     }
 
-    func getTimeline(
+    func timeline(
+        for configuration: QuotaGlanceWidgetConfigurationIntent,
         in context: Context,
-        completion: @escaping (Timeline<QuotaGlanceEntry>) -> Void
-    ) {
-        let entry = QuotaGlanceEntry(date: .now)
-        completion(Timeline(entries: [entry], policy: .never))
+    ) async -> Timeline<QuotaGlanceWidgetEntry> {
+        let entry = makeEntry(configuration: configuration)
+        let nextCheck = Calendar.current.date(
+            byAdding: .minute,
+            value: 30,
+            to: entry.date
+        ) ?? entry.date.addingTimeInterval(1_800)
+        return Timeline(entries: [entry], policy: .after(nextCheck))
+    }
+
+    private func makeEntry(
+        configuration: QuotaGlanceWidgetConfigurationIntent
+    ) -> QuotaGlanceWidgetEntry {
+        let envelope = QuotaGlanceShared.snapshotStore().flatMap { try? $0.read() }
+        let selection = configuration.account.map {
+            WidgetSelection.account($0.id)
+        } ?? .allAccounts
+        return QuotaGlanceWidgetEntry(
+            date: .now,
+            presentation: WidgetPresenter.make(
+                selection: selection,
+                envelope: envelope
+            )
+        )
     }
 }
 
@@ -30,21 +60,12 @@ struct QuotaGlanceWidget: Widget {
     static let kind = "QuotaGlanceWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(
+        AppIntentConfiguration(
             kind: Self.kind,
+            intent: QuotaGlanceWidgetConfigurationIntent.self,
             provider: QuotaGlanceTimelineProvider()
-        ) { _ in
-            VStack(alignment: .leading, spacing: 6) {
-                Text("QuotaGlance")
-                    .font(.headline)
-                Text("Open the app to add an account")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .containerBackground(for: .widget) {
-                Color.clear
-            }
+        ) { entry in
+            QuotaGlanceWidgetView(entry: entry)
         }
         .configurationDisplayName("QuotaGlance")
         .description("API Info balance and usage at a glance.")
