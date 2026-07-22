@@ -11,9 +11,11 @@
 		27E6AE4AEF9507425B13C98C /* QuotaGlanceWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407F8EB1ADDB6434333E1B32 /* QuotaGlanceWidget.swift */; };
 		3021FBBBC1EC41FABAC5BFC0 /* QuotaGlanceCore in Frameworks */ = {isa = PBXBuildFile; productRef = B43433A80E4865082B579D2E /* QuotaGlanceCore */; };
 		326A7B156EB366889B795280 /* QuotaGlanceWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C5FBD3A267751C980B056DCF /* QuotaGlanceWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		56551C9AC6D51235B805F689 /* UsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */; };
 		8CEEAB5DE8D34F186837556C /* QuotaGlanceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0E9F2892EEC90A01AD6AE577 /* QuotaGlanceCore */; };
 		9F1F1D5FE13BCA2A1FC834DB /* AccountEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07DFB7E297E0D88831C554BD /* AccountEditorView.swift */; };
 		D0286FD3A5148AA5AFB8D7EF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */; };
+		D982EB7094658B5F5CFAECDB /* MenuBarDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */; };
 		DB67E8123E5E34045A20EA6B /* QuotaGlanceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */; };
 		E94051C42D8A5FE8D0747520 /* QuotaGlanceWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45AFA11C2B0136118BBA4CF1 /* QuotaGlanceWidgetBundle.swift */; };
 /* End PBXBuildFile section */
@@ -51,7 +53,9 @@
 		86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceApp.swift; sourceTree = "<group>"; };
 		C5FBD3A267751C980B056DCF /* QuotaGlanceWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaGlanceWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageChartView.swift; sourceTree = "<group>"; };
 		ED7EA9943734797C1A6E9F1D /* quota-glance-phase-one */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "quota-glance-phase-one"; path = .; sourceTree = SOURCE_ROOT; };
+		F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarDashboardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +78,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		146CF1D0FC44D5465CD5263E /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */,
+				D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
 		861A21B16B9BA32B37A159E1 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -88,6 +101,7 @@
 			children = (
 				86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */,
 				A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */,
+				146CF1D0FC44D5465CD5263E /* MenuBar */,
 				F086E3532ECAF773B1150BF2 /* Settings */,
 			);
 			path = App;
@@ -228,8 +242,10 @@
 			files = (
 				9F1F1D5FE13BCA2A1FC834DB /* AccountEditorView.swift in Sources */,
 				187535FE3E842869AB4C8E8A /* AppModel.swift in Sources */,
+				D982EB7094658B5F5CFAECDB /* MenuBarDashboardView.swift in Sources */,
 				DB67E8123E5E34045A20EA6B /* QuotaGlanceApp.swift in Sources */,
 				D0286FD3A5148AA5AFB8D7EF /* SettingsView.swift in Sources */,
+				56551C9AC6D51235B805F689 /* UsageChartView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
