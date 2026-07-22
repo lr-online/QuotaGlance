@@ -1,6 +1,8 @@
+import AppKit
 import Foundation
 import Observation
 import QuotaGlanceCore
+import WidgetKit
 
 @MainActor
 @Observable
@@ -10,12 +12,16 @@ final class AppModel {
     private(set) var latestEnvelope: WidgetSnapshotEnvelope?
     private(set) var isRefreshing = false
     private(set) var lastErrorMessage: String?
+    private(set) var notificationPermission: NotificationPermissionState = .notDetermined
     var selectedAccountID: UUID?
 
     private let preferencesStore: AccountPreferencesStore
     private let credentialStore: any CredentialStore
     private let provider: any UsageProvider
     private let refreshCoordinator: RefreshCoordinator
+    private let sharedSnapshotStore: SharedSnapshotStore?
+    private let notificationService: NotificationService
+    private let launchAtLoginService: LaunchAtLoginService
     private var scheduleTask: Task<Void, Never>?
     private var hasStarted = false
 
@@ -34,11 +40,14 @@ final class AppModel {
         let credentialStore = KeychainStore()
         let provider = APIInfoProvider()
         let sharedStore = QuotaGlanceShared.snapshotStore()
+        let notificationService = NotificationService()
+        let launchAtLoginService = LaunchAtLoginService()
         let cachedEnvelope = sharedStore.flatMap { try? $0.read() }
         let snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)?
         if let sharedStore {
             snapshotWriter = { snapshot in
                 try sharedStore.write(snapshot)
+                WidgetCenter.shared.reloadAllTimelines()
             }
         } else {
             snapshotWriter = nil
@@ -51,6 +60,9 @@ final class AppModel {
         self.preferencesStore = preferencesStore
         self.credentialStore = credentialStore
         self.provider = provider
+        self.sharedSnapshotStore = sharedStore
+        self.notificationService = notificationService
+        self.launchAtLoginService = launchAtLoginService
         self.refreshCoordinator = RefreshCoordinator(
             credentialStore: credentialStore,
             provider: provider,
@@ -71,6 +83,9 @@ final class AppModel {
     func start() async {
         guard !hasStarted else { return }
         hasStarted = true
+        notificationPermission = await notificationService.permissionState()
+        preferences.launchAtLogin = launchAtLoginService.isEnabled
+        persistReportingErrors()
         restartSchedule()
         if accounts.contains(where: \.isEnabled) {
             await refresh()
@@ -78,13 +93,17 @@ final class AppModel {
     }
 
     func refresh() async {
-        guard accounts.contains(where: \.isEnabled) else { return }
+        guard accounts.contains(where: \.isEnabled) else {
+            publishCachedState()
+            return
+        }
         isRefreshing = true
         defer { isRefreshing = false }
 
         do {
             let result = try await refreshCoordinator.refresh(accounts: accounts)
             latestEnvelope = result.envelope
+            await evaluateAlerts(result: result)
             switch result.outcome {
             case .fresh:
                 lastErrorMessage = nil
@@ -99,6 +118,9 @@ final class AppModel {
     }
 
     func saveAccount(draft: AccountDraft, editing accountID: UUID?) async throws {
+        let previouslyHadThreshold = accountID.flatMap { id in
+            accounts.first(where: { $0.id == id })?.lowBalanceThreshold
+        } != nil
         let validated = try AccountValidator.validate(
             draft: draft,
             existingAccounts: accounts,
@@ -119,6 +141,10 @@ final class AppModel {
         }
 
         try persist()
+        publishCachedState()
+        if !previouslyHadThreshold, validated.lowBalanceThreshold != nil {
+            notificationPermission = await notificationService.requestAuthorization()
+        }
         await refresh()
     }
 
@@ -141,6 +167,8 @@ final class AppModel {
         normalizeSortOrder()
         do {
             try persist()
+            publishCachedState()
+            await refresh()
         } catch {
             lastErrorMessage = message(for: error)
         }
@@ -153,6 +181,7 @@ final class AppModel {
             accounts[index].alertEpisodeActive = false
         }
         persistReportingErrors()
+        publishCachedState()
         Task { await refresh() }
     }
 
@@ -163,6 +192,7 @@ final class AppModel {
         accounts.swapAt(index, destination)
         normalizeSortOrder()
         persistReportingErrors()
+        publishCachedState()
     }
 
     func setRefreshInterval(_ interval: RefreshInterval) {
@@ -172,8 +202,32 @@ final class AppModel {
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
-        preferences.launchAtLogin = enabled
-        persistReportingErrors()
+        Task {
+            do {
+                try launchAtLoginService.setEnabled(enabled)
+                preferences.launchAtLogin = launchAtLoginService.isEnabled
+                try persist()
+            } catch {
+                preferences.launchAtLogin = launchAtLoginService.isEnabled
+                lastErrorMessage = message(for: error)
+            }
+        }
+    }
+
+    func handle(url: URL) {
+        let destination = DeepLinkRouter.destination(
+            for: url,
+            knownAccountIDs: Set(accounts.map(\.id))
+        )
+        switch destination {
+        case .allAccounts:
+            selectedAccountID = nil
+        case let .account(accountID):
+            selectedAccountID = accountID
+        case nil:
+            return
+        }
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func message(for error: any Error) -> String {
@@ -267,6 +321,65 @@ private extension AppModel {
                 guard let self else { return }
                 await self.refresh()
             }
+        }
+    }
+
+    func evaluateAlerts(result: RefreshResult) async {
+        var changed = false
+        for index in accounts.indices {
+            guard let snapshot = result.accountSnapshots[accounts[index].id],
+                  let remaining = snapshot.remaining
+            else {
+                continue
+            }
+            switch snapshot.health {
+            case .healthy, .belowThreshold:
+                break
+            case .stale, .unavailable:
+                continue
+            }
+
+            let action = AlertEvaluator.evaluate(
+                account: &accounts[index],
+                freshRemaining: remaining.amount
+            )
+            guard action != .none else { continue }
+            changed = true
+            if action == .notify, notificationPermission == .authorized {
+                do {
+                    try await notificationService.sendLowBalance(
+                        account: accounts[index],
+                        remaining: remaining
+                    )
+                } catch {
+                    lastErrorMessage = message(for: error)
+                }
+            }
+        }
+        if changed {
+            persistReportingErrors()
+        }
+    }
+
+    func publishCachedState() {
+        let capturedAt = Date.now
+        let aggregate = SnapshotAggregator().aggregate(
+            accounts: accounts,
+            snapshots: latestEnvelope?.accounts ?? [],
+            now: capturedAt
+        )
+        let envelope = WidgetSnapshotEnvelope(
+            capturedAt: capturedAt,
+            aggregate: aggregate,
+            accounts: aggregate.accounts
+        )
+        latestEnvelope = envelope
+        guard let sharedSnapshotStore else { return }
+        do {
+            try sharedSnapshotStore.write(envelope)
+            WidgetCenter.shared.reloadAllTimelines()
+        } catch {
+            lastErrorMessage = message(for: error)
         }
     }
 }

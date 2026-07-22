@@ -59,6 +59,16 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            Section("Notifications") {
+                Label(
+                    notificationStatus,
+                    systemImage: model.notificationPermission == .authorized
+                        ? "checkmark.circle"
+                        : "bell.slash"
+                )
+                .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .frame(minWidth: 560, minHeight: 460)
@@ -146,6 +156,14 @@ struct SettingsView: View {
         case .fifteenMinutes: "15 minutes"
         case .thirtyMinutes: "30 minutes"
         case .sixtyMinutes: "60 minutes"
+        }
+    }
+
+    private var notificationStatus: String {
+        switch model.notificationPermission {
+        case .notDetermined: "Not Requested"
+        case .denied: "Not Allowed"
+        case .authorized: "Allowed"
         }
     }
 }

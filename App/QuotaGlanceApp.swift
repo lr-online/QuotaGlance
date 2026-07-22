@@ -4,12 +4,18 @@ import SwiftUI
 @main
 struct QuotaGlanceApp: App {
     @State private var model: AppModel
+    private let setupWindowPresenter: SetupWindowPresenter
 
     init() {
         let model = AppModel()
+        let setupWindowPresenter = SetupWindowPresenter()
         _model = State(initialValue: model)
+        self.setupWindowPresenter = setupWindowPresenter
         Task { @MainActor in
             await model.start()
+            if model.accounts.isEmpty {
+                setupWindowPresenter.show(model: model)
+            }
         }
     }
 

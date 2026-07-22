@@ -40,6 +40,9 @@ struct MenuBarDashboardView: View {
                 .padding(.vertical, 10)
         }
         .frame(width: 360)
+        .onOpenURL { url in
+            model.handle(url: url)
+        }
     }
 
     private var header: some View {
