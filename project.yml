@@ -1,0 +1,69 @@
+name: QuotaGlance
+options:
+  bundleIdPrefix: com.liangrui
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "14.0"
+packages:
+  QuotaGlanceCore:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.0"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  QuotaGlance:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+          - QuotaGlance.entitlements
+    dependencies:
+      - package: QuotaGlanceCore
+        product: QuotaGlanceCore
+      - target: QuotaGlanceWidget
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance
+        PRODUCT_NAME: QuotaGlance
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/QuotaGlance.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+  QuotaGlanceWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Widget
+        excludes:
+          - Info.plist
+          - QuotaGlanceWidget.entitlements
+    dependencies:
+      - package: QuotaGlanceCore
+        product: QuotaGlanceCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.Widget
+        PRODUCT_NAME: QuotaGlanceWidget
+        INFOPLIST_FILE: Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Widget/QuotaGlanceWidget.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+schemes:
+  QuotaGlance:
+    build:
+      targets:
+        QuotaGlance: all
+    run:
+      config: Debug
+    archive:
+      config: Release
+  QuotaGlanceWidget:
+    build:
+      targets:
+        QuotaGlanceWidget: all
