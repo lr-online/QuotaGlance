@@ -56,6 +56,21 @@ struct StorageTests {
 
         #expect(try store.read().capturedAt == secondDate)
     }
+
+    @Test("Shared snapshot temporary files stay beside the destination")
+    func sharedSnapshotTemporaryFileUsesDestinationDirectory() {
+        let fileURL = URL(filePath: "/app-group/quota-snapshot-v1.json")
+        let temporaryURL = SharedSnapshotStore.temporaryFileURL(
+            for: fileURL,
+            identifier: "test-write"
+        )
+
+        #expect(
+            temporaryURL.deletingLastPathComponent()
+                == fileURL.deletingLastPathComponent()
+        )
+        #expect(temporaryURL.lastPathComponent == ".quota-snapshot-v1.json.test-write.tmp")
+    }
 }
 
 private enum TestCredentialError: Error, Equatable {

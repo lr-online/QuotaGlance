@@ -35,7 +35,23 @@ public struct SharedSnapshotStore: Sendable {
             withIntermediateDirectories: true
         )
         let data = try JSONEncoder.quotaGlance.encode(snapshot)
-        try data.write(to: fileURL, options: .atomic)
+        let temporaryURL = Self.temporaryFileURL(
+            for: fileURL,
+            identifier: UUID().uuidString
+        )
+        defer { try? FileManager.default.removeItem(at: temporaryURL) }
+
+        try data.write(to: temporaryURL, options: .withoutOverwriting)
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            _ = try FileManager.default.replaceItemAt(
+                fileURL,
+                withItemAt: temporaryURL,
+                backupItemName: nil,
+                options: .usingNewMetadataOnly
+            )
+        } else {
+            try FileManager.default.moveItem(at: temporaryURL, to: fileURL)
+        }
     }
 
     public func read() throws -> WidgetSnapshotEnvelope {
@@ -51,5 +67,11 @@ public struct SharedSnapshotStore: Sendable {
             throw SharedSnapshotStoreError.invalidFileURL
         }
         return fileURL.standardizedFileURL
+    }
+
+    static func temporaryFileURL(for fileURL: URL, identifier: String) -> URL {
+        fileURL.deletingLastPathComponent().appending(
+            path: ".\(fileURL.lastPathComponent).\(identifier).tmp"
+        )
     }
 }
