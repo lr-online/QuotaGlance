@@ -14,7 +14,10 @@ let package = Package(
         .target(name: "QuotaGlanceCore"),
         .testTarget(
             name: "QuotaGlanceCoreTests",
-            dependencies: ["QuotaGlanceCore"]
+            dependencies: ["QuotaGlanceCore"],
+            resources: [
+                .process("Fixtures")
+            ]
         )
     ]
 )

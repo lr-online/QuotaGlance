@@ -1,0 +1,47 @@
+{
+  "daily_usage": [
+    {
+      "actual_cost": 12.34,
+      "date": "2026-07-22",
+      "requests": 42,
+      "total_tokens": 6050
+    }
+  ],
+  "isValid": true,
+  "model_stats": [
+    {
+      "actual_cost": 10.0,
+      "model": "gpt-test",
+      "requests": 40,
+      "total_tokens": 6000
+    }
+  ],
+  "quota": {
+    "limit": 7200,
+    "remaining": 544.045471,
+    "used": 6655.90
+  },
+  "remaining": 544.045471,
+  "status": "active",
+  "unit": "USD",
+  "usage": {
+    "today": {
+      "actual_cost": 12.34,
+      "cache_creation_tokens": 0,
+      "cache_read_tokens": 5000,
+      "input_tokens": 1000,
+      "output_tokens": 50,
+      "requests": 42,
+      "total_tokens": 6050
+    },
+    "total": {
+      "actual_cost": 6650.22,
+      "cache_creation_tokens": 6765568,
+      "cache_read_tokens": 4666258113,
+      "input_tokens": 730313533,
+      "output_tokens": 20860183,
+      "requests": 37194,
+      "total_tokens": 5424197397
+    }
+  }
+}
