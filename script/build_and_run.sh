@@ -6,27 +6,10 @@ APP_NAME="QuotaGlance"
 BUNDLE_ID="com.liangrui.QuotaGlance"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT_PATH="$ROOT_DIR/QuotaGlance.xcodeproj"
-DERIVED_DATA="$ROOT_DIR/DerivedData"
-APP_BUNDLE="$DERIVED_DATA/Build/Products/Debug/$APP_NAME.app"
+APP_BUNDLE="$("$ROOT_DIR/scripts/build-local.sh" Debug)"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
-cd "$ROOT_DIR"
-xcodegen generate --spec "$ROOT_DIR/project.yml"
-
-if ! /usr/bin/xcodebuild -version >/dev/null 2>&1; then
-  echo "Full Xcode is required. Install Xcode, launch it once, then select it with xcode-select." >&2
-  exit 1
-fi
-
 pkill -x "$APP_NAME" >/dev/null 2>&1 || true
-
-/usr/bin/xcodebuild \
-  -project "$PROJECT_PATH" \
-  -scheme "$APP_NAME" \
-  -configuration Debug \
-  -derivedDataPath "$DERIVED_DATA" \
-  build
 
 open_app() {
   /usr/bin/open -n "$APP_BUNDLE"
