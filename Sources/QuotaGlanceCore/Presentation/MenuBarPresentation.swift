@@ -26,6 +26,23 @@ public struct MenuBarPresentation: Equatable, Sendable {
     public let lastSuccessAt: Date?
 }
 
+public struct MenuBarPanelSize: Equatable, Sendable {
+    public let width: Double
+    public let height: Double
+
+    public init(width: Double, height: Double) {
+        self.width = width
+        self.height = height
+    }
+}
+
+public enum MenuBarPanelLayout {
+    public static let fixedContentSize = MenuBarPanelSize(
+        width: 360,
+        height: 500
+    )
+}
+
 public enum MenuBarPresenter {
     public static func make(
         selection: DashboardSelection,

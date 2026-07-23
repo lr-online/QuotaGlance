@@ -4,6 +4,14 @@ import Testing
 
 @Suite("Menu bar presentation")
 struct MenuBarPresentationTests {
+    @Test("Menu bar panel has one fixed content size")
+    func menuBarPanelHasOneFixedContentSize() {
+        let size = MenuBarPanelLayout.fixedContentSize
+
+        #expect(size.width == 360)
+        #expect(size.height == 500)
+    }
+
     @Test("Latest seven days are chronological and have bounded labels")
     func latestSevenDaysAreChronological() throws {
         let account = account(

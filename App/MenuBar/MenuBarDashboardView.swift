@@ -14,6 +14,10 @@ struct MenuBarDashboardView: View {
         return MenuBarPresenter.make(selection: selection, envelope: envelope)
     }
 
+    private var panelSize: MenuBarPanelSize {
+        MenuBarPanelLayout.fixedContentSize
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -31,6 +35,11 @@ struct MenuBarDashboardView: View {
                     unavailableState
                 }
             }
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity,
+                alignment: .topLeading
+            )
             .padding(14)
 
             Divider()
@@ -39,7 +48,11 @@ struct MenuBarDashboardView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
         }
-        .frame(width: 360)
+        .frame(
+            width: CGFloat(panelSize.width),
+            height: CGFloat(panelSize.height),
+            alignment: .topLeading
+        )
         .onOpenURL { url in
             model.handle(url: url)
         }
