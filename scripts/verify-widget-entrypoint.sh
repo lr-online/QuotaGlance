@@ -9,7 +9,16 @@ if [[ ! -x "$WIDGET_BINARY" ]]; then
   exit 1
 fi
 
-if ! /usr/bin/nm -u "$WIDGET_BINARY" | rg -q '_NSExtensionMain'; then
+USES_EXTENSION_ENTRYPOINT=false
+for executable in "$WIDGET_BINARY" "$WIDGET_BUNDLE"/Contents/MacOS/*.dylib; do
+  [[ -f "$executable" ]] || continue
+  if /usr/bin/nm -u "$executable" | rg -q '_NSExtensionMain'; then
+    USES_EXTENSION_ENTRYPOINT=true
+    break
+  fi
+done
+
+if [[ "$USES_EXTENSION_ENTRYPOINT" != true ]]; then
   echo "Widget is not linked with the macOS extension entry point" >&2
   exit 1
 fi

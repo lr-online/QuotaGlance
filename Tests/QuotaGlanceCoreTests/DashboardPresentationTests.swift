@@ -78,6 +78,19 @@ struct DashboardPresentationTests {
 
         #expect(formatted == "$423.98")
     }
+
+    @Test("Widget currency formatting rounds to two decimals")
+    func widgetCurrencyFormattingUsesTwoDecimals() {
+        let formatted = MoneyFormatter.widgetString(
+            Money(
+                amount: Decimal(string: "461.19583336")!,
+                currency: "USD"
+            ),
+            locale: Locale(identifier: "en_US")
+        )
+
+        #expect(formatted == "$461.20")
+    }
 }
 
 private struct DashboardFixture {

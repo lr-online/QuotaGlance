@@ -129,6 +129,18 @@ public enum MoneyFormatter {
         )
     }
 
+    public static func widgetString(
+        _ money: Money,
+        locale: Locale = .current
+    ) -> String {
+        format(
+            money,
+            locale: locale,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        )
+    }
+
     private static func format(
         _ money: Money,
         locale: Locale,

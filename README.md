@@ -16,18 +16,18 @@ QuotaGlance 是一个个人使用的 macOS 菜单栏应用和桌面小组件，�
 ## 本地要求
 
 - macOS 14 或更高版本。
-- Apple Command Line Tools。缺少时执行：`xcode-select --install`。
+- 完整版 Xcode，安装在 `/Applications/Xcode.app`。本地构建依赖 Xcode 生成 Widget 的 App Intent 元数据。
+- Xcode Command Line Tools。缺少时执行：`xcode-select --install`。
 - [ripgrep](https://github.com/BurntSushi/ripgrep)：`brew install ripgrep`。
-- 完整版 Xcode 和 XcodeGen 仅在需要用 Xcode 打开工程时使用，不是本地构建、安装或 Widget 运行的前置条件。
 
-如果使用完整版 Xcode，首次使用后仍需由你接受许可并完成组件安装：
+首次使用 Xcode 后，需接受许可并完成组件安装：
 
   ```bash
   sudo xcodebuild -license accept
   sudo xcodebuild -runFirstLaunch
   ```
 
-- Xcode 工程由 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 生成：`brew install xcodegen`。
+- Xcode 工程已包含在仓库中。仅在修改 `project.yml` 后需要 [XcodeGen](https://github.com/yonaskolb/XcodeGen)：`brew install xcodegen`。
 
 ## 可选的 Xcode 签名
 
@@ -56,7 +56,7 @@ Release 构建、本地安装并注册 Widget：
 ./scripts/install-local.sh
 ```
 
-默认构建使用 Command Line Tools 和稳定的本地临时签名，不需要 App Store、Apple Developer 证书或已接受许可的完整版 Xcode。安装器会将应用放到 `~/Applications/QuotaGlance.app`。若已有同 bundle ID 的版本，会先移动到 `~/Library/Application Support/QuotaGlance/Backups`；若目标路径属于其他 bundle ID，安装器会拒绝覆盖。
+默认构建使用完整版 Xcode 生成可配置 Widget 所需的 App Intent 元数据，然后使用稳定的本地临时签名；不需要 App Store 或 Apple Developer 证书。安装器会将应用放到 `~/Applications/QuotaGlance.app`。若已有同 bundle ID 的版本，会先移动到 `~/Library/Application Support/QuotaGlance/Backups`；若目标路径属于其他 bundle ID，安装器会拒绝覆盖。
 
 ## 添加账户
 
@@ -71,8 +71,10 @@ Release 构建、本地安装并注册 Widget：
 
 1. 先启动 QuotaGlance 并至少成功刷新一次。
 2. 在桌面空白处右键，选择 Edit Widgets。
-3. 搜索 QuotaGlance，添加小、中或大尺寸组件。
-4. 右键已添加的组件并选择 Edit Widget，可切换 All Accounts 或某个账户。
+3. 搜索 QuotaGlance，选择名为 `QuotaGlance` 的可配置组件，再添加小、中或大尺寸。
+4. 右键该组件并选择 Edit Widget，可切换 All Accounts 或某个账户。
+
+升级前已经放在桌面的组件会继续作为固定的 `All Accounts` 总览运行，以避免 WidgetKit 迁移时白屏；需要显示指定账户时，请从 Gallery 新增 `QuotaGlance` 可配置组件。
 
 WidgetKit 的后台时间线由系统调度，菜单栏应用会按设置的间隔请求数据，并在写入共享快照后通知所有组件刷新。
 
@@ -91,5 +93,6 @@ export LAOGE_KEY='你的 key'
 
 - Gallery 中找不到 QuotaGlance：启动安装后的应用一次，再执行 `pluginkit -a "$HOME/Applications/QuotaGlance.app/Contents/PlugIns/QuotaGlanceWidget.appex"`，随后重新打开 Gallery。
 - 组件仍显示旧版本：移除桌面组件，结束 QuotaGlance 后重新执行 `./scripts/install-local.sh`，再重新添加组件；必要时注销并重新登录 macOS。
+- 深色桌面下组件发灰或模糊：macOS 会统一调暗桌面组件。若需要始终保持完整对比度，在 System Settings → Desktop & Dock → Widgets 中将 Dim widgets on desktop 改为 Never。
 - 组件显示过期：打开菜单栏面板手动刷新，并检查账户 key 的验证状态和网络连接。失败时旧余额会保留，不会被清空。
 - App Group 读取失败：确认宿主与 Widget 使用同一个签名 Team、同一个 App Group entitlement，并重新生成 Xcode 项目后安装。

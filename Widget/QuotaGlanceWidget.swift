@@ -1,18 +1,15 @@
+import AppIntents
 import QuotaGlanceCore
 import SwiftUI
 import WidgetKit
-
-#if !QUOTAGLANCE_CERTIFICATE_FREE
-import AppIntents
-#endif
 
 struct QuotaGlanceWidgetEntry: TimelineEntry {
     let date: Date
     let presentation: WidgetPresentation
 }
 
-#if QUOTAGLANCE_CERTIFICATE_FREE
-struct QuotaGlanceTimelineProvider: TimelineProvider {
+#if QUOTAGLANCE_CERTIFICATE_FREE_STORAGE
+struct LegacyQuotaGlanceTimelineProvider: TimelineProvider {
     func placeholder(in context: Context) -> QuotaGlanceWidgetEntry {
         makeWidgetEntry(envelope: nil, selection: .allAccounts)
     }
@@ -37,7 +34,8 @@ struct QuotaGlanceTimelineProvider: TimelineProvider {
         )
     }
 }
-#else
+#endif
+
 struct QuotaGlanceTimelineProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> QuotaGlanceWidgetEntry {
         makeWidgetEntry(envelope: nil, selection: .allAccounts)
@@ -67,7 +65,6 @@ struct QuotaGlanceTimelineProvider: AppIntentTimelineProvider {
         return makeWidgetEntry(selection: selection)
     }
 }
-#endif
 
 private func makeWidgetEntry(
     envelope: WidgetSnapshotEnvelope? = QuotaGlanceShared.snapshotStore()
@@ -92,20 +89,13 @@ private func nextCheck(for entry: QuotaGlanceWidgetEntry) -> Date {
 }
 
 struct QuotaGlanceWidget: Widget {
+#if QUOTAGLANCE_CERTIFICATE_FREE_STORAGE
+    static let kind = "QuotaGlanceConfigurableWidget"
+#else
     static let kind = "QuotaGlanceWidget"
+#endif
 
     var body: some WidgetConfiguration {
-#if QUOTAGLANCE_CERTIFICATE_FREE
-        StaticConfiguration(
-            kind: Self.kind,
-            provider: QuotaGlanceTimelineProvider()
-        ) { entry in
-            QuotaGlanceWidgetView(entry: entry)
-        }
-        .configurationDisplayName("QuotaGlance")
-        .description("API Info balance and usage at a glance.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
-#else
         AppIntentConfiguration(
             kind: Self.kind,
             intent: QuotaGlanceWidgetConfigurationIntent.self,
@@ -114,8 +104,27 @@ struct QuotaGlanceWidget: Widget {
             QuotaGlanceWidgetView(entry: entry)
         }
         .configurationDisplayName("QuotaGlance")
-        .description("API Info balance and usage at a glance.")
+        .description("Choose an account or show all accounts.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
-#endif
+        .containerBackgroundRemovable(false)
     }
 }
+
+#if QUOTAGLANCE_CERTIFICATE_FREE_STORAGE
+struct LegacyQuotaGlanceWidget: Widget {
+    static let kind = "QuotaGlanceWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(
+            kind: Self.kind,
+            provider: LegacyQuotaGlanceTimelineProvider()
+        ) { entry in
+            QuotaGlanceWidgetView(entry: entry)
+        }
+        .configurationDisplayName("All Accounts")
+        .description("Combined API Info balance and usage.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .containerBackgroundRemovable(false)
+    }
+}
+#endif

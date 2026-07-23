@@ -13,7 +13,7 @@ public enum QuotaGlanceShared {
     )
 
     public static func snapshotStore() -> SharedSnapshotStore? {
-#if QUOTAGLANCE_CERTIFICATE_FREE
+#if QUOTAGLANCE_CERTIFICATE_FREE_STORAGE
         certificateFreeSnapshotStore()
 #else
         guard let containerURL = FileManager.default.containerURL(

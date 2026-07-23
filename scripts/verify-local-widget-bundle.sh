@@ -8,6 +8,8 @@ APP_BUNDLE="${1:-$HOME/Applications/QuotaGlance.app}"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/QuotaGlance"
 WIDGET_BUNDLE="$APP_BUNDLE/Contents/PlugIns/QuotaGlanceWidget.appex"
 WIDGET_BINARY="$WIDGET_BUNDLE/Contents/MacOS/QuotaGlanceWidget"
+APP_INTENTS_METADATA="$WIDGET_BUNDLE/Contents/Resources/Metadata.appintents/extract.actionsdata"
+ACCOUNT_PARAMETER="actions.QuotaGlanceWidgetConfigurationIntent.parameters.0"
 SHARED_DIRECTORY="/Users/Shared/QuotaGlance/"
 SWIFT_DEMANGLE="/Library/Developer/CommandLineTools/usr/bin/swift-demangle"
 
@@ -44,18 +46,61 @@ if ! quota_glance_validate_local_entitlements \
   exit 1
 fi
 
-WIDGET_SYMBOLS="$(/usr/bin/nm "$WIDGET_BINARY" | "$SWIFT_DEMANGLE")"
+WIDGET_SYMBOLS="$({
+  /usr/bin/nm "$WIDGET_BINARY" 2>/dev/null
+  for library in "$WIDGET_BUNDLE"/Contents/MacOS/*.dylib; do
+    [[ -f "$library" ]] || continue
+    /usr/bin/nm "$library" 2>/dev/null
+  done
+} | "$SWIFT_DEMANGLE")"
+WIDGET_STRINGS="$({
+  /usr/bin/strings "$WIDGET_BINARY"
+  for library in "$WIDGET_BUNDLE"/Contents/MacOS/*.dylib; do
+    [[ -f "$library" ]] || continue
+    /usr/bin/strings "$library"
+  done
+})"
 
-if rg -q 'QuotaGlanceTimelineProvider : WidgetKit.AppIntentTimelineProvider' \
-  <<< "$WIDGET_SYMBOLS"; then
-  echo "Certificate-free widget still requires App Intent metadata" >&2
+if [[ ! -f "$APP_INTENTS_METADATA" ]]; then
+  echo "Certificate-free widget is missing App Intent metadata" >&2
   exit 1
 fi
 
-if ! rg -q 'QuotaGlanceTimelineProvider : WidgetKit.TimelineProvider' \
-  <<< "$WIDGET_SYMBOLS"; then
-  echo "Certificate-free widget is missing its static timeline provider" >&2
+if [[ "$(/usr/bin/plutil -extract "$ACCOUNT_PARAMETER.name" raw \
+    -expect string -o - "$APP_INTENTS_METADATA" 2>/dev/null || true)" != "account" \
+  || "$(/usr/bin/plutil -extract "$ACCOUNT_PARAMETER.isOptional" raw \
+    -expect bool -o - "$APP_INTENTS_METADATA" 2>/dev/null || true)" != "true" \
+  || "$(/usr/bin/plutil -extract \
+    "$ACCOUNT_PARAMETER.valueType.entity.wrapper.typeName" raw \
+    -expect string -o - "$APP_INTENTS_METADATA" 2>/dev/null || true)" != "AccountEntity" ]]; then
+  echo "Certificate-free widget has invalid account configuration metadata" >&2
   exit 1
 fi
 
-echo "Certificate-free widget bundle is configured for local snapshot sharing"
+for kind in QuotaGlanceWidget QuotaGlanceConfigurableWidget; do
+  if ! rg -qx "$kind" <<< "$WIDGET_STRINGS"; then
+    echo "Certificate-free widget is missing kind: $kind" >&2
+    exit 1
+  fi
+done
+
+if ! rg -q 'QuotaGlanceTimelineProvider : WidgetKit.AppIntentTimelineProvider' \
+  <<< "$WIDGET_SYMBOLS"; then
+  echo "Certificate-free widget is missing its configurable timeline provider" >&2
+  exit 1
+fi
+
+if ! rg -q 'LegacyQuotaGlanceTimelineProvider : WidgetKit.TimelineProvider' \
+  <<< "$WIDGET_SYMBOLS"; then
+  echo "Certificate-free widget cannot preserve existing aggregate widgets" >&2
+  exit 1
+fi
+
+if ! rg -Fq \
+  'SwiftUI.TupleWidget<(QuotaGlanceWidget.LegacyQuotaGlanceWidget, QuotaGlanceWidget.QuotaGlanceWidget)>' \
+  <<< "$WIDGET_SYMBOLS"; then
+  echo "Certificate-free widget bundle is missing its legacy aggregate widget" >&2
+  exit 1
+fi
+
+echo "Certificate-free widget supports local account configuration"

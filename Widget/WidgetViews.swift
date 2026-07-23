@@ -1,3 +1,4 @@
+import AppKit
 import QuotaGlanceCore
 import SwiftUI
 import WidgetKit
@@ -26,7 +27,7 @@ struct QuotaGlanceWidgetView: View {
             }
         }
         .containerBackground(for: .widget) {
-            Color.clear
+            Color(nsColor: .windowBackgroundColor)
         }
         .widgetURL(entry.presentation.deepLink)
     }
@@ -39,7 +40,7 @@ struct QuotaGlanceWidgetView: View {
             metricLine(
                 label: "Today",
                 value: entry.presentation.todayActualCost.map {
-                    MoneyFormatter.string($0)
+                    MoneyFormatter.widgetString($0)
                 } ?? "--"
             )
             freshness
@@ -55,7 +56,7 @@ struct QuotaGlanceWidgetView: View {
                 metricLine(
                     label: "Today",
                     value: entry.presentation.todayActualCost.map {
-                        MoneyFormatter.string($0)
+                        MoneyFormatter.widgetString($0)
                     } ?? "--"
                 )
                 metricLine(
@@ -80,7 +81,7 @@ struct QuotaGlanceWidgetView: View {
                 metricLine(
                     label: "Today",
                     value: entry.presentation.todayActualCost.map {
-                        MoneyFormatter.string($0)
+                        MoneyFormatter.widgetString($0)
                     } ?? "--"
                 )
                 metricLine(
@@ -102,7 +103,11 @@ struct QuotaGlanceWidgetView: View {
                             Text(account.displayName)
                                 .lineLimit(1)
                             Spacer()
-                            Text(account.remaining.map { MoneyFormatter.string($0) } ?? "--")
+                            Text(
+                                account.remaining.map {
+                                    MoneyFormatter.widgetString($0)
+                                } ?? "--"
+                            )
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
@@ -128,7 +133,11 @@ struct QuotaGlanceWidgetView: View {
     }
 
     private func balanceText(size: CGFloat) -> some View {
-        Text(entry.presentation.remaining.map { MoneyFormatter.string($0) } ?? "--")
+        Text(
+            entry.presentation.remaining.map {
+                MoneyFormatter.widgetString($0)
+            } ?? "--"
+        )
             .font(.system(size: size, weight: .semibold, design: .rounded))
             .lineLimit(1)
             .minimumScaleFactor(0.6)
