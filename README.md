@@ -58,6 +58,18 @@ Release 构建、本地安装并注册 Widget：
 
 默认构建使用完整版 Xcode 生成可配置 Widget 所需的 App Intent 元数据，然后使用稳定的本地临时签名；不需要 App Store 或 Apple Developer 证书。安装器会将应用放到 `~/Applications/QuotaGlance.app`。若已有同 bundle ID 的版本，会先移动到 `~/Library/Application Support/QuotaGlance/Backups`；若目标路径属于其他 bundle ID，安装器会拒绝覆盖。
 
+## 生成分享版 DMG
+
+当前分享版仅支持 Apple Silicon，使用临时签名且未经过 Apple 公证：
+
+```bash
+./scripts/package-dmg.sh
+```
+
+产物位于 `dist/QuotaGlance-0.1.0-arm64.dmg`，相邻的 `.sha256` 文件用于校验下载或传输完整性。DMG 同时包含 `QuotaGlance-0.1.0-source.zip` 和 `SOURCE-COMMIT.txt`，供接收者核对并审查对应源码。
+
+接收者需将应用拖入 Applications，并在首次启动时按住 Control 点击应用后选择“打开”；如果仍被拦截，请在“系统设置 > 隐私与安全性”中选择“仍要打开”。这是临时签名版本的已知限制，不代表 DMG 损坏。
+
 ## 添加账户
 
 1. 点击菜单栏中的 QuotaGlance 图标，打开 Settings。
