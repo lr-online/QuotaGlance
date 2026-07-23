@@ -11,3 +11,6 @@ xcuserdata/
 # Swift Package Manager
 .build/
 .swiftpm/
+
+# Distribution artifacts
+dist/

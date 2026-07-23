@@ -4,6 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TEST_ROOT="$(mktemp -d /tmp/QuotaGlance-dmg-tests.XXXXXX)"
 trap '/bin/chmod -R u+rwX "$TEST_ROOT"; /bin/rm -rf "$TEST_ROOT"' EXIT
+PACKAGE_SCRIPT="$ROOT_DIR/scripts/package-dmg.sh"
+VERIFY_SCRIPT="$ROOT_DIR/scripts/verify-dmg.sh"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -31,5 +33,21 @@ test_secret_scan_accepts_an_artifact_path() {
     "$ROOT_DIR/scripts/verify-no-secret.sh" "$contaminated_app"
 }
 
+test_distribution_contract() {
+  [[ -f "$ROOT_DIR/Distribution/README.txt" ]] \
+    || fail "distribution README is missing"
+  rg -q '未经过 Apple Developer ID 签名或 Apple 公证' \
+    "$ROOT_DIR/Distribution/README.txt" \
+    || fail "distribution README does not disclose Gatekeeper limitations"
+  rg -q 'QuotaGlance-0.1.0-source.zip' \
+    "$ROOT_DIR/Distribution/README.txt" \
+    || fail "distribution README does not identify the source archive"
+  rg -q '^dist/$' "$ROOT_DIR/.gitignore" \
+    || fail "dist directory is not ignored"
+  [[ -x "$PACKAGE_SCRIPT" ]] || fail "package script is missing"
+  [[ -x "$VERIFY_SCRIPT" ]] || fail "DMG verifier is missing"
+}
+
 test_secret_scan_accepts_an_artifact_path
+test_distribution_contract
 echo "DMG packaging tests passed"
