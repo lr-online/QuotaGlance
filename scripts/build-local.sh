@@ -112,6 +112,8 @@ COMMON_SWIFT_FLAGS=(
   -I "$BUILD_DIR" \
   -L "$BUILD_DIR" \
   -lQuotaGlanceCore \
+  -Xlinker -e \
+  -Xlinker _NSExtensionMain \
   "${WIDGET_SOURCES[@]}" \
   -o "$WIDGET_BINARY"
 
