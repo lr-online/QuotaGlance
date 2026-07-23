@@ -29,16 +29,39 @@ if [[ ! -x "$GIT" ]]; then
 fi
 
 cd "$ROOT_DIR"
-if DEVELOPER_DIR=/Library/Developer/CommandLineTools \
+set +e
+DEVELOPER_DIR=/Library/Developer/CommandLineTools \
   "$GIT" grep -q -F -f "$SECRET_PATTERN_FILE" -- .
-then
-  echo "Secret bytes found in tracked files" >&2
-  exit 1
-fi
+GIT_SCAN_STATUS=$?
+set -e
+case "$GIT_SCAN_STATUS" in
+  0)
+    echo "Secret bytes found in tracked files" >&2
+    exit 1
+    ;;
+  1)
+    ;;
+  *)
+    echo "Tracked-file secret scan failed" >&2
+    exit 1
+    ;;
+esac
 
-if rg -a -q -F -f "$SECRET_PATTERN_FILE" "$APP_BUNDLE"; then
-  echo "Secret bytes found in app bundle" >&2
-  exit 1
-fi
+set +e
+rg -a -q -F -f "$SECRET_PATTERN_FILE" "$APP_BUNDLE"
+APP_SCAN_STATUS=$?
+set -e
+case "$APP_SCAN_STATUS" in
+  0)
+    echo "Secret bytes found in app bundle" >&2
+    exit 1
+    ;;
+  1)
+    ;;
+  *)
+    echo "App-bundle secret scan failed" >&2
+    exit 1
+    ;;
+esac
 
 echo "No configured API key bytes found"

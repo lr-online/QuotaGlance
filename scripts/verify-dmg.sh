@@ -4,6 +4,7 @@ set -euo pipefail
 DMG_PATH="${1:?usage: verify-dmg.sh DMG_PATH [CHECKSUM_PATH]}"
 CHECKSUM_PATH="${2:-}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/distribution-validation.sh"
 APP_BUNDLE_ID="com.liangrui.QuotaGlance"
 WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.Widget"
 VERIFY_DIR="$(mktemp -d /tmp/QuotaGlance-dmg-verify.XXXXXX)"
@@ -38,27 +39,49 @@ if [[ -n "$CHECKSUM_PATH" ]]; then
     echo "Checksum is missing or is not a regular file: $CHECKSUM_PATH" >&2
     exit 1
   }
-  (
-    cd "$(dirname "$CHECKSUM_PATH")"
-    /usr/bin/shasum -a 256 -c "$(basename "$CHECKSUM_PATH")"
-  ) >/dev/null
+  CHECKSUM_RECORD="$(/usr/bin/awk '
+    NF == 0 { next }
+    {
+      count += 1
+      if (count > 1 || NF != 2) {
+        exit 2
+      }
+      print $1
+      print $2
+    }
+    END {
+      if (count != 1) {
+        exit 2
+      }
+    }
+  ' "$CHECKSUM_PATH")" || {
+    echo "Checksum must contain exactly one SHA-256 record" >&2
+    exit 1
+  }
+  EXPECTED_DIGEST="$(/usr/bin/sed -n '1p' <<< "$CHECKSUM_RECORD")"
+  CHECKSUM_NAME="$(/usr/bin/sed -n '2p' <<< "$CHECKSUM_RECORD")"
+  EXPECTED_NAME="$(/usr/bin/basename "$DMG_PATH")"
+  [[ "$EXPECTED_DIGEST" =~ ^[0-9A-Fa-f]{64}$ \
+    && "$CHECKSUM_NAME" == "$EXPECTED_NAME" ]] || {
+    echo "Checksum does not describe the selected DMG" >&2
+    exit 1
+  }
+  ACTUAL_DIGEST="$(/usr/bin/shasum -a 256 "$DMG_PATH" | /usr/bin/awk '{print $1}')"
+  NORMALIZED_EXPECTED="$(printf '%s' "$EXPECTED_DIGEST" | /usr/bin/tr 'A-F' 'a-f')"
+  NORMALIZED_ACTUAL="$(printf '%s' "$ACTUAL_DIGEST" | /usr/bin/tr 'A-F' 'a-f')"
+  [[ "$NORMALIZED_EXPECTED" == "$NORMALIZED_ACTUAL" ]] || {
+    echo "DMG checksum mismatch" >&2
+    exit 1
+  }
 fi
 
 /usr/bin/hdiutil attach -readonly -nobrowse -plist "$DMG_PATH" > "$ATTACH_PLIST"
-for index in {0..15}; do
-  if [[ -z "$DEVICE_NODE" ]]; then
-    DEVICE_NODE="$(/usr/libexec/PlistBuddy \
-      -c "Print :system-entities:$index:dev-entry" \
-      "$ATTACH_PLIST" 2>/dev/null || true)"
-  fi
-  candidate="$(/usr/libexec/PlistBuddy \
-    -c "Print :system-entities:$index:mount-point" \
-    "$ATTACH_PLIST" 2>/dev/null || true)"
-  if [[ -n "$candidate" ]]; then
-    MOUNT_POINT="$candidate"
-    break
-  fi
-done
+MOUNT_INFO="$(quota_glance_mount_info "$ATTACH_PLIST")" || {
+  echo "DMG attach response did not contain a mount point" >&2
+  exit 1
+}
+DEVICE_NODE="$(/usr/bin/sed -n '1p' <<< "$MOUNT_INFO")"
+MOUNT_POINT="$(/usr/bin/sed -n '2p' <<< "$MOUNT_INFO")"
 
 [[ -n "$MOUNT_POINT" && -d "$MOUNT_POINT" ]] || {
   echo "DMG did not mount successfully" >&2
@@ -93,6 +116,10 @@ EXPECTED_ITEMS="$(printf '%s\n' \
 [[ -L "$MOUNT_POINT/Applications" \
   && "$(/usr/bin/readlink "$MOUNT_POINT/Applications")" == "/Applications" ]] || {
   echo "DMG Applications shortcut is invalid" >&2
+  exit 1
+}
+quota_glance_validate_mounted_payload "$MOUNT_POINT" "$SOURCE_NAME" || {
+  echo "DMG payload contains an unsafe file type or symbolic link" >&2
   exit 1
 }
 
@@ -156,16 +183,27 @@ SOURCE_PREFIXES="$(printf '%s\n' "$SOURCE_ITEMS" | /usr/bin/cut -d/ -f1 \
   echo "Source archive has an unexpected top-level prefix" >&2
   exit 1
 }
-if rg -q '(^|/)(\.env|\.git|DerivedData|dist|\.build|xcuserdata)(/|$)' \
-  <<< "$SOURCE_ITEMS"; then
-  echo "Source archive contains a forbidden path" >&2
+if ! quota_glance_validate_source_items \
+  "$SOURCE_ITEMS" \
+  "QuotaGlance-$VERSION-source"; then
+  echo "Source archive contains an unsafe or forbidden path" >&2
   exit 1
 fi
 
-if /usr/sbin/spctl -a -vv --type execute "$APP" >/dev/null 2>&1; then
+set +e
+GATEKEEPER_OUTPUT="$(/usr/sbin/spctl -a -vv --type execute "$APP" 2>&1)"
+GATEKEEPER_STATUS=$?
+set -e
+if [[ "$GATEKEEPER_STATUS" == 0 ]]; then
   echo "Gatekeeper unexpectedly accepted the ad hoc build" >&2
-else
-  echo "Gatekeeper rejection confirmed for the documented ad hoc build"
+  exit 1
 fi
+if ! quota_glance_validate_gatekeeper_rejection \
+  "$GATEKEEPER_STATUS" \
+  "$GATEKEEPER_OUTPUT"; then
+  echo "Gatekeeper assessment failed unexpectedly" >&2
+  exit 1
+fi
+echo "Gatekeeper rejection confirmed for the documented ad hoc build"
 
 echo "DMG verification passed: $DMG_PATH"

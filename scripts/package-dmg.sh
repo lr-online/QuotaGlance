@@ -2,33 +2,59 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUTPUT_DIR="${1:-$ROOT_DIR/dist}"
-README_SOURCE="$ROOT_DIR/Distribution/README.txt"
+OUTPUT_ARGUMENT="${1:-$ROOT_DIR/dist}"
 GIT="/usr/bin/git"
-WORK_DIR="$(mktemp -d /tmp/QuotaGlance-dmg-package.XXXXXX)"
-STAGING_DIR="$WORK_DIR/staging"
+WORK_DIR=""
+STAGING_DIR=""
+SOURCE_DIR=""
 PUBLISHED_DMG=""
 PUBLISHED_CHECKSUM=""
+PUBLISHED_DMG_SOURCE=""
+PUBLISHED_CHECKSUM_SOURCE=""
+
+same_file() {
+  [[ "$(/usr/bin/stat -f '%d:%i' "$1" 2>/dev/null || true)" \
+    == "$(/usr/bin/stat -f '%d:%i' "$2" 2>/dev/null || true)" ]]
+}
 
 cleanup() {
-  if [[ -n "$PUBLISHED_DMG" ]]; then
+  if [[ -n "$PUBLISHED_DMG" \
+    && ! -L "$PUBLISHED_DMG" \
+    && -e "$PUBLISHED_DMG_SOURCE" ]] \
+    && same_file "$PUBLISHED_DMG" "$PUBLISHED_DMG_SOURCE"; then
     /bin/rm -f -- "$PUBLISHED_DMG"
   fi
-  if [[ -n "$PUBLISHED_CHECKSUM" ]]; then
+  if [[ -n "$PUBLISHED_CHECKSUM" \
+    && ! -L "$PUBLISHED_CHECKSUM" \
+    && -e "$PUBLISHED_CHECKSUM_SOURCE" ]] \
+    && same_file "$PUBLISHED_CHECKSUM" "$PUBLISHED_CHECKSUM_SOURCE"; then
     /bin/rm -f -- "$PUBLISHED_CHECKSUM"
   fi
-  /bin/rm -rf -- "$WORK_DIR"
+  if [[ -n "$WORK_DIR" && -d "$WORK_DIR" ]]; then
+    /bin/rm -rf -- "$WORK_DIR"
+  fi
 }
 trap cleanup EXIT
 
-[[ -f "$README_SOURCE" && ! -L "$README_SOURCE" ]] || {
-  echo "Distribution README is missing: $README_SOURCE" >&2
-  exit 1
-}
+if [[ "$OUTPUT_ARGUMENT" == /* ]]; then
+  OUTPUT_DIR="$OUTPUT_ARGUMENT"
+else
+  OUTPUT_DIR="$PWD/$OUTPUT_ARGUMENT"
+fi
 [[ ! -L "$OUTPUT_DIR" ]] || {
-  echo "Refusing symlink output directory: $OUTPUT_DIR" >&2
+  echo "Refusing symlink output directory: $OUTPUT_ARGUMENT" >&2
   exit 1
 }
+/bin/mkdir -p "$OUTPUT_DIR"
+[[ -d "$OUTPUT_DIR" && ! -L "$OUTPUT_DIR" ]] || {
+  echo "Distribution output is not a directory: $OUTPUT_ARGUMENT" >&2
+  exit 1
+}
+OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd -P)"
+WORK_DIR="$(mktemp -d "$OUTPUT_DIR/.QuotaGlance-package.XXXXXX")"
+STAGING_DIR="$WORK_DIR/staging"
+SOURCE_DIR="$WORK_DIR/source"
+/bin/chmod 700 "$WORK_DIR"
 
 cd "$ROOT_DIR"
 [[ -z "$("$GIT" status --porcelain --untracked-files=all)" ]] || {
@@ -41,7 +67,21 @@ SOURCE_COMMIT="$("$GIT" rev-parse HEAD)"
   exit 1
 }
 
-BUILT_APP="$("$ROOT_DIR/scripts/build-local.sh" Release)"
+"$GIT" clone --quiet --no-local --no-checkout "$ROOT_DIR" "$SOURCE_DIR"
+"$GIT" -C "$SOURCE_DIR" checkout --quiet --detach "$SOURCE_COMMIT"
+[[ "$($GIT -C "$SOURCE_DIR" rev-parse HEAD)" == "$SOURCE_COMMIT" \
+  && -z "$($GIT -C "$SOURCE_DIR" status --porcelain --untracked-files=all)" ]] || {
+  echo "Unable to create an immutable source checkout" >&2
+  exit 1
+}
+
+README_SOURCE="$SOURCE_DIR/Distribution/README.txt"
+[[ -f "$README_SOURCE" && ! -L "$README_SOURCE" ]] || {
+  echo "Distribution README is missing from source commit" >&2
+  exit 1
+}
+
+BUILT_APP="$("$SOURCE_DIR/scripts/build-local.sh" Release)"
 VERSION="$(/usr/libexec/PlistBuddy \
   -c 'Print :CFBundleShortVersionString' \
   "$BUILT_APP/Contents/Info.plist")"
@@ -65,8 +105,8 @@ if [[ -e "$FINAL_DMG" || -L "$FINAL_DMG" \
 fi
 
 /usr/bin/codesign --verify --deep --strict "$BUILT_APP"
-"$ROOT_DIR/scripts/verify-local-widget-bundle.sh" "$BUILT_APP"
-"$ROOT_DIR/scripts/verify-widget-entrypoint.sh" \
+"$SOURCE_DIR/scripts/verify-local-widget-bundle.sh" "$BUILT_APP"
+"$SOURCE_DIR/scripts/verify-widget-entrypoint.sh" \
   "$BUILT_APP/Contents/PlugIns/QuotaGlanceWidget.appex"
 
 for executable in \
@@ -80,7 +120,7 @@ for executable in \
 done
 
 if [[ -n "${LAOGE_KEY:-}" ]]; then
-  "$ROOT_DIR/scripts/verify-no-secret.sh" "$BUILT_APP"
+  "$SOURCE_DIR/scripts/verify-no-secret.sh" "$BUILT_APP"
 else
   echo "LAOGE_KEY is not set; skipping configured-key byte scan"
 fi
@@ -89,7 +129,7 @@ fi
 /usr/bin/ditto "$BUILT_APP" "$STAGING_DIR/QuotaGlance.app"
 /bin/cp "$README_SOURCE" "$STAGING_DIR/README.txt"
 /bin/ln -s /Applications "$STAGING_DIR/Applications"
-"$GIT" archive \
+"$GIT" -C "$SOURCE_DIR" archive \
   --format=zip \
   --prefix="QuotaGlance-$VERSION-source/" \
   --output="$STAGING_DIR/$SOURCE_NAME" \
@@ -109,14 +149,17 @@ printf 'Git commit: %s\n' "$SOURCE_COMMIT" \
   /usr/bin/shasum -a 256 "$DMG_NAME" > "$CHECKSUM_NAME"
 )
 
-"$ROOT_DIR/scripts/verify-dmg.sh" "$TEMP_DMG" "$TEMP_CHECKSUM"
+"$SOURCE_DIR/scripts/verify-dmg.sh" "$TEMP_DMG" "$TEMP_CHECKSUM"
 
-/bin/mkdir -p "$OUTPUT_DIR"
-/bin/mv "$TEMP_CHECKSUM" "$FINAL_CHECKSUM"
-PUBLISHED_CHECKSUM="$FINAL_CHECKSUM"
-/bin/mv "$TEMP_DMG" "$FINAL_DMG"
+/bin/ln "$TEMP_DMG" "$FINAL_DMG"
 PUBLISHED_DMG="$FINAL_DMG"
+PUBLISHED_DMG_SOURCE="$TEMP_DMG"
+/bin/ln "$TEMP_CHECKSUM" "$FINAL_CHECKSUM"
+PUBLISHED_CHECKSUM="$FINAL_CHECKSUM"
+PUBLISHED_CHECKSUM_SOURCE="$TEMP_CHECKSUM"
 
 printf '%s\n%s\n' "$FINAL_DMG" "$FINAL_CHECKSUM"
 PUBLISHED_DMG=""
 PUBLISHED_CHECKSUM=""
+PUBLISHED_DMG_SOURCE=""
+PUBLISHED_CHECKSUM_SOURCE=""

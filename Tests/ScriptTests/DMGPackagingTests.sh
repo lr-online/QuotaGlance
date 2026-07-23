@@ -6,6 +6,7 @@ TEST_ROOT="$(mktemp -d /tmp/QuotaGlance-dmg-tests.XXXXXX)"
 trap '/bin/chmod -R u+rwX "$TEST_ROOT"; /bin/rm -rf "$TEST_ROOT"' EXIT
 PACKAGE_SCRIPT="$ROOT_DIR/scripts/package-dmg.sh"
 VERIFY_SCRIPT="$ROOT_DIR/scripts/verify-dmg.sh"
+VALIDATION_SCRIPT="$ROOT_DIR/scripts/distribution-validation.sh"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -31,6 +32,111 @@ test_secret_scan_accepts_an_artifact_path() {
   printf '%s' "$sentinel" > "$contaminated_app/payload"
   assert_fails env LAOGE_KEY="$sentinel" \
     "$ROOT_DIR/scripts/verify-no-secret.sh" "$contaminated_app"
+}
+
+test_secret_scan_fails_closed_when_scanners_error() {
+  local sentinel
+  local no_git_root="$TEST_ROOT/no-git-root"
+  local no_git_app="$no_git_root/Clean.app"
+  local stub_root="$TEST_ROOT/stub-root"
+  local stub_app="$stub_root/Clean.app"
+  local stub_bin="$TEST_ROOT/stub-bin"
+  sentinel="$(printf '%s%s' 'quota-glance-scanner-' 'sentinel')"
+
+  /bin/mkdir -p "$no_git_root/scripts" "$no_git_app"
+  /usr/bin/ditto \
+    "$ROOT_DIR/scripts/verify-no-secret.sh" \
+    "$no_git_root/scripts/verify-no-secret.sh"
+  assert_fails env LAOGE_KEY="$sentinel" \
+    "$no_git_root/scripts/verify-no-secret.sh" "$no_git_app"
+
+  /bin/mkdir -p "$stub_root/scripts" "$stub_app" "$stub_bin"
+  /usr/bin/ditto \
+    "$ROOT_DIR/scripts/verify-no-secret.sh" \
+    "$stub_root/scripts/verify-no-secret.sh"
+  /usr/bin/git -C "$stub_root" init --quiet
+  printf '%s\n' '#!/usr/bin/env bash' 'exit 2' > "$stub_bin/rg"
+  /bin/chmod +x "$stub_bin/rg"
+  assert_fails env PATH="$stub_bin:/usr/bin:/bin" LAOGE_KEY="$sentinel" \
+    "$stub_root/scripts/verify-no-secret.sh" "$stub_app"
+}
+
+test_distribution_path_policy() {
+  local prefix="QuotaGlance-0.1.0-source"
+  local safe_items
+  local unsafe_items
+  local mount_root="$TEST_ROOT/mounted-payload"
+  local attach_plist="$TEST_ROOT/attach.plist"
+  local mount_info
+  local index
+
+  source "$ROOT_DIR/scripts/distribution-validation.sh"
+
+  safe_items="$(printf '%s\n' \
+    "$prefix/" \
+    "$prefix/README.md" \
+    "$prefix/App/Info.plist" \
+    "$prefix/Sources/QuotaGlanceCore/Storage/SharedSnapshotStore.swift" \
+    "$prefix/Tests/Fixtures/usage.json")"
+  quota_glance_validate_source_items "$safe_items" "$prefix"
+
+  for unsafe_items in \
+    "/absolute/path" \
+    "$prefix/../outside" \
+    "$prefix/.env.local" \
+    "$prefix/Logs/build.txt" \
+    "$prefix/build.log" \
+    "$prefix/quota-snapshot-v1.json" \
+    "$prefix/Library/Preferences/com.liangrui.QuotaGlance.plist" \
+    "$prefix/export.keychain-db" \
+    "$prefix/signing.p12" \
+    "AnotherPrefix/README.md"; do
+    assert_fails quota_glance_validate_source_items "$unsafe_items" "$prefix"
+  done
+
+  /bin/mkdir -p "$mount_root/QuotaGlance.app/Contents/MacOS"
+  /usr/bin/touch \
+    "$mount_root/QuotaGlance.app/Contents/MacOS/QuotaGlance" \
+    "$mount_root/README.txt" \
+    "$mount_root/SOURCE-COMMIT.txt" \
+    "$mount_root/QuotaGlance-0.1.0-source.zip"
+  /bin/ln -s /Applications "$mount_root/Applications"
+  quota_glance_validate_mounted_payload \
+    "$mount_root" \
+    "QuotaGlance-0.1.0-source.zip"
+
+  /bin/mv "$mount_root/README.txt" "$mount_root/README.real"
+  /bin/ln -s "$mount_root/README.real" "$mount_root/README.txt"
+  assert_fails quota_glance_validate_mounted_payload \
+    "$mount_root" \
+    "QuotaGlance-0.1.0-source.zip"
+
+  quota_glance_validate_gatekeeper_rejection \
+    3 \
+    "$mount_root/QuotaGlance.app: rejected"
+  for index in 0 1 2 4; do
+    assert_fails quota_glance_validate_gatekeeper_rejection \
+      "$index" \
+      "$mount_root/QuotaGlance.app: rejected"
+  done
+  assert_fails quota_glance_validate_gatekeeper_rejection 3 "assessment error"
+
+  /usr/bin/plutil -create xml1 "$attach_plist"
+  /usr/libexec/PlistBuddy -c 'Add :system-entities array' "$attach_plist"
+  for index in {0..16}; do
+    /usr/libexec/PlistBuddy \
+      -c "Add :system-entities:$index dict" \
+      "$attach_plist"
+  done
+  /usr/libexec/PlistBuddy \
+    -c 'Add :system-entities:16:dev-entry string /dev/disk-test' \
+    -c 'Add :system-entities:16:mount-point string /Volumes/QuotaGlance-Test' \
+    "$attach_plist"
+  mount_info="$(quota_glance_mount_info "$attach_plist")"
+  [[ "$(/usr/bin/sed -n '1p' <<< "$mount_info")" == "/dev/disk-test" ]] \
+    || fail "device node after plist item 15 was not found"
+  [[ "$(/usr/bin/sed -n '2p' <<< "$mount_info")" == "/Volumes/QuotaGlance-Test" ]] \
+    || fail "mount point after plist item 15 was not found"
 }
 
 test_distribution_contract() {
@@ -61,16 +167,41 @@ test_real_dmg_round_trip() {
   /usr/bin/git -C "$clean_repo" checkout --quiet --detach "$current_commit"
   /usr/bin/ditto "$PACKAGE_SCRIPT" "$clean_repo/scripts/package-dmg.sh"
   /usr/bin/ditto "$VERIFY_SCRIPT" "$clean_repo/scripts/verify-dmg.sh"
-  /usr/bin/git -C "$clean_repo" add scripts/package-dmg.sh scripts/verify-dmg.sh
-  /usr/bin/git -C "$clean_repo" \
-    -c user.name='QuotaGlance Tests' \
-    -c user.email='tests@localhost' \
-    commit --quiet -m 'test fixture: add dmg packaging scripts'
+  /usr/bin/ditto \
+    "$VALIDATION_SCRIPT" \
+    "$clean_repo/scripts/distribution-validation.sh"
+  /bin/mv \
+    "$clean_repo/scripts/build-local.sh" \
+    "$clean_repo/scripts/build-local-real.sh"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    'SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"' \
+    '[[ "$SCRIPT_ROOT" != "${QUOTAGLANCE_PACKAGING_CALLER_ROOT:?}" ]] || {' \
+    '  echo "build ran in the packaging caller worktree" >&2' \
+    '  exit 91' \
+    '}' \
+    'exec "$SCRIPT_ROOT/scripts/build-local-real.sh" "$@"' \
+    > "$clean_repo/scripts/build-local.sh"
+  /bin/chmod +x "$clean_repo/scripts/build-local.sh"
+  /usr/bin/git -C "$clean_repo" add \
+    scripts/build-local.sh \
+    scripts/build-local-real.sh \
+    scripts/package-dmg.sh \
+    scripts/verify-dmg.sh \
+    scripts/distribution-validation.sh
+  if ! /usr/bin/git -C "$clean_repo" diff --cached --quiet; then
+    /usr/bin/git -C "$clean_repo" \
+      -c user.name='QuotaGlance Tests' \
+      -c user.email='tests@localhost' \
+      commit --quiet -m 'test fixture: update dmg packaging scripts'
+  fi
 
   clean_package="$clean_repo/scripts/package-dmg.sh"
   clean_verify="$clean_repo/scripts/verify-dmg.sh"
   /bin/mkdir -p "$clean_output"
-  "$clean_package" "$clean_output" >/dev/null
+  QUOTAGLANCE_PACKAGING_CALLER_ROOT="$clean_repo" \
+    "$clean_package" "$clean_output" >/dev/null
 
   local dmg="$clean_output/QuotaGlance-0.1.0-arm64.dmg"
   local checksum="$dmg.sha256"
@@ -78,10 +209,21 @@ test_real_dmg_round_trip() {
   [[ -f "$checksum" ]] || fail "DMG checksum was not created"
   "$clean_verify" "$dmg" "$checksum" >/dev/null
 
-  assert_fails "$clean_package" "$clean_output"
+  printf '%s\n' 'not the dmg' > "$clean_output/unrelated.bin"
+  (
+    cd "$clean_output"
+    /usr/bin/shasum -a 256 unrelated.bin > mismatched.sha256
+  )
+  assert_fails \
+    "$clean_verify" "$dmg" "$clean_output/mismatched.sha256"
+
+  assert_fails env QUOTAGLANCE_PACKAGING_CALLER_ROOT="$clean_repo" \
+    "$clean_package" "$clean_output"
 }
 
 test_secret_scan_accepts_an_artifact_path
+test_secret_scan_fails_closed_when_scanners_error
+test_distribution_path_policy
 test_distribution_contract
 test_real_dmg_round_trip
 echo "DMG packaging tests passed"
