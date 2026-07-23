@@ -48,6 +48,40 @@ test_distribution_contract() {
   [[ -x "$VERIFY_SCRIPT" ]] || fail "DMG verifier is missing"
 }
 
+test_real_dmg_round_trip() {
+  local clean_repo="$TEST_ROOT/clean-repository"
+  local clean_output="$TEST_ROOT/output"
+  local clean_package
+  local clean_verify
+  local current_commit
+
+  current_commit="$(/usr/bin/git -C "$ROOT_DIR" rev-parse HEAD)"
+  /usr/bin/git clone --quiet --no-local --no-checkout \
+    "$ROOT_DIR" "$clean_repo"
+  /usr/bin/git -C "$clean_repo" checkout --quiet --detach "$current_commit"
+  /usr/bin/ditto "$PACKAGE_SCRIPT" "$clean_repo/scripts/package-dmg.sh"
+  /usr/bin/ditto "$VERIFY_SCRIPT" "$clean_repo/scripts/verify-dmg.sh"
+  /usr/bin/git -C "$clean_repo" add scripts/package-dmg.sh scripts/verify-dmg.sh
+  /usr/bin/git -C "$clean_repo" \
+    -c user.name='QuotaGlance Tests' \
+    -c user.email='tests@localhost' \
+    commit --quiet -m 'test fixture: add dmg packaging scripts'
+
+  clean_package="$clean_repo/scripts/package-dmg.sh"
+  clean_verify="$clean_repo/scripts/verify-dmg.sh"
+  /bin/mkdir -p "$clean_output"
+  "$clean_package" "$clean_output" >/dev/null
+
+  local dmg="$clean_output/QuotaGlance-0.1.0-arm64.dmg"
+  local checksum="$dmg.sha256"
+  [[ -f "$dmg" ]] || fail "DMG was not created"
+  [[ -f "$checksum" ]] || fail "DMG checksum was not created"
+  "$clean_verify" "$dmg" "$checksum" >/dev/null
+
+  assert_fails "$clean_package" "$clean_output"
+}
+
 test_secret_scan_accepts_an_artifact_path
 test_distribution_contract
+test_real_dmg_round_trip
 echo "DMG packaging tests passed"
