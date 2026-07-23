@@ -4,6 +4,16 @@ import Testing
 
 @Suite("Storage")
 struct StorageTests {
+    @Test("Certificate-free snapshots use the local shared directory")
+    func certificateFreeSnapshotsUseLocalSharedDirectory() {
+        let store = QuotaGlanceShared.certificateFreeSnapshotStore()
+
+        #expect(
+            store.fileURL
+                == URL(filePath: "/Users/Shared/QuotaGlance/quota-snapshot-v1.json")
+        )
+    }
+
     @Test("Preferences round-trip a versioned payload")
     func preferencesRoundTripVersionedPayload() throws {
         let suiteName = "QuotaGlanceTests.\(UUID().uuidString)"
@@ -55,6 +65,25 @@ struct StorageTests {
         try store.write(.empty(capturedAt: secondDate))
 
         #expect(try store.read().capturedAt == secondDate)
+    }
+
+    @Test("Shared snapshot writes keep the file private")
+    func sharedSnapshotWritesKeepFilePrivate() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(
+            path: "QuotaGlanceTests-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appending(path: "quota-snapshot-v1.json")
+        let store = SharedSnapshotStore(fileURL: fileURL)
+
+        try store.write(.empty(capturedAt: .now))
+
+        let attributes = try FileManager.default.attributesOfItem(
+            atPath: fileURL.path
+        )
+        let permissions = attributes[.posixPermissions] as? NSNumber
+        #expect(permissions?.intValue == 0o600)
     }
 
     @Test("Shared snapshot temporary files stay beside the destination")

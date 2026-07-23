@@ -7,12 +7,17 @@ WIDGET_NAME="QuotaGlanceWidget"
 WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.Widget"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/local-snapshot-storage.sh"
+
 BUILT_APP="$("$ROOT_DIR/scripts/build-local.sh" Release)"
 BUILT_WIDGET="$BUILT_APP/Contents/PlugIns/$WIDGET_NAME.appex"
 INSTALL_DIR="$HOME/Applications"
 INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
 INSTALLED_WIDGET="$INSTALLED_APP/Contents/PlugIns/$WIDGET_NAME.appex"
 BACKUP_DIR="$HOME/Library/Application Support/$APP_NAME/Backups"
+LOCAL_SNAPSHOT_DIR="/Users/Shared/$APP_NAME"
+LOCAL_SNAPSHOT="$LOCAL_SNAPSHOT_DIR/quota-snapshot-v1.json"
+LEGACY_SNAPSHOT="$HOME/Library/Group Containers/group.com.liangrui.QuotaGlance/quota-snapshot-v1.json"
 
 bundle_id() {
   /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$1/Contents/Info.plist" 2>/dev/null
@@ -38,9 +43,12 @@ require_bundle_id() {
 require_bundle_id "$BUILT_APP" "$APP_BUNDLE_ID"
 require_bundle_id "$BUILT_WIDGET" "$WIDGET_BUNDLE_ID"
 /usr/bin/codesign --verify --deep --strict "$BUILT_APP"
+"$ROOT_DIR/scripts/verify-local-widget-bundle.sh" "$BUILT_APP"
 
 /bin/mkdir -p "$INSTALL_DIR"
 /bin/mkdir -p "$BACKUP_DIR"
+quota_glance_prepare_snapshot_directory "$LOCAL_SNAPSHOT_DIR"
+quota_glance_migrate_snapshot_if_needed "$LEGACY_SNAPSHOT" "$LOCAL_SNAPSHOT"
 
 if [[ -e "$INSTALLED_APP" ]]; then
   require_bundle_id "$INSTALLED_APP" "$APP_BUNDLE_ID"

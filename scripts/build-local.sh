@@ -75,6 +75,7 @@ export DYLD_LIBRARY_PATH="/Library/Developer/CommandLineTools/Library/Developer/
 
 COMMON_SWIFT_FLAGS=(
   -swift-version 6
+  -D QUOTAGLANCE_CERTIFICATE_FREE
   -target arm64-apple-macosx14.0
   -sdk "$SDK_PATH"
   -F "$TOOLCHAIN_FRAMEWORKS"
@@ -142,7 +143,7 @@ cp "$ROOT_DIR/Widget/Info.plist" "$WIDGET_CONTENTS/Info.plist"
   --timestamp=none \
   --generate-entitlement-der \
   --requirements "=designated => identifier \"$WIDGET_BUNDLE_ID\"" \
-  --entitlements "$ROOT_DIR/Widget/QuotaGlanceWidget.entitlements" \
+  --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceWidget.entitlements" \
   "$WIDGET_BUNDLE"
 
 /usr/bin/codesign \
@@ -151,7 +152,7 @@ cp "$ROOT_DIR/Widget/Info.plist" "$WIDGET_CONTENTS/Info.plist"
   --timestamp=none \
   --generate-entitlement-der \
   --requirements "=designated => identifier \"$APP_BUNDLE_ID\"" \
-  --entitlements "$ROOT_DIR/App/QuotaGlance.entitlements" \
+  --entitlements "$ROOT_DIR/Config/Local/QuotaGlance.entitlements" \
   "$APP_BUNDLE"
 
 /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"

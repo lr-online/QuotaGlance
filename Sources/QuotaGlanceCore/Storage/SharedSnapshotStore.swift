@@ -7,8 +7,15 @@ public enum SharedSnapshotStoreError: Error, Equatable, Sendable {
 public enum QuotaGlanceShared {
     public static let appGroupIdentifier = "group.com.liangrui.QuotaGlance"
     public static let snapshotFileName = "quota-snapshot-v1.json"
+    public static let certificateFreeSnapshotDirectory = URL(
+        filePath: "/Users/Shared/QuotaGlance",
+        directoryHint: .isDirectory
+    )
 
     public static func snapshotStore() -> SharedSnapshotStore? {
+#if QUOTAGLANCE_CERTIFICATE_FREE
+        certificateFreeSnapshotStore()
+#else
         guard let containerURL = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: appGroupIdentifier
         ) else {
@@ -16,6 +23,15 @@ public enum QuotaGlanceShared {
         }
         return SharedSnapshotStore(
             fileURL: containerURL.appending(path: snapshotFileName)
+        )
+#endif
+    }
+
+    public static func certificateFreeSnapshotStore() -> SharedSnapshotStore {
+        SharedSnapshotStore(
+            fileURL: certificateFreeSnapshotDirectory.appending(
+                path: snapshotFileName
+            )
         )
     }
 }
@@ -42,6 +58,10 @@ public struct SharedSnapshotStore: Sendable {
         defer { try? FileManager.default.removeItem(at: temporaryURL) }
 
         try data.write(to: temporaryURL, options: .withoutOverwriting)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: temporaryURL.path
+        )
         if FileManager.default.fileExists(atPath: fileURL.path) {
             _ = try FileManager.default.replaceItemAt(
                 fileURL,
