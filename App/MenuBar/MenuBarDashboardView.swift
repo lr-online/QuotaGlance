@@ -9,9 +9,9 @@ struct MenuBarDashboardView: View {
         model.selectedAccountID.map(DashboardSelection.account) ?? .allAccounts
     }
 
-    private var presentation: DashboardPresentation? {
+    private var presentation: MenuBarPresentation? {
         guard let envelope = model.latestEnvelope else { return nil }
-        return DashboardPresenter.make(selection: selection, envelope: envelope)
+        return MenuBarPresenter.make(selection: selection, envelope: envelope)
     }
 
     var body: some View {
@@ -82,10 +82,17 @@ struct MenuBarDashboardView: View {
         }
     }
 
-    private func dashboard(_ presentation: DashboardPresentation) -> some View {
+    private func dashboard(_ presentation: MenuBarPresentation) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(presentation.remaining.map { MoneyFormatter.string($0) } ?? "--")
+                Text("Remaining")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(
+                    presentation.remaining.map {
+                        MoneyFormatter.dashboardString($0)
+                    } ?? "--"
+                )
                     .font(.system(size: 32, weight: .semibold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
@@ -94,11 +101,15 @@ struct MenuBarDashboardView: View {
                 statusLabel(presentation.status)
             }
 
+            if let quota = presentation.quota {
+                quotaSection(quota)
+            }
+
             HStack(spacing: 0) {
                 metric(
                     title: "Today",
                     value: presentation.todayActualCost.map {
-                        MoneyFormatter.string($0)
+                        MoneyFormatter.dashboardString($0)
                     } ?? "--"
                 )
                 Divider()
@@ -110,28 +121,19 @@ struct MenuBarDashboardView: View {
                 )
             }
 
-            if !presentation.dailyUsage.isEmpty {
+            if !presentation.days.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Last 7 Days")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    UsageChartView(dailyUsage: presentation.dailyUsage)
+                    UsageChartView(days: presentation.days)
                 }
             }
 
             if case .allAccounts = selection {
-                attentionSection(presentation.accountRows)
-            } else if let usage = presentation.usage {
-                accountDetails(usage)
-            }
-
-            if let lastSuccessAt = presentation.lastSuccessAt {
-                HStack(spacing: 5) {
-                    Image(systemName: "clock")
-                    Text(lastSuccessAt, style: .relative)
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                accountSection(presentation.accountRows)
+            } else {
+                modelSection(presentation.modelRows)
             }
 
             if let error = model.lastErrorMessage {
@@ -157,33 +159,64 @@ struct MenuBarDashboardView: View {
     }
 
     @ViewBuilder
-    private func attentionSection(_ accounts: [AccountSnapshot]) -> some View {
-        let attention = accounts.filter {
-            switch $0.health {
-            case .healthy:
-                false
-            case .belowThreshold, .stale, .unavailable:
-                true
+    private func quotaSection(_ quota: MenuBarQuotaPresentation) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let fraction = quota.fraction {
+                ProgressView(value: fraction)
+                    .progressViewStyle(.linear)
+                    .accessibilityLabel("Quota used")
+                    .accessibilityValue(
+                        fraction.formatted(
+                            .percent.precision(.fractionLength(0))
+                        )
+                    )
+            }
+
+            HStack(spacing: 14) {
+                if let used = quota.used {
+                    metric(
+                        title: "Used",
+                        value: MoneyFormatter.dashboardString(used)
+                    )
+                }
+                if let limit = quota.limit {
+                    metric(
+                        title: "Limit",
+                        value: MoneyFormatter.dashboardString(limit)
+                    )
+                }
             }
         }
-        if !attention.isEmpty {
+    }
+
+    @ViewBuilder
+    private func accountSection(_ accounts: [AccountSnapshot]) -> some View {
+        if !accounts.isEmpty {
             VStack(alignment: .leading, spacing: 7) {
-                Text("Attention")
+                Text("Accounts")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                ForEach(attention) { account in
+                ForEach(accounts) { account in
                     HStack(spacing: 7) {
                         Circle()
-                            .fill(color(for: DashboardPresenterStatus.health(account.health)))
+                            .fill(
+                                color(
+                                    for: DashboardPresenterStatus.health(
+                                        account.health
+                                    )
+                                )
+                            )
                             .frame(width: 7, height: 7)
                         Text(account.displayName)
                             .lineLimit(1)
                         Spacer()
-                        if let remaining = account.remaining {
-                            Text(MoneyFormatter.string(remaining))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
+                        Text(
+                            account.remaining.map {
+                                MoneyFormatter.dashboardString($0)
+                            } ?? "--"
+                        )
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                     }
                     .font(.caption)
                 }
@@ -192,31 +225,24 @@ struct MenuBarDashboardView: View {
     }
 
     @ViewBuilder
-    private func accountDetails(_ usage: ProviderUsageSnapshot) -> some View {
-        if usage.quotaLimit != nil || usage.quotaUsed != nil {
-            HStack(spacing: 14) {
-                if let used = usage.quotaUsed {
-                    metric(title: "Used", value: MoneyFormatter.string(used))
-                }
-                if let limit = usage.quotaLimit {
-                    metric(title: "Limit", value: MoneyFormatter.string(limit))
-                }
-            }
-        }
-
-        if !usage.modelUsage.isEmpty {
+    private func modelSection(_ models: [ModelUsage]) -> some View {
+        if !models.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Models")
+                Text("Top Models")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                ForEach(usage.modelUsage.prefix(4)) { model in
+                ForEach(models) { model in
                     HStack {
                         Text(model.model)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Spacer()
-                        Text(model.actualCost.map { MoneyFormatter.string($0) } ?? "--")
-                            .foregroundStyle(.secondary)
+                        Text(
+                            model.actualCost.map {
+                                MoneyFormatter.dashboardString($0)
+                            } ?? "--"
+                        )
+                        .foregroundStyle(.secondary)
                     }
                     .font(.caption)
                 }
@@ -259,11 +285,21 @@ struct MenuBarDashboardView: View {
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 10) {
             SettingsLink {
                 Label("Settings", systemImage: "gearshape")
             }
-            Spacer()
+            Spacer(minLength: 6)
+            if let lastSuccessAt = presentation?.lastSuccessAt {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                    Text(lastSuccessAt, style: .relative)
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            Spacer(minLength: 6)
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
