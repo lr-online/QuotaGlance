@@ -4,7 +4,7 @@ set -euo pipefail
 : "${LAOGE_KEY:?Set LAOGE_KEY before running this check}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INSTALLED_APP="$HOME/Applications/QuotaGlance.app"
+APP_BUNDLE="${1:-$HOME/Applications/QuotaGlance.app}"
 TEMP_DIR="$(mktemp -d)"
 SECRET_PATTERN_FILE="$TEMP_DIR/api-key.pattern"
 GIT="/Library/Developer/CommandLineTools/usr/bin/git"
@@ -19,8 +19,8 @@ umask 077
 printf '%s' "$LAOGE_KEY" > "$SECRET_PATTERN_FILE"
 chmod 600 "$SECRET_PATTERN_FILE"
 
-if [[ ! -d "$INSTALLED_APP" ]]; then
-  echo "Installed app not found: $INSTALLED_APP" >&2
+if [[ ! -d "$APP_BUNDLE" ]]; then
+  echo "App bundle not found: $APP_BUNDLE" >&2
   exit 1
 fi
 if [[ ! -x "$GIT" ]]; then
@@ -36,8 +36,8 @@ then
   exit 1
 fi
 
-if rg -a -q -F -f "$SECRET_PATTERN_FILE" "$INSTALLED_APP"; then
-  echo "Secret bytes found in installed app" >&2
+if rg -a -q -F -f "$SECRET_PATTERN_FILE" "$APP_BUNDLE"; then
+  echo "Secret bytes found in app bundle" >&2
   exit 1
 fi
 
