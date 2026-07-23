@@ -1,6 +1,6 @@
 # QuotaGlance DMG Distribution Design
 
-Status: Approved for written-spec review
+Status: Superseded by `2026-07-23-macos-12-compatibility-design.md`
 Date: 2026-07-23
 
 ## Objective

@@ -148,7 +148,8 @@ host implementation.
 ### Task 4: Package And Verify Both Editions
 
 **Files:**
-- Modify: `Distribution/README.txt`
+- Create: `Distribution/README-macOS12.txt`
+- Create: `Distribution/README-macOS14.txt`
 - Modify: `README.md`
 - Modify: `scripts/package-dmg.sh`
 - Modify: `scripts/verify-dmg.sh`
@@ -214,4 +215,3 @@ SHA-256 for both DMGs.
 
 After confirming the main worktree and artifacts are intact, remove the clean
 feature worktree and delete its fully merged local branch.
-

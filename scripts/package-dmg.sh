@@ -3,14 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_ARGUMENT="${1:-$ROOT_DIR/dist}"
+EDITION_SELECTION="${2:-all}"
 GIT="/usr/bin/git"
 WORK_DIR=""
-STAGING_DIR=""
 SOURCE_DIR=""
-PUBLISHED_DMG=""
-PUBLISHED_CHECKSUM=""
-PUBLISHED_DMG_SOURCE=""
-PUBLISHED_CHECKSUM_SOURCE=""
+VERSION=""
+TEMP_DMGS=()
+TEMP_CHECKSUMS=()
+FINAL_DMGS=()
+FINAL_CHECKSUMS=()
+PUBLISHED_FINALS=()
+PUBLISHED_SOURCES=()
 
 same_file() {
   [[ "$(/usr/bin/stat -f '%d:%i' "$1" 2>/dev/null || true)" \
@@ -18,23 +21,31 @@ same_file() {
 }
 
 cleanup() {
-  if [[ -n "$PUBLISHED_DMG" \
-    && ! -L "$PUBLISHED_DMG" \
-    && -e "$PUBLISHED_DMG_SOURCE" ]] \
-    && same_file "$PUBLISHED_DMG" "$PUBLISHED_DMG_SOURCE"; then
-    /bin/rm -f -- "$PUBLISHED_DMG"
-  fi
-  if [[ -n "$PUBLISHED_CHECKSUM" \
-    && ! -L "$PUBLISHED_CHECKSUM" \
-    && -e "$PUBLISHED_CHECKSUM_SOURCE" ]] \
-    && same_file "$PUBLISHED_CHECKSUM" "$PUBLISHED_CHECKSUM_SOURCE"; then
-    /bin/rm -f -- "$PUBLISHED_CHECKSUM"
-  fi
+  local index
+
+  for index in "${!PUBLISHED_FINALS[@]}"; do
+    if [[ ! -L "${PUBLISHED_FINALS[$index]}" \
+      && -e "${PUBLISHED_SOURCES[$index]}" ]] \
+      && same_file \
+        "${PUBLISHED_FINALS[$index]}" \
+        "${PUBLISHED_SOURCES[$index]}"; then
+      /bin/rm -f -- "${PUBLISHED_FINALS[$index]}"
+    fi
+  done
   if [[ -n "$WORK_DIR" && -d "$WORK_DIR" ]]; then
     /bin/rm -rf -- "$WORK_DIR"
   fi
 }
 trap cleanup EXIT
+
+case "$EDITION_SELECTION" in
+  all|legacy|full)
+    ;;
+  *)
+    echo "usage: $0 [OUTPUT_DIR] [all|legacy|full]" >&2
+    exit 2
+    ;;
+esac
 
 if [[ "$OUTPUT_ARGUMENT" == /* ]]; then
   OUTPUT_DIR="$OUTPUT_ARGUMENT"
@@ -52,16 +63,15 @@ fi
 }
 OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd -P)"
 WORK_DIR="$(mktemp -d "$OUTPUT_DIR/.QuotaGlance-package.XXXXXX")"
-STAGING_DIR="$WORK_DIR/staging"
 SOURCE_DIR="$WORK_DIR/source"
 /bin/chmod 700 "$WORK_DIR"
 
 cd "$ROOT_DIR"
-[[ -z "$("$GIT" status --porcelain --untracked-files=all)" ]] || {
+[[ -z "$($GIT status --porcelain --untracked-files=all)" ]] || {
   echo "Refusing to package a dirty Git worktree" >&2
   exit 1
 }
-SOURCE_COMMIT="$("$GIT" rev-parse HEAD)"
+SOURCE_COMMIT="$($GIT rev-parse HEAD)"
 [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
   echo "Unable to resolve the source commit" >&2
   exit 1
@@ -75,91 +85,153 @@ SOURCE_COMMIT="$("$GIT" rev-parse HEAD)"
   exit 1
 }
 
-README_SOURCE="$SOURCE_DIR/Distribution/README.txt"
-[[ -f "$README_SOURCE" && ! -L "$README_SOURCE" ]] || {
-  echo "Distribution README is missing from source commit" >&2
-  exit 1
-}
+package_edition() {
+  local edition="$1"
+  local os_tag
+  local readme_source
+  local volume_name
+  local built_app
+  local built_version
+  local widget
+  local source_name
+  local dmg_name
+  local checksum_name
+  local final_dmg
+  local final_checksum
+  local temporary_dmg
+  local temporary_checksum
+  local staging_dir
+  local executable
+  local archs
+  local -a executables
 
-BUILT_APP="$("$SOURCE_DIR/scripts/build-local.sh" Release)"
-VERSION="$(/usr/libexec/PlistBuddy \
-  -c 'Print :CFBundleShortVersionString' \
-  "$BUILT_APP/Contents/Info.plist")"
-[[ "$VERSION" =~ ^[0-9A-Za-z][0-9A-Za-z.-]*$ ]] || {
-  echo "Invalid app version for artifact name: $VERSION" >&2
-  exit 1
-}
-
-DMG_NAME="QuotaGlance-$VERSION-arm64.dmg"
-CHECKSUM_NAME="$DMG_NAME.sha256"
-SOURCE_NAME="QuotaGlance-$VERSION-source.zip"
-FINAL_DMG="$OUTPUT_DIR/$DMG_NAME"
-FINAL_CHECKSUM="$OUTPUT_DIR/$CHECKSUM_NAME"
-TEMP_DMG="$WORK_DIR/$DMG_NAME"
-TEMP_CHECKSUM="$WORK_DIR/$CHECKSUM_NAME"
-
-if [[ -e "$FINAL_DMG" || -L "$FINAL_DMG" \
-  || -e "$FINAL_CHECKSUM" || -L "$FINAL_CHECKSUM" ]]; then
-  echo "Refusing to overwrite an existing distribution artifact" >&2
-  exit 1
-fi
-
-/usr/bin/codesign --verify --deep --strict "$BUILT_APP"
-"$SOURCE_DIR/scripts/verify-local-widget-bundle.sh" "$BUILT_APP"
-"$SOURCE_DIR/scripts/verify-widget-entrypoint.sh" \
-  "$BUILT_APP/Contents/PlugIns/QuotaGlanceWidget.appex"
-
-for executable in \
-  "$BUILT_APP/Contents/MacOS/QuotaGlance" \
-  "$BUILT_APP/Contents/PlugIns/QuotaGlanceWidget.appex/Contents/MacOS/QuotaGlanceWidget"; do
-  ARCHS="$(/usr/bin/lipo -archs "$executable")"
-  [[ "$ARCHS" == "arm64" ]] || {
-    echo "Release executable must contain only arm64, found: $ARCHS" >&2
+  case "$edition" in
+    legacy)
+      os_tag="macOS12"
+      readme_source="$SOURCE_DIR/Distribution/README-macOS12.txt"
+      volume_name="QuotaGlance macOS 12"
+      ;;
+    full)
+      os_tag="macOS14"
+      readme_source="$SOURCE_DIR/Distribution/README-macOS14.txt"
+      volume_name="QuotaGlance macOS 14"
+      ;;
+  esac
+  [[ -f "$readme_source" && ! -L "$readme_source" ]] || {
+    echo "Distribution README is missing from source commit: $edition" >&2
     exit 1
   }
-done
 
-if [[ -n "${LAOGE_KEY:-}" ]]; then
-  "$SOURCE_DIR/scripts/verify-no-secret.sh" "$BUILT_APP"
-else
-  echo "LAOGE_KEY is not set; skipping configured-key byte scan"
+  built_app="$("$SOURCE_DIR/scripts/build-local.sh" Release "$edition")"
+  built_version="$(/usr/libexec/PlistBuddy \
+    -c 'Print :CFBundleShortVersionString' \
+    "$built_app/Contents/Info.plist")"
+  [[ "$built_version" =~ ^[0-9A-Za-z][0-9A-Za-z.-]*$ ]] || {
+    echo "Invalid app version for artifact name: $built_version" >&2
+    exit 1
+  }
+  if [[ -z "$VERSION" ]]; then
+    VERSION="$built_version"
+  elif [[ "$VERSION" != "$built_version" ]]; then
+    echo "Build editions have different app versions" >&2
+    exit 1
+  fi
+
+  source_name="QuotaGlance-$VERSION-source.zip"
+  dmg_name="QuotaGlance-$VERSION-$os_tag-arm64.dmg"
+  checksum_name="$dmg_name.sha256"
+  final_dmg="$OUTPUT_DIR/$dmg_name"
+  final_checksum="$OUTPUT_DIR/$checksum_name"
+  temporary_dmg="$WORK_DIR/$dmg_name"
+  temporary_checksum="$WORK_DIR/$checksum_name"
+  staging_dir="$WORK_DIR/staging-$edition"
+
+  if [[ -e "$final_dmg" || -L "$final_dmg" \
+    || -e "$final_checksum" || -L "$final_checksum" ]]; then
+    echo "Refusing to overwrite an existing distribution artifact" >&2
+    exit 1
+  fi
+
+  /usr/bin/codesign --verify --deep --strict "$built_app"
+  executables=("$built_app/Contents/MacOS/QuotaGlance")
+  widget="$built_app/Contents/PlugIns/QuotaGlanceWidget.appex"
+  if [[ "$edition" == full ]]; then
+    "$SOURCE_DIR/scripts/verify-local-widget-bundle.sh" "$built_app"
+    "$SOURCE_DIR/scripts/verify-widget-entrypoint.sh" "$widget"
+    executables+=("$widget/Contents/MacOS/QuotaGlanceWidget")
+  elif [[ -e "$widget" ]]; then
+    echo "macOS 12 build unexpectedly contains the Widget" >&2
+    exit 1
+  fi
+  for executable in "${executables[@]}"; do
+    archs="$(/usr/bin/lipo -archs "$executable")"
+    [[ "$archs" == "arm64" ]] || {
+      echo "Release executable must contain only arm64, found: $archs" >&2
+      exit 1
+    }
+  done
+
+  if [[ -n "${LAOGE_KEY:-}" ]]; then
+    "$SOURCE_DIR/scripts/verify-no-secret.sh" "$built_app"
+  else
+    echo "LAOGE_KEY is not set; skipping configured-key byte scan"
+  fi
+
+  /bin/mkdir -p "$staging_dir"
+  /usr/bin/ditto "$built_app" "$staging_dir/QuotaGlance.app"
+  /usr/bin/sed \
+    -e "s/@VERSION@/$VERSION/g" \
+    -e "s/@SOURCE_ARCHIVE@/$source_name/g" \
+    "$readme_source" > "$staging_dir/README.txt"
+  /bin/ln -s /Applications "$staging_dir/Applications"
+  "$GIT" -C "$SOURCE_DIR" archive \
+    --format=zip \
+    --prefix="QuotaGlance-$VERSION-source/" \
+    --output="$staging_dir/$source_name" \
+    "$SOURCE_COMMIT"
+  printf 'Git commit: %s\n' "$SOURCE_COMMIT" \
+    > "$staging_dir/SOURCE-COMMIT.txt"
+
+  /usr/bin/hdiutil create \
+    -volname "$volume_name" \
+    -srcfolder "$staging_dir" \
+    -format UDZO \
+    -imagekey zlib-level=9 \
+    "$temporary_dmg" >/dev/null
+  (
+    cd "$WORK_DIR"
+    /usr/bin/shasum -a 256 "$dmg_name" > "$checksum_name"
+  )
+
+  "$SOURCE_DIR/scripts/verify-dmg.sh" \
+    "$temporary_dmg" \
+    "$temporary_checksum" \
+    "$edition"
+
+  TEMP_DMGS+=("$temporary_dmg")
+  TEMP_CHECKSUMS+=("$temporary_checksum")
+  FINAL_DMGS+=("$final_dmg")
+  FINAL_CHECKSUMS+=("$final_checksum")
+}
+
+if [[ "$EDITION_SELECTION" == all || "$EDITION_SELECTION" == legacy ]]; then
+  package_edition legacy
+fi
+if [[ "$EDITION_SELECTION" == all || "$EDITION_SELECTION" == full ]]; then
+  package_edition full
 fi
 
-/bin/mkdir -p "$STAGING_DIR"
-/usr/bin/ditto "$BUILT_APP" "$STAGING_DIR/QuotaGlance.app"
-/bin/cp "$README_SOURCE" "$STAGING_DIR/README.txt"
-/bin/ln -s /Applications "$STAGING_DIR/Applications"
-"$GIT" -C "$SOURCE_DIR" archive \
-  --format=zip \
-  --prefix="QuotaGlance-$VERSION-source/" \
-  --output="$STAGING_DIR/$SOURCE_NAME" \
-  "$SOURCE_COMMIT"
-printf 'Git commit: %s\n' "$SOURCE_COMMIT" \
-  > "$STAGING_DIR/SOURCE-COMMIT.txt"
+for index in "${!TEMP_DMGS[@]}"; do
+  /bin/ln "${TEMP_DMGS[$index]}" "${FINAL_DMGS[$index]}"
+  PUBLISHED_FINALS+=("${FINAL_DMGS[$index]}")
+  PUBLISHED_SOURCES+=("${TEMP_DMGS[$index]}")
+  /bin/ln "${TEMP_CHECKSUMS[$index]}" "${FINAL_CHECKSUMS[$index]}"
+  PUBLISHED_FINALS+=("${FINAL_CHECKSUMS[$index]}")
+  PUBLISHED_SOURCES+=("${TEMP_CHECKSUMS[$index]}")
+done
 
-/usr/bin/hdiutil create \
-  -volname QuotaGlance \
-  -srcfolder "$STAGING_DIR" \
-  -format UDZO \
-  -imagekey zlib-level=9 \
-  "$TEMP_DMG" >/dev/null
-
-(
-  cd "$WORK_DIR"
-  /usr/bin/shasum -a 256 "$DMG_NAME" > "$CHECKSUM_NAME"
-)
-
-"$SOURCE_DIR/scripts/verify-dmg.sh" "$TEMP_DMG" "$TEMP_CHECKSUM"
-
-/bin/ln "$TEMP_DMG" "$FINAL_DMG"
-PUBLISHED_DMG="$FINAL_DMG"
-PUBLISHED_DMG_SOURCE="$TEMP_DMG"
-/bin/ln "$TEMP_CHECKSUM" "$FINAL_CHECKSUM"
-PUBLISHED_CHECKSUM="$FINAL_CHECKSUM"
-PUBLISHED_CHECKSUM_SOURCE="$TEMP_CHECKSUM"
-
-printf '%s\n%s\n' "$FINAL_DMG" "$FINAL_CHECKSUM"
-PUBLISHED_DMG=""
-PUBLISHED_CHECKSUM=""
-PUBLISHED_DMG_SOURCE=""
-PUBLISHED_CHECKSUM_SOURCE=""
+for index in "${!FINAL_DMGS[@]}"; do
+  printf '%s\n%s\n' "${FINAL_DMGS[$index]}" "${FINAL_CHECKSUMS[$index]}"
+done
+PUBLISHED_FINALS=()
+PUBLISHED_SOURCES=()

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DMG_PATH="${1:?usage: verify-dmg.sh DMG_PATH [CHECKSUM_PATH]}"
+DMG_PATH="${1:?usage: verify-dmg.sh DMG_PATH [CHECKSUM_PATH] [legacy|full]}"
 CHECKSUM_PATH="${2:-}"
+EDITION="${3:-}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/distribution-validation.sh"
 APP_BUNDLE_ID="com.liangrui.QuotaGlance"
@@ -26,6 +27,37 @@ bundle_id() {
   /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \
     "$1/Contents/Info.plist" 2>/dev/null
 }
+
+if [[ -z "$EDITION" ]]; then
+  case "$(/usr/bin/basename "$DMG_PATH")" in
+    *-macOS12-arm64.dmg)
+      EDITION="legacy"
+      ;;
+    *-macOS14-arm64.dmg)
+      EDITION="full"
+      ;;
+    *)
+      echo "Unable to infer DMG edition from its file name" >&2
+      exit 1
+      ;;
+  esac
+fi
+case "$EDITION" in
+  legacy)
+    OS_TAG="macOS12"
+    EXPECTED_MINIMUM="12.0"
+    README_TITLE_SUFFIX="macOS 12 兼容版安装说明"
+    ;;
+  full)
+    OS_TAG="macOS14"
+    EXPECTED_MINIMUM="14.0"
+    README_TITLE_SUFFIX="macOS 14 完整版安装说明"
+    ;;
+  *)
+    echo "DMG edition must be legacy or full" >&2
+    exit 1
+    ;;
+esac
 
 [[ -f "$DMG_PATH" && ! -L "$DMG_PATH" ]] || {
   echo "DMG is missing or is not a regular file: $DMG_PATH" >&2
@@ -96,6 +128,17 @@ APP="$MOUNT_POINT/QuotaGlance.app"
 VERSION="$(/usr/libexec/PlistBuddy \
   -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 SOURCE_NAME="QuotaGlance-$VERSION-source.zip"
+EXPECTED_DMG_NAME="QuotaGlance-$VERSION-$OS_TAG-arm64.dmg"
+[[ "$(/usr/bin/basename "$DMG_PATH")" == "$EXPECTED_DMG_NAME" ]] || {
+  echo "DMG file name does not match its app version and edition" >&2
+  exit 1
+}
+[[ "$(/usr/libexec/PlistBuddy \
+  -c 'Print :LSMinimumSystemVersion' \
+  "$APP/Contents/Info.plist")" == "$EXPECTED_MINIMUM" ]] || {
+  echo "Host minimum system version does not match the DMG edition" >&2
+  exit 1
+}
 
 ACTUAL_ITEMS="$(
   /usr/bin/find "$MOUNT_POINT" -mindepth 1 -maxdepth 1 \
@@ -128,18 +171,31 @@ WIDGET="$APP/Contents/PlugIns/QuotaGlanceWidget.appex"
   echo "Unexpected host bundle identifier" >&2
   exit 1
 }
-[[ "$(bundle_id "$WIDGET")" == "$WIDGET_BUNDLE_ID" ]] || {
-  echo "Unexpected widget bundle identifier" >&2
-  exit 1
-}
 
 /usr/bin/codesign --verify --deep --strict "$APP"
-"$ROOT_DIR/scripts/verify-local-widget-bundle.sh" "$APP"
-"$ROOT_DIR/scripts/verify-widget-entrypoint.sh" "$WIDGET"
+EXECUTABLES=("$APP/Contents/MacOS/QuotaGlance")
+if [[ "$EDITION" == full ]]; then
+  [[ "$(bundle_id "$WIDGET")" == "$WIDGET_BUNDLE_ID" ]] || {
+    echo "Unexpected widget bundle identifier" >&2
+    exit 1
+  }
+  [[ "$(/usr/libexec/PlistBuddy \
+    -c 'Print :LSMinimumSystemVersion' \
+    "$WIDGET/Contents/Info.plist")" == "14.0" ]] || {
+    echo "Widget minimum system version is not macOS 14" >&2
+    exit 1
+  }
+  "$ROOT_DIR/scripts/verify-local-widget-bundle.sh" "$APP"
+  "$ROOT_DIR/scripts/verify-widget-entrypoint.sh" "$WIDGET"
+  EXECUTABLES+=("$WIDGET/Contents/MacOS/QuotaGlanceWidget")
+else
+  if [[ -n "$(/usr/bin/find "$APP/Contents" -type d -name '*.appex' -print -quit)" ]]; then
+    echo "macOS 12 edition unexpectedly contains an app extension" >&2
+    exit 1
+  fi
+fi
 
-for executable in \
-  "$APP/Contents/MacOS/QuotaGlance" \
-  "$WIDGET/Contents/MacOS/QuotaGlanceWidget"; do
+for executable in "${EXECUTABLES[@]}"; do
   ARCHS="$(/usr/bin/lipo -archs "$executable")"
   [[ "$ARCHS" == "arm64" ]] || {
     echo "DMG executable must contain only arm64, found: $ARCHS" >&2
@@ -153,7 +209,7 @@ rg -q '^Signature=adhoc$' <<< "$SIGNING_DETAILS" || {
   exit 1
 }
 
-rg -q "^QuotaGlance $VERSION 安装说明$" "$MOUNT_POINT/README.txt" || {
+rg -q "^QuotaGlance $VERSION $README_TITLE_SUFFIX$" "$MOUNT_POINT/README.txt" || {
   echo "DMG README version does not match the app" >&2
   exit 1
 }
@@ -161,6 +217,22 @@ rg -q '未经过 Apple Developer ID 签名或 Apple 公证' "$MOUNT_POINT/README
   echo "DMG README does not disclose Gatekeeper limitations" >&2
   exit 1
 }
+if [[ "$EDITION" == legacy ]]; then
+  rg -q '不包含桌面小组件' "$MOUNT_POINT/README.txt" || {
+    echo "macOS 12 README does not disclose the Widget limitation" >&2
+    exit 1
+  }
+else
+  rg -q '包含可选择全部账户或指定账户的桌面小组件' \
+    "$MOUNT_POINT/README.txt" || {
+    echo "macOS 14 README does not describe Widget support" >&2
+    exit 1
+  }
+fi
+if rg -q '@VERSION@|@SOURCE_ARCHIVE@' "$MOUNT_POINT/README.txt"; then
+  echo "DMG README contains an unresolved template placeholder" >&2
+  exit 1
+fi
 
 SOURCE_ZIP="$MOUNT_POINT/$SOURCE_NAME"
 SOURCE_COMMIT="$(/usr/bin/sed -n 's/^Git commit: //p' \

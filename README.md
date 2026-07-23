@@ -9,13 +9,18 @@ QuotaGlance 是一个个人使用的 macOS 菜单栏应用和桌面小组件，�
 - 管理 2-5 个具名 API Info 账户，key 只保存在 macOS Keychain。
 - 菜单栏查看总余额、单账户余额、今日花费和最近七天趋势。
 - 刷新间隔可选 1、5、15、30 或 60 分钟，默认 5 分钟。
-- 支持小、中、大三种 Widget，并可配置为全部账户或指定账户。
+- macOS 14 完整版支持小、中、大三种 Widget，并可配置为全部账户或指定账户。
 - 网络或接口失败时保留上次成功数据并标记为过期。
 - 可选低余额通知和开机启动。
 
-## 本地要求
+## 系统要求
 
-- macOS 14 或更高版本。
+- macOS 12 兼容版：macOS 12 或更高版本，提供菜单栏核心功能，不包含桌面小组件和开机启动。
+- macOS 14 完整版：macOS 14 或更高版本，额外提供桌面小组件和开机启动。
+- 当前分发产物仅支持 Apple Silicon Mac（M1 或更新）。
+
+## 源码构建要求
+
 - 完整版 Xcode，安装在 `/Applications/Xcode.app`。本地构建依赖 Xcode 生成 Widget 的 App Intent 元数据。
 - Xcode Command Line Tools。缺少时执行：`xcode-select --install`。
 - [ripgrep](https://github.com/BurntSushi/ripgrep)：`brew install ripgrep`。
@@ -50,7 +55,7 @@ swift test
 ./script/build_and_run.sh
 ```
 
-Release 构建、本地安装并注册 Widget：
+Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 
 ```bash
 ./scripts/install-local.sh
@@ -60,13 +65,22 @@ Release 构建、本地安装并注册 Widget：
 
 ## 生成分享版 DMG
 
-当前分享版仅支持 Apple Silicon，使用临时签名且未经过 Apple 公证：
+默认同时生成 macOS 12 兼容版和 macOS 14 完整版；两者都使用临时签名且未经过 Apple 公证：
 
 ```bash
 ./scripts/package-dmg.sh
 ```
 
-产物位于 `dist/QuotaGlance-0.1.0-arm64.dmg`，相邻的 `.sha256` 文件用于校验下载或传输完整性。DMG 同时包含 `QuotaGlance-0.1.0-source.zip` 和 `SOURCE-COMMIT.txt`，供接收者核对并审查对应源码。
+产物位于 `dist/QuotaGlance-<version>-macOS12-arm64.dmg` 和 `dist/QuotaGlance-<version>-macOS14-arm64.dmg`，相邻的 `.sha256` 文件用于校验下载或传输完整性。两个 DMG 都包含 `QuotaGlance-<version>-source.zip` 和 `SOURCE-COMMIT.txt`，且对应同一个 Git commit，供接收者核对并审查源码。
+
+只生成一个版本时，可在输出目录后指定 `legacy` 或 `full`：
+
+```bash
+./scripts/package-dmg.sh dist legacy
+./scripts/package-dmg.sh dist full
+```
+
+两个版本使用相同 bundle ID，请勿同时安装；从一个版本切换到另一个版本时，先替换 Applications 中的现有 app，账户设置和 Keychain key 会保留。
 
 接收者需将应用拖入 Applications，并在首次启动时按住 Control 点击应用后选择“打开”；如果仍被拦截，请在“系统设置 > 隐私与安全性”中选择“仍要打开”。这是临时签名版本的已知限制，不代表 DMG 损坏。
 
@@ -79,7 +93,7 @@ Release 构建、本地安装并注册 Widget：
 
 不要把真实 key 写入源码、提交记录或仓库内的 `.env`。QuotaGlance 不会从 `.env` 导入 key；请只通过应用内的安全编辑器录入。
 
-## 添加桌面小组件
+## 添加桌面小组件（仅 macOS 14 完整版）
 
 1. 先启动 QuotaGlance 并至少成功刷新一次。
 2. 在桌面空白处右键，选择 Edit Widgets。

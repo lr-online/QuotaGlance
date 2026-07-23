@@ -7,6 +7,15 @@ trap '/bin/chmod -R u+rwX "$TEST_ROOT"; /bin/rm -rf "$TEST_ROOT"' EXIT
 PACKAGE_SCRIPT="$ROOT_DIR/scripts/package-dmg.sh"
 VERIFY_SCRIPT="$ROOT_DIR/scripts/verify-dmg.sh"
 VALIDATION_SCRIPT="$ROOT_DIR/scripts/distribution-validation.sh"
+LEGACY_README="$ROOT_DIR/Distribution/README-macOS12.txt"
+FULL_README="$ROOT_DIR/Distribution/README-macOS14.txt"
+VERSION="$(/usr/bin/sed -n \
+  's/^[[:space:]]*MARKETING_VERSION: "\([^"]*\)"/\1/p' \
+  "$ROOT_DIR/project.yml")"
+[[ -n "$VERSION" ]] || {
+  echo "FAIL: project version is missing" >&2
+  exit 1
+}
 
 fail() {
   echo "FAIL: $*" >&2
@@ -62,7 +71,7 @@ test_secret_scan_fails_closed_when_scanners_error() {
 }
 
 test_distribution_path_policy() {
-  local prefix="QuotaGlance-0.1.0-source"
+  local prefix="QuotaGlance-$VERSION-source"
   local safe_items
   local unsafe_items
   local mount_root="$TEST_ROOT/mounted-payload"
@@ -99,17 +108,17 @@ test_distribution_path_policy() {
     "$mount_root/QuotaGlance.app/Contents/MacOS/QuotaGlance" \
     "$mount_root/README.txt" \
     "$mount_root/SOURCE-COMMIT.txt" \
-    "$mount_root/QuotaGlance-0.1.0-source.zip"
+    "$mount_root/QuotaGlance-$VERSION-source.zip"
   /bin/ln -s /Applications "$mount_root/Applications"
   quota_glance_validate_mounted_payload \
     "$mount_root" \
-    "QuotaGlance-0.1.0-source.zip"
+    "QuotaGlance-$VERSION-source.zip"
 
   /bin/mv "$mount_root/README.txt" "$mount_root/README.real"
   /bin/ln -s "$mount_root/README.real" "$mount_root/README.txt"
   assert_fails quota_glance_validate_mounted_payload \
     "$mount_root" \
-    "QuotaGlance-0.1.0-source.zip"
+    "QuotaGlance-$VERSION-source.zip"
 
   quota_glance_validate_gatekeeper_rejection \
     3 \
@@ -140,14 +149,23 @@ test_distribution_path_policy() {
 }
 
 test_distribution_contract() {
-  [[ -f "$ROOT_DIR/Distribution/README.txt" ]] \
-    || fail "distribution README is missing"
-  rg -q '未经过 Apple Developer ID 签名或 Apple 公证' \
-    "$ROOT_DIR/Distribution/README.txt" \
-    || fail "distribution README does not disclose Gatekeeper limitations"
-  rg -q 'QuotaGlance-0.1.0-source.zip' \
-    "$ROOT_DIR/Distribution/README.txt" \
-    || fail "distribution README does not identify the source archive"
+  local readme
+
+  for readme in \
+    "$ROOT_DIR/Distribution/README-macOS12.txt" \
+    "$ROOT_DIR/Distribution/README-macOS14.txt"; do
+    [[ -f "$readme" ]] || fail "distribution README is missing: $readme"
+    rg -q '未经过 Apple Developer ID 签名或 Apple 公证' "$readme" \
+      || fail "distribution README does not disclose Gatekeeper limitations"
+    rg -q '@VERSION@' "$readme" \
+      || fail "distribution README does not use the version placeholder"
+    rg -q '@SOURCE_ARCHIVE@' "$readme" \
+      || fail "distribution README does not identify the source archive"
+  done
+  rg -q '不包含桌面小组件' "$ROOT_DIR/Distribution/README-macOS12.txt" \
+    || fail "macOS 12 README does not explain the Widget limitation"
+  rg -q '桌面小组件' "$ROOT_DIR/Distribution/README-macOS14.txt" \
+    || fail "macOS 14 README does not explain Widget setup"
   rg -q '^dist/$' "$ROOT_DIR/.gitignore" \
     || fail "dist directory is not ignored"
   [[ -x "$PACKAGE_SCRIPT" ]] || fail "package script is missing"
@@ -170,6 +188,14 @@ test_real_dmg_round_trip() {
   /usr/bin/ditto \
     "$VALIDATION_SCRIPT" \
     "$clean_repo/scripts/distribution-validation.sh"
+  /usr/bin/ditto \
+    "$LEGACY_README" \
+    "$clean_repo/Distribution/README-macOS12.txt"
+  /usr/bin/ditto \
+    "$FULL_README" \
+    "$clean_repo/Distribution/README-macOS14.txt"
+  /usr/bin/git -C "$clean_repo" rm --quiet --ignore-unmatch \
+    Distribution/README.txt
   /bin/mv \
     "$clean_repo/scripts/build-local.sh" \
     "$clean_repo/scripts/build-local-real.sh"
@@ -189,7 +215,9 @@ test_real_dmg_round_trip() {
     scripts/build-local-real.sh \
     scripts/package-dmg.sh \
     scripts/verify-dmg.sh \
-    scripts/distribution-validation.sh
+    scripts/distribution-validation.sh \
+    Distribution/README-macOS12.txt \
+    Distribution/README-macOS14.txt
   if ! /usr/bin/git -C "$clean_repo" diff --cached --quiet; then
     /usr/bin/git -C "$clean_repo" \
       -c user.name='QuotaGlance Tests' \
@@ -203,11 +231,16 @@ test_real_dmg_round_trip() {
   QUOTAGLANCE_PACKAGING_CALLER_ROOT="$clean_repo" \
     "$clean_package" "$clean_output" >/dev/null
 
-  local dmg="$clean_output/QuotaGlance-0.1.0-arm64.dmg"
-  local checksum="$dmg.sha256"
-  [[ -f "$dmg" ]] || fail "DMG was not created"
-  [[ -f "$checksum" ]] || fail "DMG checksum was not created"
-  "$clean_verify" "$dmg" "$checksum" >/dev/null
+  local legacy_dmg="$clean_output/QuotaGlance-$VERSION-macOS12-arm64.dmg"
+  local full_dmg="$clean_output/QuotaGlance-$VERSION-macOS14-arm64.dmg"
+  local legacy_checksum="$legacy_dmg.sha256"
+  local full_checksum="$full_dmg.sha256"
+  [[ -f "$legacy_dmg" ]] || fail "macOS 12 DMG was not created"
+  [[ -f "$full_dmg" ]] || fail "macOS 14 DMG was not created"
+  [[ -f "$legacy_checksum" ]] || fail "macOS 12 checksum was not created"
+  [[ -f "$full_checksum" ]] || fail "macOS 14 checksum was not created"
+  "$clean_verify" "$legacy_dmg" "$legacy_checksum" legacy >/dev/null
+  "$clean_verify" "$full_dmg" "$full_checksum" full >/dev/null
 
   printf '%s\n' 'not the dmg' > "$clean_output/unrelated.bin"
   (
@@ -215,7 +248,10 @@ test_real_dmg_round_trip() {
     /usr/bin/shasum -a 256 unrelated.bin > mismatched.sha256
   )
   assert_fails \
-    "$clean_verify" "$dmg" "$clean_output/mismatched.sha256"
+    "$clean_verify" \
+    "$legacy_dmg" \
+    "$clean_output/mismatched.sha256" \
+    legacy
 
   assert_fails env QUOTAGLANCE_PACKAGING_CALLER_ROOT="$clean_repo" \
     "$clean_package" "$clean_output"
