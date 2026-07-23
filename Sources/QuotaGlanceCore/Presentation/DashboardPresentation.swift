@@ -109,12 +109,38 @@ public enum MoneyFormatter {
         _ money: Money,
         locale: Locale = .current
     ) -> String {
+        format(
+            money,
+            locale: locale,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 8
+        )
+    }
+
+    public static func dashboardString(
+        _ money: Money,
+        locale: Locale = .current
+    ) -> String {
+        format(
+            money,
+            locale: locale,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        )
+    }
+
+    private static func format(
+        _ money: Money,
+        locale: Locale,
+        minimumFractionDigits: Int,
+        maximumFractionDigits: Int
+    ) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = locale
         formatter.currencyCode = money.currency
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 8
+        formatter.minimumFractionDigits = minimumFractionDigits
+        formatter.maximumFractionDigits = maximumFractionDigits
         formatter.roundingMode = .halfEven
         formatter.usesGroupingSeparator = true
         return formatter.string(from: NSDecimalNumber(decimal: money.amount))
