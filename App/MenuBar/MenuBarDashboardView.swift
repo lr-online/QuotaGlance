@@ -3,7 +3,16 @@ import QuotaGlanceCore
 import SwiftUI
 
 struct MenuBarDashboardView: View {
-    let model: AppModel
+    @ObservedObject var model: AppModel
+    let openSettings: () -> Void
+
+    init(
+        model: AppModel,
+        openSettings: @escaping () -> Void = {}
+    ) {
+        self.model = model
+        self.openSettings = openSettings
+    }
 
     private var selection: DashboardSelection {
         model.selectedAccountID.map(DashboardSelection.account) ?? .allAccounts
@@ -164,7 +173,7 @@ struct MenuBarDashboardView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.system(.body, design: .rounded, weight: .medium))
+                .font(.system(size: 13, weight: .medium, design: .rounded))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -270,7 +279,7 @@ struct MenuBarDashboardView: View {
                 .foregroundStyle(.secondary)
             Text("No Accounts")
                 .font(.headline)
-            SettingsLink {
+            Button(action: openSettings) {
                 Label("Add Account", systemImage: "plus")
             }
         }
@@ -299,7 +308,7 @@ struct MenuBarDashboardView: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
-            SettingsLink {
+            Button(action: openSettings) {
                 Label("Settings", systemImage: "gearshape")
             }
             Spacer(minLength: 6)

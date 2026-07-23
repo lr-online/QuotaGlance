@@ -1,19 +1,18 @@
 import AppKit
+import Combine
 import Foundation
-import Observation
 import QuotaGlanceCore
 import WidgetKit
 
 @MainActor
-@Observable
-final class AppModel {
-    private(set) var accounts: [Account]
-    private(set) var preferences: AppPreferences
-    private(set) var latestEnvelope: WidgetSnapshotEnvelope?
-    private(set) var isRefreshing = false
-    private(set) var lastErrorMessage: String?
-    private(set) var notificationPermission: NotificationPermissionState = .notDetermined
-    var selectedAccountID: UUID?
+final class AppModel: ObservableObject {
+    @Published private(set) var accounts: [Account]
+    @Published private(set) var preferences: AppPreferences
+    @Published private(set) var latestEnvelope: WidgetSnapshotEnvelope?
+    @Published private(set) var isRefreshing = false
+    @Published private(set) var lastErrorMessage: String?
+    @Published private(set) var notificationPermission: NotificationPermissionState = .notDetermined
+    @Published var selectedAccountID: UUID?
 
     private let preferencesStore: AccountPreferencesStore
     private let credentialStore: any CredentialStore
@@ -78,6 +77,10 @@ final class AppModel {
 
     var aggregate: AggregateSnapshot? {
         latestEnvelope?.aggregate
+    }
+
+    var supportsLaunchAtLogin: Bool {
+        launchAtLoginService.isSupported
     }
 
     func start() async {
@@ -310,11 +313,11 @@ private extension AppModel {
 
     func restartSchedule() {
         scheduleTask?.cancel()
-        let interval = Duration.seconds(preferences.refreshInterval.rawValue)
+        let interval = UInt64(preferences.refreshInterval.rawValue) * 1_000_000_000
         scheduleTask = Task { [weak self] in
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(for: interval)
+                    try await Task.sleep(nanoseconds: interval)
                 } catch {
                     return
                 }

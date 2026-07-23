@@ -8,8 +8,8 @@ public enum QuotaGlanceShared {
     public static let appGroupIdentifier = "group.com.liangrui.QuotaGlance"
     public static let snapshotFileName = "quota-snapshot-v1.json"
     public static let certificateFreeSnapshotDirectory = URL(
-        filePath: "/Users/Shared/QuotaGlance",
-        directoryHint: .isDirectory
+        fileURLWithPath: "/Users/Shared/QuotaGlance",
+        isDirectory: true
     )
 
     public static func snapshotStore() -> SharedSnapshotStore? {
@@ -22,15 +22,15 @@ public enum QuotaGlanceShared {
             return nil
         }
         return SharedSnapshotStore(
-            fileURL: containerURL.appending(path: snapshotFileName)
+            fileURL: containerURL.appendingPathComponent(snapshotFileName)
         )
 #endif
     }
 
     public static func certificateFreeSnapshotStore() -> SharedSnapshotStore {
         SharedSnapshotStore(
-            fileURL: certificateFreeSnapshotDirectory.appending(
-                path: snapshotFileName
+            fileURL: certificateFreeSnapshotDirectory.appendingPathComponent(
+                snapshotFileName
             )
         )
     }
@@ -90,8 +90,8 @@ public struct SharedSnapshotStore: Sendable {
     }
 
     static func temporaryFileURL(for fileURL: URL, identifier: String) -> URL {
-        fileURL.deletingLastPathComponent().appending(
-            path: ".\(fileURL.lastPathComponent).\(identifier).tmp"
+        fileURL.deletingLastPathComponent().appendingPathComponent(
+            ".\(fileURL.lastPathComponent).\(identifier).tmp"
         )
     }
 }

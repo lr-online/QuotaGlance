@@ -5,8 +5,9 @@ import SwiftUI
 final class SetupWindowPresenter {
     private var windowController: NSWindowController?
 
-    func show(model: AppModel) {
+    func show(model: AppModel, title: String = "QuotaGlance Setup") {
         if let windowController {
+            windowController.window?.title = title
             windowController.showWindow(nil)
             windowController.window?.makeKeyAndOrderFront(nil)
             return
@@ -16,7 +17,7 @@ final class SetupWindowPresenter {
             rootView: SettingsView(model: model)
         )
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "QuotaGlance Setup"
+        window.title = title
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.setContentSize(NSSize(width: 600, height: 520))
         window.center()

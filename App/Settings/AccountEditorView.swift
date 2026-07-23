@@ -4,7 +4,7 @@ import SwiftUI
 struct AccountEditorView: View {
     @Environment(\.dismiss) private var dismiss
 
-    let model: AppModel
+    @ObservedObject var model: AppModel
     let account: Account?
 
     @State private var draft: AccountDraft
@@ -46,7 +46,7 @@ struct AccountEditorView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .formStyle(.grouped)
+            .compatibleGroupedFormStyle()
 
             Divider()
 

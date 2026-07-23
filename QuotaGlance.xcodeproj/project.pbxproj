@@ -8,20 +8,34 @@
 
 /* Begin PBXBuildFile section */
 		099C061B9F970D976EE45467 /* SetupWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69694925CA743815D1C0D4F9 /* SetupWindowPresenter.swift */; };
+		1292B68322AABEFC4BEEE058 /* UsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */; };
 		187535FE3E842869AB4C8E8A /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */; };
 		18B4C2FB24D25DABC0D852A8 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2E65E4350977ACA208C7BA8 /* WidgetViews.swift */; };
 		27E6AE4AEF9507425B13C98C /* QuotaGlanceWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407F8EB1ADDB6434333E1B32 /* QuotaGlanceWidget.swift */; };
 		3021FBBBC1EC41FABAC5BFC0 /* QuotaGlanceCore in Frameworks */ = {isa = PBXBuildFile; productRef = B43433A80E4865082B579D2E /* QuotaGlanceCore */; };
 		326A7B156EB366889B795280 /* QuotaGlanceWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C5FBD3A267751C980B056DCF /* QuotaGlanceWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		326B1F6BBFA35F264FC6AEF7 /* QuotaGlanceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */; };
+		3AF1CB36FD56FD621F32B731 /* CompatibleFormStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47270B3E4DC923E4EA8BB5F /* CompatibleFormStyle.swift */; };
+		448D6E999E3C46A1041503E5 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */; };
+		50B103FB7B9B8E77967AFDC9 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */; };
 		56551C9AC6D51235B805F689 /* UsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */; };
 		7399855A0C9D4D9F9F272B7C /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A030DF83E171017402EB2F /* LaunchAtLoginService.swift */; };
+		74506F59B85B171E0146DA46 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56FA82CF2B4BECD91167B38B /* NotificationService.swift */; };
+		8B6B38C8CBC47B32B1B7C231 /* CompatibleFormStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47270B3E4DC923E4EA8BB5F /* CompatibleFormStyle.swift */; };
 		8CEEAB5DE8D34F186837556C /* QuotaGlanceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0E9F2892EEC90A01AD6AE577 /* QuotaGlanceCore */; };
 		9F1F1D5FE13BCA2A1FC834DB /* AccountEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07DFB7E297E0D88831C554BD /* AccountEditorView.swift */; };
+		A233C809A25B929BD899AD42 /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A030DF83E171017402EB2F /* LaunchAtLoginService.swift */; };
+		AC695D6FB1D9EC98FFDCBE7B /* MenuBarDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */; };
+		BC1175FBB822C27FB933D7A9 /* QuotaGlanceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 517E2F8F23A8C70D387A5652 /* QuotaGlanceCore */; };
+		BC5C0FDF32B6FB2BB215468E /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21BCFCF6B7B3FFA935AB87B0 /* StatusBarController.swift */; };
+		C4C87C3C84D3FCE73F756053 /* AccountEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07DFB7E297E0D88831C554BD /* AccountEditorView.swift */; };
 		CA9515B1F97C364D84BBF4A6 /* AccountSelectionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB360DCE28CCF0F3BE66BDC /* AccountSelectionIntent.swift */; };
 		D0286FD3A5148AA5AFB8D7EF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */; };
 		D982EB7094658B5F5CFAECDB /* MenuBarDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */; };
 		DB67E8123E5E34045A20EA6B /* QuotaGlanceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */; };
+		DEF0B211D312736165F981CF /* SetupWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69694925CA743815D1C0D4F9 /* SetupWindowPresenter.swift */; };
 		E3F7BE6433D0485CAF8AE672 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56FA82CF2B4BECD91167B38B /* NotificationService.swift */; };
+		E41B2A1F21F429C6D735A2B3 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21BCFCF6B7B3FFA935AB87B0 /* StatusBarController.swift */; };
 		E94051C42D8A5FE8D0747520 /* QuotaGlanceWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45AFA11C2B0136118BBA4CF1 /* QuotaGlanceWidgetBundle.swift */; };
 /* End PBXBuildFile section */
 
@@ -52,6 +66,7 @@
 /* Begin PBXFileReference section */
 		07DFB7E297E0D88831C554BD /* AccountEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountEditorView.swift; sourceTree = "<group>"; };
 		1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		21BCFCF6B7B3FFA935AB87B0 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		407F8EB1ADDB6434333E1B32 /* QuotaGlanceWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceWidget.swift; sourceTree = "<group>"; };
 		45AFA11C2B0136118BBA4CF1 /* QuotaGlanceWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceWidgetBundle.swift; sourceTree = "<group>"; };
 		51EAECAE827BCD3048850CBA /* QuotaGlance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaGlance.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -61,8 +76,10 @@
 		86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceApp.swift; sourceTree = "<group>"; };
 		A9A030DF83E171017402EB2F /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
+		B47270B3E4DC923E4EA8BB5F /* CompatibleFormStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompatibleFormStyle.swift; sourceTree = "<group>"; };
 		C5FBD3A267751C980B056DCF /* QuotaGlanceWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaGlanceWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageChartView.swift; sourceTree = "<group>"; };
+		D971C09B24488E62B4C029BB /* QuotaGlanceLegacy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaGlanceLegacy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E2E65E4350977ACA208C7BA8 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
 		ED7EA9943734797C1A6E9F1D /* quota-glance-phase-one */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "quota-glance-phase-one"; path = .; sourceTree = SOURCE_ROOT; };
 		F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarDashboardView.swift; sourceTree = "<group>"; };
@@ -85,6 +102,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EC30A0E1CA11945974FB0FBE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BC1175FBB822C27FB933D7A9 /* QuotaGlanceCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -92,6 +117,7 @@
 			isa = PBXGroup;
 			children = (
 				F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */,
+				21BCFCF6B7B3FFA935AB87B0 /* StatusBarController.swift */,
 				D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */,
 			);
 			path = MenuBar;
@@ -110,6 +136,7 @@
 			isa = PBXGroup;
 			children = (
 				51EAECAE827BCD3048850CBA /* QuotaGlance.app */,
+				D971C09B24488E62B4C029BB /* QuotaGlanceLegacy.app */,
 				C5FBD3A267751C980B056DCF /* QuotaGlanceWidget.appex */,
 			);
 			name = Products;
@@ -161,6 +188,7 @@
 			isa = PBXGroup;
 			children = (
 				07DFB7E297E0D88831C554BD /* AccountEditorView.swift */,
+				B47270B3E4DC923E4EA8BB5F /* CompatibleFormStyle.swift */,
 				1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -209,6 +237,25 @@
 			productReference = 51EAECAE827BCD3048850CBA /* QuotaGlance.app */;
 			productType = "com.apple.product-type.application";
 		};
+		C65745D6ED26024CAFC75B59 /* QuotaGlanceLegacy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E68FCA8941092233FFE0FC9A /* Build configuration list for PBXNativeTarget "QuotaGlanceLegacy" */;
+			buildPhases = (
+				7538719EA69FF71B0A4C937B /* Sources */,
+				EC30A0E1CA11945974FB0FBE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = QuotaGlanceLegacy;
+			packageProductDependencies = (
+				517E2F8F23A8C70D387A5652 /* QuotaGlanceCore */,
+			);
+			productName = QuotaGlanceLegacy;
+			productReference = D971C09B24488E62B4C029BB /* QuotaGlanceLegacy.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -222,6 +269,9 @@
 						ProvisioningStyle = Automatic;
 					};
 					722FC3AFDA4F2CA6D3C3A32A = {
+						ProvisioningStyle = Automatic;
+					};
+					C65745D6ED26024CAFC75B59 = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -244,12 +294,31 @@
 			projectRoot = "";
 			targets = (
 				722FC3AFDA4F2CA6D3C3A32A /* QuotaGlance */,
+				C65745D6ED26024CAFC75B59 /* QuotaGlanceLegacy */,
 				39371F75B7DFB924E988C487 /* QuotaGlanceWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		7538719EA69FF71B0A4C937B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C4C87C3C84D3FCE73F756053 /* AccountEditorView.swift in Sources */,
+				448D6E999E3C46A1041503E5 /* AppModel.swift in Sources */,
+				3AF1CB36FD56FD621F32B731 /* CompatibleFormStyle.swift in Sources */,
+				A233C809A25B929BD899AD42 /* LaunchAtLoginService.swift in Sources */,
+				AC695D6FB1D9EC98FFDCBE7B /* MenuBarDashboardView.swift in Sources */,
+				74506F59B85B171E0146DA46 /* NotificationService.swift in Sources */,
+				326B1F6BBFA35F264FC6AEF7 /* QuotaGlanceApp.swift in Sources */,
+				50B103FB7B9B8E77967AFDC9 /* SettingsView.swift in Sources */,
+				DEF0B211D312736165F981CF /* SetupWindowPresenter.swift in Sources */,
+				E41B2A1F21F429C6D735A2B3 /* StatusBarController.swift in Sources */,
+				1292B68322AABEFC4BEEE058 /* UsageChartView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B7DD0B3E57961DFEC538A070 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -267,12 +336,14 @@
 			files = (
 				9F1F1D5FE13BCA2A1FC834DB /* AccountEditorView.swift in Sources */,
 				187535FE3E842869AB4C8E8A /* AppModel.swift in Sources */,
+				8B6B38C8CBC47B32B1B7C231 /* CompatibleFormStyle.swift in Sources */,
 				7399855A0C9D4D9F9F272B7C /* LaunchAtLoginService.swift in Sources */,
 				D982EB7094658B5F5CFAECDB /* MenuBarDashboardView.swift in Sources */,
 				E3F7BE6433D0485CAF8AE672 /* NotificationService.swift in Sources */,
 				DB67E8123E5E34045A20EA6B /* QuotaGlanceApp.swift in Sources */,
 				D0286FD3A5148AA5AFB8D7EF /* SettingsView.swift in Sources */,
 				099C061B9F970D976EE45467 /* SetupWindowPresenter.swift in Sources */,
+				BC5C0FDF32B6FB2BB215468E /* StatusBarController.swift in Sources */,
 				56551C9AC6D51235B805F689 /* UsageChartView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -341,7 +412,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -401,7 +472,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -425,6 +496,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.liangrui.QuotaGlance.Widget;
 				PRODUCT_NAME = QuotaGlanceWidget;
 				SDKROOT = macosx;
@@ -444,6 +516,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.liangrui.QuotaGlance;
 				PRODUCT_NAME = QuotaGlance;
 				SDKROOT = macosx;
@@ -462,6 +535,26 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liangrui.QuotaGlance;
+				PRODUCT_NAME = QuotaGlance;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		D2FAD0898F020609D1D3ECF7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/QuotaGlance.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.liangrui.QuotaGlance;
 				PRODUCT_NAME = QuotaGlance;
 				SDKROOT = macosx;
@@ -480,12 +573,32 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.liangrui.QuotaGlance.Widget;
 				PRODUCT_NAME = QuotaGlanceWidget;
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
 			};
 			name = Debug;
+		};
+		FFC2E1332F974433D180DA66 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/QuotaGlance.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liangrui.QuotaGlance;
+				PRODUCT_NAME = QuotaGlance;
+				SDKROOT = macosx;
+			};
+			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
@@ -517,6 +630,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		E68FCA8941092233FFE0FC9A /* Build configuration list for PBXNativeTarget "QuotaGlanceLegacy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D2FAD0898F020609D1D3ECF7 /* Debug */,
+				FFC2E1332F974433D180DA66 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -528,6 +650,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		0E9F2892EEC90A01AD6AE577 /* QuotaGlanceCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = QuotaGlanceCore;
+		};
+		517E2F8F23A8C70D387A5652 /* QuotaGlanceCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = QuotaGlanceCore;
 		};

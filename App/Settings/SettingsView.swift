@@ -2,7 +2,7 @@ import QuotaGlanceCore
 import SwiftUI
 
 struct SettingsView: View {
-    let model: AppModel
+    @ObservedObject var model: AppModel
 
     @State private var editorContext: AccountEditorContext?
     @State private var accountToDelete: Account?
@@ -11,11 +11,14 @@ struct SettingsView: View {
         Form {
             Section("Accounts") {
                 if model.accounts.isEmpty {
-                    ContentUnavailableView(
-                        "No Accounts",
-                        systemImage: "key.horizontal",
-                        description: Text("Add an API Info account to begin.")
-                    )
+                    VStack(spacing: 6) {
+                        Label("No Accounts", systemImage: "key.horizontal")
+                            .font(.headline)
+                        Text("Add an API Info account to begin.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 80)
                 } else {
                     ForEach(Array(model.accounts.enumerated()), id: \.element.id) {
                         index, account in
@@ -44,13 +47,15 @@ struct SettingsView: View {
                     }
                 }
 
-                Toggle(
-                    "Launch at Login",
-                    isOn: Binding(
-                        get: { model.preferences.launchAtLogin },
-                        set: { model.setLaunchAtLogin($0) }
+                if model.supportsLaunchAtLogin {
+                    Toggle(
+                        "Launch at Login",
+                        isOn: Binding(
+                            get: { model.preferences.launchAtLogin },
+                            set: { model.setLaunchAtLogin($0) }
+                        )
                     )
-                )
+                }
             }
 
             if let error = model.lastErrorMessage {
@@ -70,7 +75,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             }
         }
-        .formStyle(.grouped)
+        .compatibleGroupedFormStyle()
         .frame(minWidth: 560, minHeight: 460)
         .sheet(item: $editorContext) { context in
             AccountEditorView(model: model, account: context.account)

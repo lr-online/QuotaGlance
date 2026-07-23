@@ -3,14 +3,14 @@ options:
   bundleIdPrefix: com.liangrui
   createIntermediateGroups: true
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "12.0"
 packages:
   QuotaGlanceCore:
     path: .
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MACOSX_DEPLOYMENT_TARGET: "12.0"
     CURRENT_PROJECT_VERSION: "1"
     MARKETING_VERSION: "0.1.0"
     CODE_SIGN_STYLE: Automatic
@@ -30,6 +30,26 @@ targets:
         embed: true
     settings:
       base:
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance
+        PRODUCT_NAME: QuotaGlance
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/QuotaGlance.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+  QuotaGlanceLegacy:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+          - QuotaGlance.entitlements
+    dependencies:
+      - package: QuotaGlanceCore
+        product: QuotaGlanceCore
+    settings:
+      base:
+        MACOSX_DEPLOYMENT_TARGET: "12.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance
         PRODUCT_NAME: QuotaGlance
         INFOPLIST_FILE: App/Info.plist
@@ -48,6 +68,7 @@ targets:
         product: QuotaGlanceCore
     settings:
       base:
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.Widget
         PRODUCT_NAME: QuotaGlanceWidget
         INFOPLIST_FILE: Widget/Info.plist
@@ -67,3 +88,11 @@ schemes:
     build:
       targets:
         QuotaGlanceWidget: all
+  QuotaGlanceLegacy:
+    build:
+      targets:
+        QuotaGlanceLegacy: all
+    run:
+      config: Debug
+    archive:
+      config: Release

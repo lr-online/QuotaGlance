@@ -29,7 +29,7 @@ public actor RefreshCoordinator {
     private let credentialStore: any CredentialStore
     private let provider: any UsageProvider
     private let aggregator: SnapshotAggregator
-    private let timeout: Duration
+    private let timeout: TimeInterval
     private let now: @Sendable () -> Date
     private let snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)?
 
@@ -41,7 +41,7 @@ public actor RefreshCoordinator {
         provider: any UsageProvider,
         aggregator: SnapshotAggregator = SnapshotAggregator(),
         initialSnapshots: [AccountSnapshot] = [],
-        timeout: Duration = .seconds(15),
+        timeout: TimeInterval = 15,
         now: @escaping @Sendable () -> Date = { .now },
         snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)? = nil
     ) {
@@ -210,7 +210,7 @@ private extension RefreshCoordinator {
     nonisolated static func fetch(
         provider: any UsageProvider,
         apiKey: String,
-        timeout: Duration
+        timeout: TimeInterval
     ) async throws -> ProviderUsageSnapshot {
         try await withThrowingTaskGroup(
             of: ProviderUsageSnapshot.self,
@@ -220,7 +220,13 @@ private extension RefreshCoordinator {
                 try await provider.fetch(apiKey: apiKey)
             }
             group.addTask {
-                try await Task.sleep(for: timeout)
+                let maximumSeconds = Double(UInt64.max) / 1_000_000_000
+                let seconds = timeout.isFinite
+                    ? min(max(timeout, 0), maximumSeconds)
+                    : maximumSeconds
+                try await Task.sleep(
+                    nanoseconds: UInt64(seconds * 1_000_000_000)
+                )
                 throw RefreshTimeoutError()
             }
             defer { group.cancelAll() }

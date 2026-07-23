@@ -10,7 +10,9 @@ struct StorageTests {
 
         #expect(
             store.fileURL
-                == URL(filePath: "/Users/Shared/QuotaGlance/quota-snapshot-v1.json")
+                == URL(
+                    fileURLWithPath: "/Users/Shared/QuotaGlance/quota-snapshot-v1.json"
+                )
         )
     }
 
@@ -88,7 +90,9 @@ struct StorageTests {
 
     @Test("Shared snapshot temporary files stay beside the destination")
     func sharedSnapshotTemporaryFileUsesDestinationDirectory() {
-        let fileURL = URL(filePath: "/app-group/quota-snapshot-v1.json")
+        let fileURL = URL(
+            fileURLWithPath: "/app-group/quota-snapshot-v1.json"
+        )
         let temporaryURL = SharedSnapshotStore.temporaryFileURL(
             for: fileURL,
             identifier: "test-write"

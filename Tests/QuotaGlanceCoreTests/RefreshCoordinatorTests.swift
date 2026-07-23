@@ -16,7 +16,7 @@ struct RefreshCoordinatorTests {
             credentialStore: credentials,
             provider: provider,
             aggregator: SnapshotAggregator(calendar: utcCalendar),
-            timeout: .seconds(1),
+            timeout: 1,
             now: { Date(timeIntervalSince1970: 100) }
         )
 
@@ -53,7 +53,7 @@ struct RefreshCoordinatorTests {
             provider: provider,
             aggregator: SnapshotAggregator(calendar: utcCalendar),
             initialSnapshots: [previous],
-            timeout: .seconds(1),
+            timeout: 1,
             now: { Date(timeIntervalSince1970: 200) },
             snapshotWriter: { snapshot in
                 await recorder.write(snapshot)
@@ -77,7 +77,7 @@ struct RefreshCoordinatorTests {
         let account = testAccounts()[0]
         let credentials = MemoryCredentialStore(values: [account.id: "slow-key"])
         let provider = DelayedUsageProvider(
-            delay: .milliseconds(20),
+            delayNanoseconds: 20_000_000,
             snapshot: usage(remaining: "10")
         )
         let recorder = SnapshotRecorder()
@@ -85,7 +85,7 @@ struct RefreshCoordinatorTests {
             credentialStore: credentials,
             provider: provider,
             aggregator: SnapshotAggregator(calendar: utcCalendar),
-            timeout: .milliseconds(1),
+            timeout: 0.001,
             now: { Date(timeIntervalSince1970: 200) },
             snapshotWriter: { snapshot in
                 await recorder.write(snapshot)
@@ -225,11 +225,11 @@ private actor ScriptedUsageProvider: UsageProvider {
 }
 
 private struct DelayedUsageProvider: UsageProvider {
-    let delay: Duration
+    let delayNanoseconds: UInt64
     let snapshot: ProviderUsageSnapshot
 
     func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
-        try await Task.sleep(for: delay)
+        try await Task.sleep(nanoseconds: delayNanoseconds)
         return snapshot
     }
 }

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 CONFIGURATION="${1:-Release}"
+EDITION="${2:-full}"
 APP_NAME="QuotaGlance"
 APP_BUNDLE_ID="com.liangrui.QuotaGlance"
 WIDGET_NAME="QuotaGlanceWidget"
@@ -21,6 +22,21 @@ case "$CONFIGURATION" in
     ;;
   *)
     echo "usage: $0 [Debug|Release]" >&2
+    exit 2
+    ;;
+esac
+
+case "$EDITION" in
+  full)
+    SCHEME="QuotaGlance"
+    EXPECTS_WIDGET=true
+    ;;
+  legacy)
+    SCHEME="QuotaGlanceLegacy"
+    EXPECTS_WIDGET=false
+    ;;
+  *)
+    echo "usage: $0 [Debug|Release] [full|legacy]" >&2
     exit 2
     ;;
 esac
@@ -51,7 +67,7 @@ LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/Current/F
 
 if ! "$XCODEBUILD" \
   -project "$ROOT_DIR/QuotaGlance.xcodeproj" \
-  -scheme "$APP_NAME" \
+  -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
   -destination "platform=macOS,arch=arm64" \
   -derivedDataPath "$DERIVED_DATA" \
@@ -67,22 +83,32 @@ if ! "$XCODEBUILD" \
   exit 1
 fi
 
-if [[ ! -d "$APP_BUNDLE" || ! -d "$WIDGET_BUNDLE" ]]; then
-  echo "Xcode build did not produce the expected app and widget bundles." >&2
+if [[ ! -d "$APP_BUNDLE" ]]; then
+  echo "Xcode build did not produce the expected app bundle." >&2
+  exit 1
+fi
+if [[ "$EXPECTS_WIDGET" == true && ! -d "$WIDGET_BUNDLE" ]]; then
+  echo "Full build did not produce the expected Widget bundle." >&2
+  exit 1
+fi
+if [[ "$EXPECTS_WIDGET" == false && -e "$WIDGET_BUNDLE" ]]; then
+  echo "Legacy build unexpectedly contains a Widget bundle." >&2
   exit 1
 fi
 
 "$LSREGISTER" -u "$APP_BUNDLE" >/dev/null 2>&1 || true
-/usr/bin/pluginkit -r "$WIDGET_BUNDLE" >/dev/null 2>&1 || true
+if [[ "$EXPECTS_WIDGET" == true ]]; then
+  /usr/bin/pluginkit -r "$WIDGET_BUNDLE" >/dev/null 2>&1 || true
 
-/usr/bin/codesign \
-  --force \
-  --sign - \
-  --timestamp=none \
-  --generate-entitlement-der \
-  --requirements "=designated => identifier \"$WIDGET_BUNDLE_ID\"" \
-  --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceWidget.entitlements" \
-  "$WIDGET_BUNDLE"
+  /usr/bin/codesign \
+    --force \
+    --sign - \
+    --timestamp=none \
+    --generate-entitlement-der \
+    --requirements "=designated => identifier \"$WIDGET_BUNDLE_ID\"" \
+    --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceWidget.entitlements" \
+    "$WIDGET_BUNDLE"
+fi
 
 /usr/bin/codesign \
   --force \

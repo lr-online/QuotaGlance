@@ -1,35 +1,48 @@
-import QuotaGlanceCore
+import AppKit
 import SwiftUI
 
 @main
 struct QuotaGlanceApp: App {
-    @State private var model: AppModel
-    private let setupWindowPresenter: SetupWindowPresenter
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-    init() {
-        let model = AppModel()
-        let setupWindowPresenter = SetupWindowPresenter()
-        _model = State(initialValue: model)
-        self.setupWindowPresenter = setupWindowPresenter
-        Task { @MainActor in
+    var body: some Scene {
+        Settings {
+            SettingsView(model: appDelegate.model)
+        }
+    }
+}
+
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let model = AppModel()
+
+    private let settingsWindowPresenter = SetupWindowPresenter()
+    private var statusBarController: StatusBarController?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        statusBarController = StatusBarController(
+            model: model,
+            openSettings: { [weak self] in
+                guard let self else { return }
+                self.settingsWindowPresenter.show(
+                    model: self.model,
+                    title: "QuotaGlance Settings"
+                )
+            }
+        )
+
+        Task {
             await model.start()
             if model.accounts.isEmpty {
-                setupWindowPresenter.show(model: model)
+                settingsWindowPresenter.show(model: model)
             }
         }
     }
 
-    var body: some Scene {
-        MenuBarExtra(
-            "QuotaGlance",
-            systemImage: "gauge.with.dots.needle.50percent"
-        ) {
-            MenuBarDashboardView(model: model)
-        }
-        .menuBarExtraStyle(.window)
-
-        Settings {
-            SettingsView(model: model)
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            model.handle(url: url)
         }
     }
 }
