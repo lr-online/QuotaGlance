@@ -10,16 +10,12 @@ enum NotificationPermissionState: Equatable, Sendable {
 
 @MainActor
 final class NotificationService {
-    private let center = UNUserNotificationCenter.current()
-
     func permissionState() async -> NotificationPermissionState {
         await Self.currentPermissionState()
     }
 
     func requestAuthorization() async -> NotificationPermissionState {
-        do {
-            _ = try await center.requestAuthorization(options: [.alert, .sound])
-        } catch {
+        if !(await Self.requestAuthorization()) {
             return .denied
         }
         return await Self.currentPermissionState()
@@ -29,17 +25,11 @@ final class NotificationService {
         account: Account,
         remaining: Money
     ) async throws {
-        let content = UNMutableNotificationContent()
-        content.title = "Low Balance: \(account.displayName)"
-        content.body = "Remaining balance is \(MoneyFormatter.string(remaining))."
-        content.sound = .default
-
-        let request = UNNotificationRequest(
+        try await Self.sendNotification(
             identifier: "low-balance-\(account.id.uuidString)",
-            content: content,
-            trigger: nil
+            title: "Low Balance: \(account.displayName)",
+            body: "Remaining balance is \(MoneyFormatter.string(remaining))."
         )
-        try await center.add(request)
     }
 
     nonisolated private static func currentPermissionState() async -> NotificationPermissionState {
@@ -54,5 +44,32 @@ final class NotificationService {
         @unknown default:
             .denied
         }
+    }
+
+    nonisolated private static func requestAuthorization() async -> Bool {
+        do {
+            return try await UNUserNotificationCenter.current()
+                .requestAuthorization(options: [.alert, .sound])
+        } catch {
+            return false
+        }
+    }
+
+    nonisolated private static func sendNotification(
+        identifier: String,
+        title: String,
+        body: String
+    ) async throws {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: content,
+            trigger: nil
+        )
+        try await UNUserNotificationCenter.current().add(request)
     }
 }
