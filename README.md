@@ -1,17 +1,20 @@
 # QuotaGlance
 
-QuotaGlance 是一个个人使用的 macOS 菜单栏应用和桌面小组件，用于查看多个 API Info key 的剩余额度与近期用量。
+QuotaGlance 是一个个人使用的 macOS 菜单栏应用和桌面小组件，用于集中查看多个 AI API provider 的余额、消费上限、支出或订阅配额。
 
-一期只支持 API Info。OpenRouter、DeepSeek、Kimi 和 MiniMax 的官方接口能力与后续接入边界记录在 [`docs/research/provider-capabilities.md`](docs/research/provider-capabilities.md)，当前版本不显示未实现的服务商选项。
+当前支持 API Info、DeepSeek、Kimi、OpenRouter 和 MiniMax。不同 provider 暴露的官方能力并不相同，QuotaGlance 只显示真实可查询的数据，不会把消费上限或请求配额伪装成现金余额。详细边界记录在 [`docs/research/provider-capabilities.md`](docs/research/provider-capabilities.md)。
 
 ## 功能
 
-- 管理 2-5 个具名 API Info 账户，key 只保存在 macOS Keychain。
-- 菜单栏查看总余额、单账户余额、今日花费和最近七天趋势。
+- 管理最多 5 个具名 provider 账户，key 只保存在 macOS Keychain。
+- 添加 key 时选择 provider；Kimi 和 MiniMax 自动识别中国站或国际站，OpenRouter 自动识别标准 key 或 Management Key。
+- 菜单栏按账户实际能力显示余额明细、消费上限、周期支出、配额窗口、近期趋势和模型用量。
+- All Accounts 只汇总真实余额，并按 `CNY`（人民币）和 `USD`（美元）等币种分别显示，不做汇率换算。
 - 刷新间隔可选 1、5、15、30 或 60 分钟，默认 5 分钟。
 - macOS 14 完整版支持小、中、大三种 Widget，并可配置为全部账户或指定账户。
 - 网络或接口失败时保留上次成功数据并标记为过期。
-- 可选低余额通知和开机启动。
+- 对具有真实余额的账户提供可选低余额通知；MiniMax 和 OpenRouter 标准 key 不显示该设置。
+- 支持开机启动。
 
 ## 系统要求
 
@@ -87,11 +90,21 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 ## 添加账户
 
 1. 点击菜单栏中的 QuotaGlance 图标，打开 Settings。
-2. 添加账户名称和 API Info key，点击验证后保存。
-3. 重复添加第二个账户；当前设计最多支持五个。
-4. 在菜单栏面板切换 All Accounts 或单个账户，使用刷新按钮立即更新。
+2. 选择 API Info、DeepSeek、Kimi、OpenRouter 或 MiniMax，填写账户名称和 key 后保存。
+3. 保存过程中会验证 key 并自动识别地域或 key 类型；识别结果会显示在 Settings 的账户行中。
+4. 重复添加其他账户；当前设计最多支持五个。
+5. 在菜单栏面板切换 All Accounts 或单个账户，使用刷新按钮立即更新。
+
+Provider 特殊情况：
+
+- Kimi 中国站余额使用 `CNY`，国际站余额使用 `USD`。应用先按当前系统地域尝试官方端点，仅在明确的 401/403 鉴权拒绝后尝试另一地域；后续刷新只访问已识别地域。
+- OpenRouter 标准 key 显示该 key 的支出和可选消费上限；Management Key 还会读取账户 credits，并将其作为 `USD` 余额。
+- MiniMax 只支持 Token/Coding Plan subscription key，并显示非现金的配额窗口。`sk-api-...` 按量付费 key 会在请求前被拒绝，因为 MiniMax 没有公开官方现金余额查询接口。
+- DeepSeek 和 Kimi 的余额可能属于整个账户或组织。同一 provider 账户下添加多个 key 可能让 All Accounts 重复计算同一份余额，应用无法从官方响应中可靠识别这种重复。
 
 不要把真实 key 写入源码、提交记录或仓库内的 `.env`。QuotaGlance 不会从 `.env` 导入 key；请只通过应用内的安全编辑器录入。
+
+升级前保存的 API Info 账户会自动迁移，原 UUID、设置和 Keychain 项保持不变。为避免凭据迁移风险，Keychain service identifier 仍使用历史名称 `com.liangrui.QuotaGlance.api-info`；它现在只是所有 provider key 共用的内部存储命名空间。
 
 ## 添加桌面小组件（仅 macOS 14 完整版）
 
@@ -106,7 +119,7 @@ WidgetKit 的后台时间线由系统调度，菜单栏应用会按设置的间�
 
 ## 验证密钥未进入产物
 
-应用安装后，可使用当前 shell 中的 API Info key 检查 Git 跟踪文件和已安装 app。脚本不会打印 key，也不会把 key 放在进程参数中：
+应用安装后，可使用当前 shell 中的任一 provider key 检查 Git 跟踪文件和已安装 app。脚本不会打印 key，也不会把 key 放在进程参数中：
 
 ```bash
 export LAOGE_KEY='你的 key'
