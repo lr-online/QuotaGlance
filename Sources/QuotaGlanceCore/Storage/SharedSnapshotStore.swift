@@ -76,10 +76,23 @@ public struct SharedSnapshotStore: Sendable {
 
     public func read() throws -> WidgetSnapshotEnvelope {
         let fileURL = try validatedFileURL()
-        return try JSONDecoder.quotaGlance.decode(
-            WidgetSnapshotEnvelope.self,
-            from: Data(contentsOf: fileURL)
-        )
+        let data = try Data(contentsOf: fileURL)
+        do {
+            return try JSONDecoder.quotaGlance.decode(
+                WidgetSnapshotEnvelope.self,
+                from: data
+            )
+        } catch {
+            guard let sanitizedData = try sanitizedSnapshotData(from: data) else {
+                throw error
+            }
+            let snapshot = try JSONDecoder.quotaGlance.decode(
+                WidgetSnapshotEnvelope.self,
+                from: sanitizedData
+            )
+            try writeRawData(sanitizedData, to: fileURL)
+            return snapshot
+        }
     }
 
     private func validatedFileURL() throws -> URL {
@@ -87,6 +100,71 @@ public struct SharedSnapshotStore: Sendable {
             throw SharedSnapshotStoreError.invalidFileURL
         }
         return fileURL.standardizedFileURL
+    }
+
+    private func sanitizedSnapshotData(from data: Data) throws -> Data? {
+        guard var payload = try JSONSerialization.jsonObject(with: data)
+            as? [String: Any],
+            let accounts = payload["accounts"] as? [[String: Any]],
+            var aggregate = payload["aggregate"] as? [String: Any],
+            let aggregateAccounts = aggregate["accounts"] as? [[String: Any]]
+        else {
+            return nil
+        }
+
+        let supportedProviders = Set(ProviderID.allCases.map(\.rawValue))
+        let filteredAccounts = accounts.filter { account in
+            guard let provider = account["provider"] as? String else {
+                return true
+            }
+            return supportedProviders.contains(provider)
+        }
+        let filteredAggregateAccounts = aggregateAccounts.filter { account in
+            guard let provider = account["provider"] as? String else {
+                return true
+            }
+            return supportedProviders.contains(provider)
+        }
+
+        guard filteredAccounts.count != accounts.count
+            || filteredAggregateAccounts.count != aggregateAccounts.count
+        else {
+            return nil
+        }
+
+        payload["accounts"] = filteredAccounts
+        aggregate["accounts"] = filteredAggregateAccounts
+        payload["aggregate"] = aggregate
+        return try JSONSerialization.data(withJSONObject: payload)
+    }
+
+    private func writeRawData(_ data: Data, to fileURL: URL) throws {
+        let parent = fileURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(
+            at: parent,
+            withIntermediateDirectories: true
+        )
+        let temporaryURL = Self.temporaryFileURL(
+            for: fileURL,
+            identifier: UUID().uuidString
+        )
+        defer { try? FileManager.default.removeItem(at: temporaryURL) }
+
+        try data.write(to: temporaryURL, options: .withoutOverwriting)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: temporaryURL.path
+        )
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            _ = try FileManager.default.replaceItemAt(
+                fileURL,
+                withItemAt: temporaryURL,
+                backupItemName: nil,
+                options: .usingNewMetadataOnly
+            )
+        } else {
+            try FileManager.default.moveItem(at: temporaryURL, to: fileURL)
+        }
     }
 
     static func temporaryFileURL(for fileURL: URL, identifier: String) -> URL {

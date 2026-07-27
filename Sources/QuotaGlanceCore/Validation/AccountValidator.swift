@@ -4,7 +4,6 @@ public struct AccountDraft: Equatable, Sendable {
     public var displayName: String
     public var apiKey: String
     public var provider: ProviderID
-    public var baseURLText: String
     public var isEnabled: Bool
     public var lowBalanceThresholdText: String
 
@@ -12,14 +11,12 @@ public struct AccountDraft: Equatable, Sendable {
         displayName: String = "",
         apiKey: String = "",
         provider: ProviderID = .apiInfo,
-        baseURLText: String = "",
         isEnabled: Bool = true,
         lowBalanceThresholdText: String = ""
     ) {
         self.displayName = displayName
         self.apiKey = apiKey
         self.provider = provider
-        self.baseURLText = baseURLText
         self.isEnabled = isEnabled
         self.lowBalanceThresholdText = lowBalanceThresholdText
     }
@@ -29,7 +26,6 @@ public struct ValidatedAccountDraft: Equatable, Sendable {
     public var displayName: String
     public var apiKey: String?
     public var provider: ProviderID
-    public var providerConfiguration: ProviderConfiguration?
     public var isEnabled: Bool
     public var lowBalanceThreshold: Decimal?
 
@@ -37,14 +33,12 @@ public struct ValidatedAccountDraft: Equatable, Sendable {
         displayName: String,
         apiKey: String?,
         provider: ProviderID = .apiInfo,
-        providerConfiguration: ProviderConfiguration? = nil,
         isEnabled: Bool,
         lowBalanceThreshold: Decimal?
     ) {
         self.displayName = displayName
         self.apiKey = apiKey
         self.provider = provider
-        self.providerConfiguration = providerConfiguration
         self.isEnabled = isEnabled
         self.lowBalanceThreshold = lowBalanceThreshold
     }
@@ -121,20 +115,10 @@ public enum AccountValidator {
             throw AccountValidationError.invalidThreshold
         }
 
-        let providerConfiguration: ProviderConfiguration?
-        if draft.provider == .bailian {
-            providerConfiguration = ProviderConfiguration(
-                baseURL: try BailianEndpoint.normalizedBaseURL(from: draft.baseURLText)
-            )
-        } else {
-            providerConfiguration = nil
-        }
-
         return ValidatedAccountDraft(
             displayName: displayName,
             apiKey: apiKey,
             provider: draft.provider,
-            providerConfiguration: providerConfiguration,
             isEnabled: draft.isEnabled,
             lowBalanceThreshold: threshold
         )

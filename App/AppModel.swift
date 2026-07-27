@@ -45,7 +45,6 @@ final class AppModel: ObservableObject {
             KimiProvider(),
             OpenRouterProvider(),
             MiniMaxProvider(),
-            BailianProvider(),
             BioMapCodingProvider(),
         ])
         let sharedStore = QuotaGlanceShared.snapshotStore()
@@ -143,16 +142,9 @@ final class AppModel: ObservableObject {
             editingAccountID: accountID
         )
 
-        let existingAccount = accountID.flatMap { id in
-            accounts.first(where: { $0.id == id })
-        }
-        let configurationChanged = existingAccount?.providerConfiguration
-            != validated.providerConfiguration
         let detectionKey: String?
         if let apiKey = validated.apiKey {
             detectionKey = apiKey
-        } else if configurationChanged, let accountID {
-            detectionKey = try await credentialStore.read(for: accountID)
         } else {
             detectionKey = nil
         }
@@ -160,10 +152,7 @@ final class AppModel: ObservableObject {
         let detection: ProviderDetection?
         if let detectionKey {
             let provider = try registry.provider(for: validated.provider)
-            detection = try await provider.detect(
-                apiKey: detectionKey,
-                configuration: validated.providerConfiguration
-            )
+            detection = try await provider.detect(apiKey: detectionKey)
         } else {
             detection = nil
         }
@@ -329,7 +318,6 @@ private extension AppModel {
             displayName: validated.displayName,
             provider: validated.provider,
             detectedProfile: detectedProfile,
-            providerConfiguration: validated.providerConfiguration,
             isEnabled: validated.isEnabled,
             sortOrder: accounts.count,
             lowBalanceThreshold: validated.lowBalanceThreshold
@@ -352,7 +340,6 @@ private extension AppModel {
         }
         accounts[index].displayName = validated.displayName
         accounts[index].provider = validated.provider
-        accounts[index].providerConfiguration = validated.providerConfiguration
         if let detectedProfile {
             accounts[index].detectedProfile = detectedProfile
         }

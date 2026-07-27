@@ -29,7 +29,6 @@ public struct Account: Codable, Equatable, Identifiable, Sendable {
     public var displayName: String
     public var provider: ProviderID
     public var detectedProfile: ProviderProfile?
-    public var providerConfiguration: ProviderConfiguration?
     public var isEnabled: Bool
     public var sortOrder: Int
     public var lowBalanceThreshold: Decimal?
@@ -40,7 +39,6 @@ public struct Account: Codable, Equatable, Identifiable, Sendable {
         displayName: String,
         provider: ProviderID = .apiInfo,
         detectedProfile: ProviderProfile? = nil,
-        providerConfiguration: ProviderConfiguration? = nil,
         isEnabled: Bool = true,
         sortOrder: Int = 0,
         lowBalanceThreshold: Decimal? = nil,
@@ -50,7 +48,6 @@ public struct Account: Codable, Equatable, Identifiable, Sendable {
         self.displayName = displayName
         self.provider = provider
         self.detectedProfile = detectedProfile ?? (provider == .apiInfo ? .apiInfo : nil)
-        self.providerConfiguration = providerConfiguration
         self.isEnabled = isEnabled
         self.sortOrder = sortOrder
         self.lowBalanceThreshold = lowBalanceThreshold
@@ -62,7 +59,6 @@ public struct Account: Codable, Equatable, Identifiable, Sendable {
         case displayName
         case provider
         case detectedProfile
-        case providerConfiguration
         case isEnabled
         case sortOrder
         case lowBalanceThreshold
@@ -79,10 +75,6 @@ public struct Account: Codable, Equatable, Identifiable, Sendable {
             ProviderProfile.self,
             forKey: .detectedProfile
         ) ?? (provider == .apiInfo ? .apiInfo : nil)
-        providerConfiguration = try container.decodeIfPresent(
-            ProviderConfiguration.self,
-            forKey: .providerConfiguration
-        )
         isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
         sortOrder = try container.decode(Int.self, forKey: .sortOrder)
         lowBalanceThreshold = try container.decodeIfPresent(

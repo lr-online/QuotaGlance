@@ -32,6 +32,68 @@ struct StorageTests {
         #expect(loaded.preferences == .default)
     }
 
+    @Test("Loading removes persisted unsupported provider accounts and keeps the rest")
+    func loadingRemovesPersistedUnsupportedProviderAccounts() throws {
+        let suiteName = "QuotaGlanceTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = AccountPreferencesStore(defaults: defaults)
+        let payload = Data(#"""
+        {
+          "schemaVersion": 2,
+          "accounts": [
+            {
+              "id": "00000000-0000-0000-0000-000000000001",
+              "displayName": "Primary",
+              "provider": "apiInfo",
+              "detectedProfile": {
+                "region": "global",
+                "credentialKind": "standard"
+              },
+              "isEnabled": true,
+              "sortOrder": 0,
+              "alertEpisodeActive": false
+            },
+            {
+              "id": "00000000-0000-0000-0000-000000000002",
+              "displayName": "Ali",
+              "provider": "bailian",
+              "providerConfiguration": {
+                "baseURL": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+              },
+              "isEnabled": true,
+              "sortOrder": 1,
+              "alertEpisodeActive": false
+            }
+          ],
+          "preferences": {
+            "refreshInterval": 300,
+            "launchAtLogin": true
+          }
+        }
+        """#.utf8)
+
+        defaults.set(payload, forKey: AccountPreferencesStore.storageKey)
+
+        let loaded = try store.load()
+
+        #expect(loaded.accounts.map { $0.displayName } == ["Primary"])
+        #expect(loaded.accounts.map { $0.provider } == [ProviderID.apiInfo])
+        #expect(loaded.preferences == AppPreferences(
+            refreshInterval: .fiveMinutes,
+            launchAtLogin: true
+        ))
+
+        let persistedData = try #require(
+            defaults.data(forKey: AccountPreferencesStore.storageKey)
+        )
+        let persisted = try JSONDecoder.quotaGlance.decode(
+            StoredAccountPreferences.self,
+            from: persistedData
+        )
+        #expect(persisted == loaded)
+    }
+
     @Test("Credential storage identifies same-name accounts by UUID")
     func credentialStorageUsesAccountUUID() async throws {
         let first = Account(displayName: "Personal")
@@ -86,6 +148,87 @@ struct StorageTests {
         )
         let permissions = attributes[.posixPermissions] as? NSNumber
         #expect(permissions?.intValue == 0o600)
+    }
+
+    @Test("Reading removes unsupported provider snapshots and keeps the rest")
+    func readingRemovesUnsupportedProviderSnapshots() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(
+            path: "QuotaGlanceTests-\(UUID().uuidString)",
+            directoryHint: .isDirectory
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let fileURL = directory.appending(path: "quota-snapshot-v1.json")
+        let store = SharedSnapshotStore(fileURL: fileURL)
+        let payload = Data(#"""
+        {
+          "schemaVersion": 2,
+          "capturedAt": "1970-01-01T00:01:40Z",
+          "aggregate": {
+            "balances": [],
+            "dailyUsage": [],
+            "accounts": [
+              {
+                "accountID": "00000000-0000-0000-0000-000000000001",
+                "displayName": "Primary",
+                "provider": "apiInfo",
+                "detectedProfile": {
+                  "region": "global",
+                  "credentialKind": "standard"
+                },
+                "health": {
+                  "healthy": {}
+                }
+              },
+              {
+                "accountID": "00000000-0000-0000-0000-000000000002",
+                "displayName": "Ali",
+                "provider": "bailian",
+                "health": {
+                  "healthy": {}
+                }
+              }
+            ],
+            "isPartial": false
+          },
+          "accounts": [
+            {
+              "accountID": "00000000-0000-0000-0000-000000000001",
+              "displayName": "Primary",
+              "provider": "apiInfo",
+              "detectedProfile": {
+                "region": "global",
+                "credentialKind": "standard"
+              },
+              "health": {
+                "healthy": {}
+              }
+            },
+            {
+              "accountID": "00000000-0000-0000-0000-000000000002",
+              "displayName": "Ali",
+              "provider": "bailian",
+              "health": {
+                "healthy": {}
+              }
+            }
+          ]
+        }
+        """#.utf8)
+
+        try FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true
+        )
+        try payload.write(to: fileURL, options: .withoutOverwriting)
+
+        let loaded = try store.read()
+
+        #expect(loaded.accounts.map { $0.displayName } == ["Primary"])
+        #expect(loaded.aggregate.accounts.map { $0.displayName } == ["Primary"])
+
+        let persisted = try store.read()
+        #expect(persisted.accounts == loaded.accounts)
+        #expect(persisted.aggregate.accounts == loaded.aggregate.accounts)
     }
 
     @Test("Shared snapshot temporary files stay beside the destination")

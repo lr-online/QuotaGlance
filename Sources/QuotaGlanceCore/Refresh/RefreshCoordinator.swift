@@ -165,7 +165,6 @@ private extension RefreshCoordinator {
                             provider: provider,
                             apiKey: apiKey,
                             profile: profile,
-                            configuration: account.providerConfiguration,
                             timeout: timeout
                         )
                         return .success(account, usage)
@@ -309,7 +308,6 @@ private extension RefreshCoordinator {
         provider: any UsageProvider,
         apiKey: String,
         profile: ProviderProfile,
-        configuration: ProviderConfiguration?,
         timeout: TimeInterval
     ) async throws -> ProviderUsageSnapshot {
         try await withThrowingTaskGroup(
@@ -317,11 +315,7 @@ private extension RefreshCoordinator {
             returning: ProviderUsageSnapshot.self
         ) { group in
             group.addTask {
-                try await provider.fetch(
-                    apiKey: apiKey,
-                    profile: profile,
-                    configuration: configuration
-                )
+                try await provider.fetch(apiKey: apiKey, profile: profile)
             }
             group.addTask {
                 let maximumSeconds = Double(UInt64.max) / 1_000_000_000

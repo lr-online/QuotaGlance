@@ -27,8 +27,6 @@ public enum ErrorPresenter {
             "Neither official regional endpoint accepted this key. Check the key and try again."
         case ProviderError.profileMismatch:
             "The saved key type no longer matches this account. Replace the key to detect it again."
-        case ProviderError.invalidEndpoint:
-            "Enter an official Alibaba Cloud Model Studio HTTPS Base URL."
         case ProviderError.invalidResponse:
             "The provider returned an unexpected response."
         case ProviderError.providerUnavailable:

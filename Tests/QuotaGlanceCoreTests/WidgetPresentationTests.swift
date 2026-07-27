@@ -211,15 +211,15 @@ struct WidgetPresentationTests {
         )!
         let usage = ProviderUsageSnapshot(
             providerStatus: "connected",
-            metricsUnavailableReason: "231 models available. Billing metrics unavailable for this API key.",
+            metricsUnavailableReason: "32 models available. Budget metrics unavailable for this key.",
             receivedAt: Date(timeIntervalSince1970: 100)
         )
         let account = AccountSnapshot(
             accountID: accountID,
-            displayName: "Bailian",
-            provider: .bailian,
+            displayName: "BioMap",
+            provider: .bioMapCoding,
             detectedProfile: ProviderProfile(
-                region: .china,
+                region: .global,
                 credentialKind: .standard
             ),
             usage: usage,
@@ -244,7 +244,7 @@ struct WidgetPresentationTests {
         #expect(selected.primaryMetric == nil)
         #expect(
             selected.metricsUnavailableReason
-                == "231 models available. Billing metrics unavailable for this API key."
+                == "32 models available. Budget metrics unavailable for this key."
         )
         #expect(aggregate.primaryMetric == nil)
         #expect(

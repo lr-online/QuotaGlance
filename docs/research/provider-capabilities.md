@@ -5,13 +5,11 @@ Date: 2026-07-27
 
 ## Decision
 
-QuotaGlance implements seven visible provider families: API Info, DeepSeek,
-Kimi, OpenRouter, MiniMax, Alibaba Cloud Model Studio (Bailian), and BioMap
-Coding. Kimi and MiniMax each remain one provider in the picker; the app detects
-China versus international credentials and persists the resolved region.
-OpenRouter detects standard versus management credentials. Bailian detects
-region from its validated official Base URL. BioMap Coding uses its fixed
-company LiteLLM deployment.
+QuotaGlance implements six visible provider families: API Info, DeepSeek,
+Kimi, OpenRouter, MiniMax, and BioMap Coding. Kimi and MiniMax each remain one
+provider in the picker; the app detects China versus international credentials
+and persists the resolved region. OpenRouter detects standard versus management
+credentials. BioMap Coding uses its fixed company LiteLLM deployment.
 
 Provider responses map into independent balance, spending-limit, spend-period,
 and quota-window capabilities. Only real balances enter All Accounts totals.
@@ -19,8 +17,7 @@ Totals are grouped by ISO currency without conversion, and missing capabilities
 remain absent rather than becoming zero.
 
 Adapters are compiled into the app. QuotaGlance does not load third-party
-provider plugins or accept arbitrary endpoint URLs. Bailian accepts only its
-documented Alibaba Cloud DashScope and workspace endpoint families.
+provider plugins or accept arbitrary endpoint URLs.
 
 ## API Info
 
@@ -135,47 +132,6 @@ Official sources:
 - https://platform.minimaxi.com/docs/token-plan/faq.md
 - https://platform.minimax.io/docs/token-plan/faq.md
 
-## Alibaba Cloud Model Studio / Bailian
-
-Status: Implemented as a connection-only provider.
-
-- Default Beijing Base URL:
-  `https://dashscope.aliyuncs.com/compatible-mode/v1`
-- Preferred Beijing workspace Base URL:
-  `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`
-- Other documented regions include Singapore and Tokyo workspace hosts plus
-  the Virginia public host. Keys are regional and are not interchangeable.
-- Authentication: DashScope Bearer API key.
-- Validation endpoint: `GET <Base URL>/models`.
-- Live verification on 2026-07-27 returned HTTP 200 and the OpenAI-compatible
-  `object=list` shape from both the supplied Beijing workspace URL and the
-  public Beijing URL. Both listed 231 models at verification time.
-- Newly issued pay-as-you-go keys use the longer `sk-ws` format. This is a key
-  format upgrade, not a separate balance credential type.
-- Probes of plausible `/usage`, `/balance`, `/billing`, `/credits`, `/account`,
-  and usage-summary paths did not identify a documented API-key-authenticated
-  billing endpoint.
-- Alibaba Cloud BSS `QueryAccountBalance` is a separate RAM AccessKey-signed
-  OpenAPI. It returns the whole Alibaba Cloud account balance, not a balance
-  scoped to the Bailian API key, and therefore is not integrated here.
-- Free quotas are model-specific and exposed through the console rather than a
-  documented DashScope API-key endpoint. Console-private APIs and login cookies
-  are not scraped.
-- A successful refresh returns a healthy connection-only snapshot with model
-  count and an explicit billing-unavailable notice. It returns no fabricated
-  balance, spend, quota, or currency. China and international endpoint profiles
-  remain distinct, but CNY or USD is shown only if a future official API returns
-  an actual monetary value.
-- Base URL validation requires HTTPS, the exact OpenAI-compatible path, and an
-  allowlisted official host. Userinfo, ports, query strings, fragments, and
-  unrelated hosts are rejected before a Keychain credential is read or sent.
-
-Official sources:
-
-- https://help.aliyun.com/zh/model-studio/get-api-key
-- https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope
-- https://help.aliyun.com/zh/user-center/developer-reference/api-bssopenapi-2017-12-14-queryaccountbalance
-
 ## BioMap Coding
 
 Status: Implemented for LiteLLM virtual keys.
@@ -228,8 +184,8 @@ introduced. Spending limits and quota windows never enter cash totals.
 
 ## Persistence and Security
 
-- Provider, detected-profile, and allowlisted Base URL metadata are non-secret
-  and live with account preferences in schema version 2.
+- Provider and detected-profile metadata are non-secret and live with account
+  preferences in schema version 2.
 - Version-1 accounts migrate to API Info without changing their UUIDs or
   UserDefaults storage key.
 - Credentials remain in macOS Keychain. The historical service identifier
@@ -250,4 +206,4 @@ introduced. Spending limits and quota windows never enter cash totals.
 - Healthy connection-only accounts show `Connected` and the provider's reason
   that quantitative metrics are unavailable instead of `No metric`.
 - Low-balance alerts apply only to a real primary balance. They are unavailable
-  for MiniMax, Bailian, BioMap Coding, and OpenRouter standard keys.
+  for MiniMax, BioMap Coding, and OpenRouter standard keys.

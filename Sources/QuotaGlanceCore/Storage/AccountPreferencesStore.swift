@@ -44,9 +44,44 @@ public struct AccountPreferencesStore {
         guard let data = defaults.data(forKey: storageKey) else {
             return StoredAccountPreferences(accounts: [], preferences: .default)
         }
-        return try JSONDecoder.quotaGlance.decode(
-            StoredAccountPreferences.self,
-            from: data
-        )
+        do {
+            return try JSONDecoder.quotaGlance.decode(
+                StoredAccountPreferences.self,
+                from: data
+            )
+        } catch {
+            guard let sanitizedData = try sanitizedStoredPreferencesData(from: data)
+            else {
+                throw error
+            }
+            let sanitized = try JSONDecoder.quotaGlance.decode(
+                StoredAccountPreferences.self,
+                from: sanitizedData
+            )
+            defaults.set(sanitizedData, forKey: storageKey)
+            return sanitized
+        }
+    }
+
+    private func sanitizedStoredPreferencesData(from data: Data) throws -> Data? {
+        guard var payload = try JSONSerialization.jsonObject(with: data)
+            as? [String: Any],
+            let accounts = payload["accounts"] as? [[String: Any]]
+        else {
+            return nil
+        }
+
+        let supportedProviders = Set(ProviderID.allCases.map(\.rawValue))
+        let filteredAccounts = accounts.filter { account in
+            guard let provider = account["provider"] as? String else {
+                return true
+            }
+            return supportedProviders.contains(provider)
+        }
+        guard filteredAccounts.count != accounts.count else {
+            return nil
+        }
+        payload["accounts"] = filteredAccounts
+        return try JSONSerialization.data(withJSONObject: payload)
     }
 }
