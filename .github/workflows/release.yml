@@ -44,6 +44,8 @@ jobs:
         run: /bin/bash Tests/ScriptTests/LocalInstallSafetyTests.sh
 
       - name: Package release DMGs
+        env:
+          QUOTAGLANCE_VERSION: ${{ github.ref_name }}
         run: ./scripts/package-dmg.sh
 
       - name: Upload packaged artifacts

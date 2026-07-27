@@ -12,6 +12,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_PARENT="$ROOT_DIR/DerivedData/LocalBuild"
 XCODEBUILD="/usr/bin/xcodebuild"
 XCODE_DEVELOPER_DIR="${DEVELOPER_DIR:-$(/usr/bin/xcode-select -p)}"
+VERSION_BUILD_SETTING=()
+
+if [[ -n "${QUOTAGLANCE_VERSION:-}" ]]; then
+  APP_VERSION="${QUOTAGLANCE_VERSION#v}"
+  [[ "$APP_VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]] || {
+    echo "Invalid QuotaGlance version: $QUOTAGLANCE_VERSION" >&2
+    exit 2
+  }
+  VERSION_BUILD_SETTING=("MARKETING_VERSION=$APP_VERSION")
+fi
 
 case "$CONFIGURATION" in
   Debug)
@@ -77,6 +87,7 @@ if ! "$XCODEBUILD" \
   CODE_SIGNING_REQUIRED=NO \
   REGISTER_WITH_LAUNCH_SERVICES=NO \
   "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$COMPILATION_CONDITIONS" \
+  "${VERSION_BUILD_SETTING[@]}" \
   build \
   > "$BUILD_LOG" 2>&1; then
   /usr/bin/tail -n 200 "$BUILD_LOG" >&2

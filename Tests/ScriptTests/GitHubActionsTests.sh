@@ -31,6 +31,8 @@ rg -q "v\*" "$RELEASE_WORKFLOW" || fail "release workflow missing version tag pa
 rg -Fq "maxim-lobanov/setup-xcode@v1" "$RELEASE_WORKFLOW" || fail "release workflow does not select Xcode explicitly"
 rg -Fq "xcode-version: '16.2'" "$RELEASE_WORKFLOW" || fail "release workflow does not pin the supported Xcode version"
 rg -Fq "brew install ripgrep" "$RELEASE_WORKFLOW" || fail "release workflow does not install ripgrep"
+rg -Fq 'QUOTAGLANCE_VERSION: ${{ github.ref_name }}' "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not pass the tag version to packaging"
 rg -Fq "./scripts/package-dmg.sh" "$RELEASE_WORKFLOW" || fail "release workflow does not package DMGs"
 rg -q "upload-artifact" "$RELEASE_WORKFLOW" || fail "release workflow does not upload artifacts"
 rg -q "softprops/action-gh-release" "$RELEASE_WORKFLOW" || fail "release workflow does not publish a GitHub release"

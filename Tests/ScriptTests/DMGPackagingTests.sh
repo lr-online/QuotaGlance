@@ -148,6 +148,7 @@ test_real_dmg_round_trip() {
   local clean_package
   local clean_verify
   local current_commit
+  local release_version="9.8.7"
 
   current_commit="$(/usr/bin/git -C "$ROOT_DIR" rev-parse HEAD)"
   /usr/bin/git clone --quiet --no-local --no-checkout \
@@ -167,6 +168,9 @@ test_real_dmg_round_trip() {
   /usr/bin/ditto \
     "$FULL_README" \
     "$clean_repo/Distribution/README-macOS14.txt"
+  /usr/bin/ditto \
+    "$ROOT_DIR/scripts/build-local.sh" \
+    "$clean_repo/scripts/build-local.sh"
   /usr/bin/git -C "$clean_repo" rm --quiet --ignore-unmatch \
     Distribution/README.txt
   /bin/mv \
@@ -203,10 +207,11 @@ test_real_dmg_round_trip() {
   clean_verify="$clean_repo/scripts/verify-dmg.sh"
   /bin/mkdir -p "$clean_output"
   QUOTAGLANCE_PACKAGING_CALLER_ROOT="$clean_repo" \
+    QUOTAGLANCE_VERSION="v$release_version" \
     "$clean_package" "$clean_output" >/dev/null
 
-  local legacy_dmg="$clean_output/QuotaGlance-$VERSION-macOS12-arm64.dmg"
-  local full_dmg="$clean_output/QuotaGlance-$VERSION-macOS14-arm64.dmg"
+  local legacy_dmg="$clean_output/QuotaGlance-$release_version-macOS12-arm64.dmg"
+  local full_dmg="$clean_output/QuotaGlance-$release_version-macOS14-arm64.dmg"
   local legacy_checksum="$legacy_dmg.sha256"
   local full_checksum="$full_dmg.sha256"
   [[ -f "$legacy_dmg" ]] || fail "macOS 12 DMG was not created"
@@ -227,7 +232,9 @@ test_real_dmg_round_trip() {
     "$clean_output/mismatched.sha256" \
     legacy
 
-  assert_fails env QUOTAGLANCE_PACKAGING_CALLER_ROOT="$clean_repo" \
+  assert_fails env \
+    QUOTAGLANCE_PACKAGING_CALLER_ROOT="$clean_repo" \
+    QUOTAGLANCE_VERSION="v$release_version" \
     "$clean_package" "$clean_output"
 }
 
