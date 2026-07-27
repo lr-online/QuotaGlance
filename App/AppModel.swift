@@ -16,7 +16,7 @@ final class AppModel: ObservableObject {
 
     private let preferencesStore: AccountPreferencesStore
     private let credentialStore: any CredentialStore
-    private let provider: any UsageProvider
+    private let registry: ProviderRegistry
     private let refreshCoordinator: RefreshCoordinator
     private let sharedSnapshotStore: SharedSnapshotStore?
     private let notificationService: NotificationService
@@ -37,7 +37,13 @@ final class AppModel: ObservableObject {
         }
 
         let credentialStore = KeychainStore()
-        let provider = APIInfoProvider()
+        let registry = ProviderRegistry(providers: [
+            APIInfoProvider(),
+            DeepSeekProvider(),
+            KimiProvider(),
+            OpenRouterProvider(),
+            MiniMaxProvider(),
+        ])
         let sharedStore = QuotaGlanceShared.snapshotStore()
         let notificationService = NotificationService()
         let launchAtLoginService = LaunchAtLoginService()
@@ -58,13 +64,13 @@ final class AppModel: ObservableObject {
         self.lastErrorMessage = loadError
         self.preferencesStore = preferencesStore
         self.credentialStore = credentialStore
-        self.provider = provider
+        self.registry = registry
         self.sharedSnapshotStore = sharedStore
         self.notificationService = notificationService
         self.launchAtLoginService = launchAtLoginService
         self.refreshCoordinator = RefreshCoordinator(
             credentialStore: credentialStore,
-            provider: provider,
+            registry: registry,
             initialSnapshots: cachedEnvelope?.accounts ?? [],
             snapshotWriter: snapshotWriter
         )
@@ -130,25 +136,44 @@ final class AppModel: ObservableObject {
             editingAccountID: accountID
         )
 
+        let detection: ProviderDetection?
         if let apiKey = validated.apiKey {
-            _ = try await provider.fetch(apiKey: apiKey)
+            let provider = try registry.provider(for: validated.provider)
+            detection = try await provider.detect(apiKey: apiKey)
+        } else {
+            detection = nil
         }
 
+        let savedAccountID: UUID
         if let accountID {
             try await updateAccount(
                 id: accountID,
-                validated: validated
+                validated: validated,
+                detectedProfile: detection?.profile
             )
+            savedAccountID = accountID
         } else {
-            try await addAccount(validated: validated)
+            savedAccountID = try await addAccount(
+                validated: validated,
+                detectedProfile: detection?.profile
+            )
         }
 
         try persist()
-        publishCachedState()
+        if let detection {
+            publishDetectedSnapshot(
+                accountID: savedAccountID,
+                usage: detection.snapshot
+            )
+        } else {
+            publishCachedState()
+        }
         if !previouslyHadThreshold, validated.lowBalanceThreshold != nil {
             notificationPermission = await notificationService.requestAuthorization()
         }
-        await refresh()
+        if detection == nil {
+            await refresh()
+        }
     }
 
     func deleteAccount(id: UUID) async {
@@ -245,10 +270,22 @@ final class AppModel: ObservableObject {
             "Account names must be unique."
         case AccountValidationError.invalidThreshold:
             "Enter a valid non-negative threshold."
+        case AccountValidationError.replacementKeyRequired:
+            "Enter a replacement key when changing providers."
         case ProviderError.invalidCredential, ProviderError.providerInactive:
-            "API Info rejected this key."
+            "The provider rejected this key."
         case ProviderError.rateLimited:
-            "API Info is rate limiting this key. Try again later."
+            "The provider is rate limiting requests. Try again later."
+        case ProviderError.unsupportedCredential:
+            "MiniMax pay-as-you-go keys are not supported. Add a Token or Coding Plan subscription key."
+        case ProviderError.regionDetectionFailed:
+            "Neither official regional endpoint accepted this key. Check the key and try again."
+        case ProviderError.profileMismatch:
+            "The saved key type no longer matches this account. Replace the key to detect it again."
+        case ProviderError.invalidResponse:
+            "The provider returned an unexpected response."
+        case ProviderError.providerUnavailable:
+            "This provider is not available in this build."
         case CredentialStoreError.notFound:
             "The API key is missing from Keychain."
         default:
@@ -258,23 +295,33 @@ final class AppModel: ObservableObject {
 }
 
 private extension AppModel {
-    func addAccount(validated: ValidatedAccountDraft) async throws {
+    func addAccount(
+        validated: ValidatedAccountDraft,
+        detectedProfile: ProviderProfile?
+    ) async throws -> UUID {
         guard let apiKey = validated.apiKey else {
             throw AccountValidationError.emptyAPIKey
         }
+        guard let detectedProfile else {
+            throw ProviderError.profileMismatch
+        }
         let account = Account(
             displayName: validated.displayName,
+            provider: validated.provider,
+            detectedProfile: detectedProfile,
             isEnabled: validated.isEnabled,
             sortOrder: accounts.count,
             lowBalanceThreshold: validated.lowBalanceThreshold
         )
         try await credentialStore.save(apiKey, for: account.id)
         accounts.append(account)
+        return account.id
     }
 
     func updateAccount(
         id: UUID,
-        validated: ValidatedAccountDraft
+        validated: ValidatedAccountDraft,
+        detectedProfile: ProviderProfile?
     ) async throws {
         guard let index = accounts.firstIndex(where: { $0.id == id }) else {
             return
@@ -283,6 +330,10 @@ private extension AppModel {
             try await credentialStore.save(apiKey, for: id)
         }
         accounts[index].displayName = validated.displayName
+        accounts[index].provider = validated.provider
+        if let detectedProfile {
+            accounts[index].detectedProfile = detectedProfile
+        }
         accounts[index].isEnabled = validated.isEnabled
         accounts[index].lowBalanceThreshold = validated.lowBalanceThreshold
         if !validated.isEnabled || validated.lowBalanceThreshold == nil {
@@ -364,11 +415,50 @@ private extension AppModel {
         }
     }
 
+    func publishDetectedSnapshot(
+        accountID: UUID,
+        usage: ProviderUsageSnapshot
+    ) {
+        guard let account = accounts.first(where: { $0.id == accountID }) else {
+            publishCachedState()
+            return
+        }
+        let health: AccountHealth
+        if let remaining = usage.primaryBalance?.available.amount,
+           let threshold = account.lowBalanceThreshold,
+           remaining <= threshold {
+            health = .belowThreshold
+        } else {
+            health = .healthy
+        }
+        var snapshots = latestEnvelope?.accounts ?? []
+        snapshots.removeAll { $0.accountID == accountID }
+        snapshots.append(
+            AccountSnapshot(
+                accountID: account.id,
+                displayName: account.displayName,
+                provider: account.provider,
+                detectedProfile: account.detectedProfile,
+                lowBalanceThreshold: account.lowBalanceThreshold,
+                usage: usage,
+                health: health,
+                lastSuccessAt: usage.receivedAt
+            )
+        )
+        publish(snapshots: snapshots, capturedAt: usage.receivedAt)
+    }
+
     func publishCachedState() {
-        let capturedAt = Date.now
+        publish(
+            snapshots: latestEnvelope?.accounts ?? [],
+            capturedAt: .now
+        )
+    }
+
+    func publish(snapshots: [AccountSnapshot], capturedAt: Date) {
         let aggregate = SnapshotAggregator().aggregate(
             accounts: accounts,
-            snapshots: latestEnvelope?.accounts ?? [],
+            snapshots: snapshots,
             now: capturedAt
         )
         let envelope = WidgetSnapshotEnvelope(

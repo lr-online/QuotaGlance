@@ -27,7 +27,7 @@ public struct RefreshResult: Equatable, Sendable {
 
 public actor RefreshCoordinator {
     private let credentialStore: any CredentialStore
-    private let provider: any UsageProvider
+    private let registry: ProviderRegistry
     private let aggregator: SnapshotAggregator
     private let timeout: TimeInterval
     private let now: @Sendable () -> Date
@@ -38,7 +38,7 @@ public actor RefreshCoordinator {
 
     public init(
         credentialStore: any CredentialStore,
-        provider: any UsageProvider,
+        registry: ProviderRegistry,
         aggregator: SnapshotAggregator = SnapshotAggregator(),
         initialSnapshots: [AccountSnapshot] = [],
         timeout: TimeInterval = 15,
@@ -46,7 +46,7 @@ public actor RefreshCoordinator {
         snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)? = nil
     ) {
         self.credentialStore = credentialStore
-        self.provider = provider
+        self.registry = registry
         self.aggregator = aggregator
         self.previousSnapshots = Dictionary(
             initialSnapshots.map { ($0.accountID, $0) },
@@ -55,6 +55,26 @@ public actor RefreshCoordinator {
         self.timeout = timeout
         self.now = now
         self.snapshotWriter = snapshotWriter
+    }
+
+    public init(
+        credentialStore: any CredentialStore,
+        provider: any UsageProvider,
+        aggregator: SnapshotAggregator = SnapshotAggregator(),
+        initialSnapshots: [AccountSnapshot] = [],
+        timeout: TimeInterval = 15,
+        now: @escaping @Sendable () -> Date = { .now },
+        snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)? = nil
+    ) {
+        self.init(
+            credentialStore: credentialStore,
+            registry: ProviderRegistry(providers: [provider]),
+            aggregator: aggregator,
+            initialSnapshots: initialSnapshots,
+            timeout: timeout,
+            now: now,
+            snapshotWriter: snapshotWriter
+        )
     }
 
     public func refresh(accounts: [Account]) async throws -> RefreshResult {
@@ -78,7 +98,7 @@ private extension RefreshCoordinator {
     func performRefresh(accounts: [Account]) async throws -> RefreshResult {
         let enabledAccounts = accounts.filter(\.isEnabled)
         let credentialStore = credentialStore
-        let provider = provider
+        let registry = registry
         let timeout = timeout
 
         let refreshes = await withTaskGroup(
@@ -89,9 +109,14 @@ private extension RefreshCoordinator {
                 group.addTask {
                     do {
                         let apiKey = try await credentialStore.read(for: account.id)
+                        let provider = try registry.provider(for: account.provider)
+                        guard let profile = account.detectedProfile else {
+                            throw ProviderError.profileMismatch
+                        }
                         let usage = try await Self.fetch(
                             provider: provider,
                             apiKey: apiKey,
+                            profile: profile,
                             timeout: timeout
                         )
                         return .success(account, usage)
@@ -221,6 +246,7 @@ private extension RefreshCoordinator {
     nonisolated static func fetch(
         provider: any UsageProvider,
         apiKey: String,
+        profile: ProviderProfile,
         timeout: TimeInterval
     ) async throws -> ProviderUsageSnapshot {
         try await withThrowingTaskGroup(
@@ -228,7 +254,7 @@ private extension RefreshCoordinator {
             returning: ProviderUsageSnapshot.self
         ) { group in
             group.addTask {
-                try await provider.fetch(apiKey: apiKey)
+                try await provider.fetch(apiKey: apiKey, profile: profile)
             }
             group.addTask {
                 let maximumSeconds = Double(UInt64.max) / 1_000_000_000

@@ -4,6 +4,68 @@ import Testing
 
 @Suite("Refresh coordination")
 struct RefreshCoordinatorTests {
+    @Test("Each account routes through its provider with the persisted profile")
+    func accountsRouteThroughProviderRegistry() async throws {
+        let kimiAccount = Account(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!,
+            displayName: "Kimi China",
+            provider: .kimi,
+            detectedProfile: ProviderProfile(
+                region: .china,
+                credentialKind: .standard
+            ),
+            sortOrder: 0
+        )
+        let openRouterAccount = Account(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000012")!,
+            displayName: "OpenRouter Admin",
+            provider: .openRouter,
+            detectedProfile: ProviderProfile(
+                region: .global,
+                credentialKind: .management
+            ),
+            sortOrder: 1
+        )
+        let credentials = MemoryCredentialStore(values: [
+            kimiAccount.id: "kimi-key",
+            openRouterAccount.id: "openrouter-key",
+        ])
+        let kimi = RoutingUsageProvider(id: .kimi, snapshot: usage(remaining: "10"))
+        let openRouter = RoutingUsageProvider(
+            id: .openRouter,
+            snapshot: usage(remaining: "20")
+        )
+        let coordinator = RefreshCoordinator(
+            credentialStore: credentials,
+            registry: ProviderRegistry(providers: [kimi, openRouter]),
+            aggregator: SnapshotAggregator(calendar: utcCalendar),
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 200) }
+        )
+
+        let result = try await coordinator.refresh(
+            accounts: [kimiAccount, openRouterAccount]
+        )
+
+        #expect(await kimi.calls == [
+            ProviderFetchCall(
+                apiKey: "kimi-key",
+                profile: ProviderProfile(region: .china, credentialKind: .standard)
+            ),
+        ])
+        #expect(await openRouter.calls == [
+            ProviderFetchCall(
+                apiKey: "openrouter-key",
+                profile: ProviderProfile(region: .global, credentialKind: .management)
+            ),
+        ])
+        #expect(result.accountSnapshots[kimiAccount.id]?.provider == .kimi)
+        #expect(
+            result.accountSnapshots[openRouterAccount.id]?.detectedProfile
+                == openRouterAccount.detectedProfile
+        )
+    }
+
     @Test("Concurrent refresh requests coalesce into one provider call per account")
     func concurrentRefreshesCoalesce() async throws {
         let accounts = testAccounts()
@@ -239,6 +301,34 @@ private actor SnapshotRecorder {
 
     func write(_ snapshot: WidgetSnapshotEnvelope) {
         snapshots.append(snapshot)
+    }
+}
+
+private struct ProviderFetchCall: Equatable, Sendable {
+    let apiKey: String
+    let profile: ProviderProfile
+}
+
+private actor RoutingUsageProvider: UsageProvider {
+    nonisolated let id: ProviderID
+    private let snapshot: ProviderUsageSnapshot
+    private(set) var calls: [ProviderFetchCall] = []
+
+    init(id: ProviderID, snapshot: ProviderUsageSnapshot) {
+        self.id = id
+        self.snapshot = snapshot
+    }
+
+    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+        snapshot
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
+        calls.append(ProviderFetchCall(apiKey: apiKey, profile: profile))
+        return snapshot
     }
 }
 

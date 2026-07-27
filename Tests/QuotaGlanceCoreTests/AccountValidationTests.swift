@@ -9,6 +9,7 @@ struct AccountValidationTests {
         let draft = AccountDraft(
             displayName: "  Primary  ",
             apiKey: "  test-key  ",
+            provider: .deepSeek,
             isEnabled: true,
             lowBalanceThresholdText: ""
         )
@@ -20,6 +21,7 @@ struct AccountValidationTests {
 
         #expect(validated.displayName == "Primary")
         #expect(validated.apiKey == "test-key")
+        #expect(validated.provider == .deepSeek)
         #expect(validated.lowBalanceThreshold == nil)
 
         var emptyName = draft
@@ -134,5 +136,36 @@ struct AccountValidationTests {
         )
 
         #expect(validated.apiKey == nil)
+        #expect(validated.provider == .apiInfo)
+    }
+
+    @Test("Changing provider while editing requires a replacement key")
+    func changingProviderRequiresReplacementKey() throws {
+        let account = Account(displayName: "Primary", provider: .apiInfo)
+        let changedProvider = AccountDraft(
+            displayName: "Primary",
+            apiKey: "",
+            provider: .kimi,
+            isEnabled: true,
+            lowBalanceThresholdText: ""
+        )
+
+        #expect(throws: AccountValidationError.replacementKeyRequired) {
+            try AccountValidator.validate(
+                draft: changedProvider,
+                existingAccounts: [account],
+                editingAccountID: account.id
+            )
+        }
+
+        var withReplacement = changedProvider
+        withReplacement.apiKey = "replacement-key"
+        let validated = try AccountValidator.validate(
+            draft: withReplacement,
+            existingAccounts: [account],
+            editingAccountID: account.id
+        )
+        #expect(validated.provider == .kimi)
+        #expect(validated.apiKey == "replacement-key")
     }
 }

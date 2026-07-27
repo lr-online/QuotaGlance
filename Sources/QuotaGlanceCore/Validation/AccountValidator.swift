@@ -3,17 +3,20 @@ import Foundation
 public struct AccountDraft: Equatable, Sendable {
     public var displayName: String
     public var apiKey: String
+    public var provider: ProviderID
     public var isEnabled: Bool
     public var lowBalanceThresholdText: String
 
     public init(
         displayName: String = "",
         apiKey: String = "",
+        provider: ProviderID = .apiInfo,
         isEnabled: Bool = true,
         lowBalanceThresholdText: String = ""
     ) {
         self.displayName = displayName
         self.apiKey = apiKey
+        self.provider = provider
         self.isEnabled = isEnabled
         self.lowBalanceThresholdText = lowBalanceThresholdText
     }
@@ -22,17 +25,20 @@ public struct AccountDraft: Equatable, Sendable {
 public struct ValidatedAccountDraft: Equatable, Sendable {
     public var displayName: String
     public var apiKey: String?
+    public var provider: ProviderID
     public var isEnabled: Bool
     public var lowBalanceThreshold: Decimal?
 
     public init(
         displayName: String,
         apiKey: String?,
+        provider: ProviderID = .apiInfo,
         isEnabled: Bool,
         lowBalanceThreshold: Decimal?
     ) {
         self.displayName = displayName
         self.apiKey = apiKey
+        self.provider = provider
         self.isEnabled = isEnabled
         self.lowBalanceThreshold = lowBalanceThreshold
     }
@@ -44,6 +50,7 @@ public enum AccountValidationError: Error, Equatable, Sendable {
     case maximumAccountsReached
     case duplicateDisplayName
     case invalidThreshold
+    case replacementKeyRequired
 }
 
 public enum AccountValidator {
@@ -68,6 +75,11 @@ public enum AccountValidator {
         if apiKeyText.isEmpty {
             guard editingAccountID != nil else {
                 throw AccountValidationError.emptyAPIKey
+            }
+            if let editingAccount = existingAccounts.first(where: {
+                $0.id == editingAccountID
+            }), editingAccount.provider != draft.provider {
+                throw AccountValidationError.replacementKeyRequired
             }
             apiKey = nil
         } else {
@@ -103,6 +115,7 @@ public enum AccountValidator {
         return ValidatedAccountDraft(
             displayName: displayName,
             apiKey: apiKey,
+            provider: draft.provider,
             isEnabled: draft.isEnabled,
             lowBalanceThreshold: threshold
         )
