@@ -291,38 +291,7 @@ final class AppModel: ObservableObject {
     }
 
     func message(for error: any Error) -> String {
-        switch error {
-        case AccountValidationError.emptyDisplayName:
-            "Enter an account name."
-        case AccountValidationError.emptyAPIKey:
-            "Enter an API key."
-        case AccountValidationError.maximumAccountsReached:
-            "QuotaGlance supports up to five accounts."
-        case AccountValidationError.duplicateDisplayName:
-            "Account names must be unique."
-        case AccountValidationError.invalidThreshold:
-            "Enter a valid non-negative threshold."
-        case AccountValidationError.replacementKeyRequired:
-            "Enter a replacement key when changing providers."
-        case ProviderError.invalidCredential, ProviderError.providerInactive:
-            "The provider rejected this key."
-        case ProviderError.rateLimited:
-            "The provider is rate limiting requests. Try again later."
-        case ProviderError.unsupportedCredential:
-            "MiniMax pay-as-you-go keys are not supported. Add a Token or Coding Plan subscription key."
-        case ProviderError.regionDetectionFailed:
-            "Neither official regional endpoint accepted this key. Check the key and try again."
-        case ProviderError.profileMismatch:
-            "The saved key type no longer matches this account. Replace the key to detect it again."
-        case ProviderError.invalidResponse:
-            "The provider returned an unexpected response."
-        case ProviderError.providerUnavailable:
-            "This provider is not available in this build."
-        case CredentialStoreError.notFound:
-            "The API key is missing from Keychain."
-        default:
-            "The operation could not be completed."
-        }
+        ErrorPresenter.message(for: error)
     }
 }
 
