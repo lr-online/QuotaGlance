@@ -1,9 +1,31 @@
 import Foundation
+import LocalAuthentication
+import Security
 import Testing
 @testable import QuotaGlanceCore
 
 @Suite("Storage")
 struct StorageTests {
+    @Test("Non-interactive Keychain reads disable authentication UI")
+    func nonInteractiveKeychainReadsDisableAuthenticationUI() throws {
+        let accountID = UUID()
+
+        let backgroundQuery = KeychainStore.readQuery(
+            for: accountID,
+            accessMode: .nonInteractive
+        )
+        let context = try #require(
+            backgroundQuery[kSecUseAuthenticationContext as String] as? LAContext
+        )
+        #expect(context.interactionNotAllowed)
+
+        let interactiveQuery = KeychainStore.readQuery(
+            for: accountID,
+            accessMode: .interactive
+        )
+        #expect(interactiveQuery[kSecUseAuthenticationContext as String] == nil)
+    }
+
     @Test("Certificate-free snapshots use the local shared directory")
     func certificateFreeSnapshotsUseLocalSharedDirectory() {
         let store = QuotaGlanceShared.certificateFreeSnapshotStore()

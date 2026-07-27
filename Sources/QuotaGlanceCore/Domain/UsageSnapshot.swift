@@ -261,6 +261,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
 
 public enum SnapshotFailure: String, Codable, Equatable, Sendable {
     case missingCredential
+    case keychainAccessRequired
     case invalidCredential
     case rateLimited
     case offline

@@ -589,6 +589,8 @@ private enum DashboardPresenterStatus {
             Detail(text: "Low Balance", icon: "exclamationmark.circle.fill", color: .orange)
         case .partial:
             Detail(text: "Partial Data", icon: "exclamationmark.triangle.fill", color: .orange)
+        case .stale(.keychainAccessRequired), .unavailable(.keychainAccessRequired):
+            Detail(text: "Keychain Locked", icon: "lock.fill", color: .orange)
         case .stale:
             Detail(text: "Saved Data", icon: "clock.badge.exclamationmark", color: .orange)
         case .unavailable:

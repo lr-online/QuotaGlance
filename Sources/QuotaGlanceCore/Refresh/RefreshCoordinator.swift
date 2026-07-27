@@ -33,6 +33,7 @@ public actor RefreshCoordinator {
     private struct InFlightRefresh {
         let id: UUID
         let accounts: [Account]
+        let credentialAccessMode: CredentialAccessMode
         let task: Task<RefreshResult, Error>
     }
 
@@ -88,9 +89,13 @@ public actor RefreshCoordinator {
         )
     }
 
-    public func refresh(accounts: [Account]) async throws -> RefreshResult {
+    public func refresh(
+        accounts: [Account],
+        credentialAccessMode: CredentialAccessMode = .interactive
+    ) async throws -> RefreshResult {
         if let inFlight {
-            if inFlight.accounts == accounts {
+            if inFlight.accounts == accounts,
+               inFlight.credentialAccessMode == credentialAccessMode {
                 return try await inFlight.task.value
             }
             supersedeInFlightRefresh()
@@ -101,10 +106,16 @@ public actor RefreshCoordinator {
         let task = Task {
             try await self.performRefresh(
                 accounts: accounts,
+                credentialAccessMode: credentialAccessMode,
                 expectedStateRevision: expectedStateRevision
             )
         }
-        inFlight = InFlightRefresh(id: refreshID, accounts: accounts, task: task)
+        inFlight = InFlightRefresh(
+            id: refreshID,
+            accounts: accounts,
+            credentialAccessMode: credentialAccessMode,
+            task: task
+        )
         defer {
             if inFlight?.id == refreshID {
                 inFlight = nil
@@ -142,6 +153,7 @@ private extension RefreshCoordinator {
 
     func performRefresh(
         accounts: [Account],
+        credentialAccessMode: CredentialAccessMode,
         expectedStateRevision: UInt64
     ) async throws -> RefreshResult {
         let enabledAccounts = accounts.filter(\.isEnabled)
@@ -156,7 +168,10 @@ private extension RefreshCoordinator {
             for account in enabledAccounts {
                 group.addTask {
                     do {
-                        let apiKey = try await credentialStore.read(for: account.id)
+                        let apiKey = try await credentialStore.read(
+                            for: account.id,
+                            accessMode: credentialAccessMode
+                        )
                         let provider = try registry.provider(for: account.provider)
                         guard let profile = account.detectedProfile else {
                             throw ProviderError.profileMismatch
@@ -287,6 +302,8 @@ private extension RefreshCoordinator {
             .timeout
         case CredentialStoreError.notFound:
             .missingCredential
+        case CredentialStoreError.interactionRequired:
+            .keychainAccessRequired
         case ProviderError.invalidCredential, ProviderError.providerInactive:
             .invalidCredential
         case ProviderError.rateLimited:

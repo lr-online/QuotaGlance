@@ -4,6 +4,33 @@ import Testing
 
 @Suite("Refresh coordination")
 struct RefreshCoordinatorTests {
+    @Test("Non-interactive refresh reports credentials that need Keychain approval")
+    func nonInteractiveRefreshReportsKeychainApproval() async throws {
+        let account = testAccounts()[0]
+        let credentials = InteractionRequiredCredentialStore()
+        let coordinator = RefreshCoordinator(
+            credentialStore: credentials,
+            provider: RoutingUsageProvider(
+                id: .apiInfo,
+                snapshot: usage(remaining: "10")
+            ),
+            aggregator: SnapshotAggregator(calendar: utcCalendar),
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+
+        let result = try await coordinator.refresh(
+            accounts: [account],
+            credentialAccessMode: .nonInteractive
+        )
+
+        #expect(await credentials.accessModes == [.nonInteractive])
+        #expect(
+            result.accountSnapshots[account.id]?.health
+                == .unavailable(.keychainAccessRequired)
+        )
+    }
+
     @Test("Each account routes through its provider with the persisted profile")
     func accountsRouteThroughProviderRegistry() async throws {
         let kimiAccount = Account(
@@ -410,6 +437,26 @@ private actor MemoryCredentialStore: CredentialStore {
             throw CredentialStoreError.notFound
         }
         return value
+    }
+
+    func save(_ credential: String, for accountID: UUID) async throws {}
+
+    func delete(for accountID: UUID) async throws {}
+}
+
+private actor InteractionRequiredCredentialStore: CredentialStore {
+    private(set) var accessModes: [CredentialAccessMode] = []
+
+    func read(for accountID: UUID) async throws -> String {
+        throw CredentialStoreError.interactionRequired
+    }
+
+    func read(
+        for accountID: UUID,
+        accessMode: CredentialAccessMode
+    ) async throws -> String {
+        accessModes.append(accessMode)
+        throw CredentialStoreError.interactionRequired
     }
 
     func save(_ credential: String, for accountID: UUID) async throws {}

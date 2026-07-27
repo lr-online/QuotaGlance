@@ -35,6 +35,8 @@ public enum ErrorPresenter {
             "The API key is missing from Keychain."
         case CredentialStoreError.invalidData:
             "The saved API key in Keychain is invalid. Replace the key and try again."
+        case CredentialStoreError.interactionRequired:
+            "Keychain approval is required for saved API keys. Click Refresh to unlock them."
         case let CredentialStoreError.unexpectedStatus(status):
             keychainMessage(for: status)
         case let urlError as URLError:

@@ -1,15 +1,35 @@
 import Foundation
+import LocalAuthentication
 import Security
+
+public enum CredentialAccessMode: Equatable, Sendable {
+    case interactive
+    case nonInteractive
+}
 
 public protocol CredentialStore: Sendable {
     func read(for accountID: UUID) async throws -> String
+    func read(
+        for accountID: UUID,
+        accessMode: CredentialAccessMode
+    ) async throws -> String
     func save(_ credential: String, for accountID: UUID) async throws
     func delete(for accountID: UUID) async throws
+}
+
+public extension CredentialStore {
+    func read(
+        for accountID: UUID,
+        accessMode: CredentialAccessMode
+    ) async throws -> String {
+        try await read(for: accountID)
+    }
 }
 
 public enum CredentialStoreError: Error, Equatable, Sendable {
     case notFound
     case invalidData
+    case interactionRequired
     case unexpectedStatus(OSStatus)
 }
 
@@ -19,14 +39,24 @@ public actor KeychainStore: CredentialStore {
     public init() {}
 
     public func read(for accountID: UUID) async throws -> String {
-        var query = baseQuery(for: accountID)
-        query[kSecReturnData as String] = true
-        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        try await read(for: accountID, accessMode: .interactive)
+    }
+
+    public func read(
+        for accountID: UUID,
+        accessMode: CredentialAccessMode
+    ) async throws -> String {
+        let query = Self.readQuery(for: accountID, accessMode: accessMode)
 
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status != errSecItemNotFound else {
             throw CredentialStoreError.notFound
+        }
+        if status == errSecInteractionNotAllowed
+            || status == errSecAuthFailed
+            || status == errSecUserCanceled {
+            throw CredentialStoreError.interactionRequired
         }
         guard status == errSecSuccess else {
             throw CredentialStoreError.unexpectedStatus(status)
@@ -45,7 +75,7 @@ public actor KeychainStore: CredentialStore {
         var data = Data(credential.utf8)
         defer { data.resetBytes(in: 0..<data.count) }
 
-        let query = baseQuery(for: accountID)
+        let query = Self.baseQuery(for: accountID)
         let update = [kSecValueData as String: data]
         let updateStatus = SecItemUpdate(
             query as CFDictionary,
@@ -67,7 +97,7 @@ public actor KeychainStore: CredentialStore {
     }
 
     public func delete(for accountID: UUID) async throws {
-        let status = SecItemDelete(baseQuery(for: accountID) as CFDictionary)
+        let status = SecItemDelete(Self.baseQuery(for: accountID) as CFDictionary)
         guard status != errSecItemNotFound else {
             throw CredentialStoreError.notFound
         }
@@ -76,7 +106,22 @@ public actor KeychainStore: CredentialStore {
         }
     }
 
-    private func baseQuery(for accountID: UUID) -> [String: Any] {
+    static func readQuery(
+        for accountID: UUID,
+        accessMode: CredentialAccessMode
+    ) -> [String: Any] {
+        var query = baseQuery(for: accountID)
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        if accessMode == .nonInteractive {
+            let context = LAContext()
+            context.interactionNotAllowed = true
+            query[kSecUseAuthenticationContext as String] = context
+        }
+        return query
+    }
+
+    private static func baseQuery(for accountID: UUID) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.service,

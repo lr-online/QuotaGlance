@@ -4,6 +4,16 @@ import Testing
 
 @Suite("User-facing error messages")
 struct ErrorPresentationTests {
+    @Test("Keychain interaction requirements explain how to unlock")
+    func keychainInteractionRequirementIsActionable() {
+        let message = ErrorPresenter.message(
+            for: CredentialStoreError.interactionRequired
+        )
+
+        #expect(message.contains("Keychain"))
+        #expect(message.contains("Refresh"))
+    }
+
     @Test("Keychain code-object failures explain how to recover")
     func keychainCodeObjectFailureIsActionable() {
         let message = ErrorPresenter.message(

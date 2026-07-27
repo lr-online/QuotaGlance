@@ -90,11 +90,15 @@ final class AppModel: ObservableObject {
         persistReportingErrors()
         restartSchedule()
         if accounts.contains(where: \.isEnabled) {
-            await refresh()
+            await refresh(credentialAccessMode: .nonInteractive)
         }
     }
 
     func refresh() async {
+        await refresh(credentialAccessMode: .interactive)
+    }
+
+    private func refresh(credentialAccessMode: CredentialAccessMode) async {
         guard accounts.contains(where: \.isEnabled) else {
             publishCachedState()
             return
@@ -108,7 +112,10 @@ final class AppModel: ObservableObject {
         }
 
         do {
-            let result = try await refreshCoordinator.refresh(accounts: accounts)
+            let result = try await refreshCoordinator.refresh(
+                accounts: accounts,
+                credentialAccessMode: credentialAccessMode
+            )
             guard accountStateRevision == expectedAccountStateRevision else { return }
             if result.outcome != .allFailed {
                 try writeSharedSnapshot(result.envelope)
@@ -116,13 +123,29 @@ final class AppModel: ObservableObject {
             latestEnvelope = result.envelope
             await evaluateAlerts(snapshots: result.accountSnapshots)
             guard accountStateRevision == expectedAccountStateRevision else { return }
-            switch result.outcome {
-            case .fresh:
-                lastErrorMessage = nil
-            case .partial:
-                lastErrorMessage = "Some accounts could not be refreshed."
-            case .allFailed:
-                lastErrorMessage = "No account could be refreshed."
+            let lockedCredentialCount = result.accountSnapshots.values.filter {
+                switch $0.health {
+                case .stale(.keychainAccessRequired),
+                     .unavailable(.keychainAccessRequired):
+                    true
+                default:
+                    false
+                }
+            }.count
+            if lockedCredentialCount > 0 {
+                let noun = lockedCredentialCount == 1 ? "key" : "keys"
+                lastErrorMessage = "Keychain approval is required for "
+                    + "\(lockedCredentialCount) saved \(noun). "
+                    + "Click Refresh to unlock."
+            } else {
+                switch result.outcome {
+                case .fresh:
+                    lastErrorMessage = nil
+                case .partial:
+                    lastErrorMessage = "Some accounts could not be refreshed."
+                case .allFailed:
+                    lastErrorMessage = "No account could be refreshed."
+                }
             }
         } catch RefreshCoordinatorError.superseded {
             return
@@ -204,7 +227,7 @@ final class AppModel: ObservableObject {
         if let detectedSnapshot {
             await evaluateAlerts(snapshots: [savedAccountID: detectedSnapshot])
         } else {
-            await refresh()
+            await refresh(credentialAccessMode: .nonInteractive)
         }
     }
 
@@ -231,7 +254,7 @@ final class AppModel: ObservableObject {
             try persist()
             await refreshCoordinator.removeSnapshot(for: id)
             publishCachedState()
-            await refresh()
+            await refresh(credentialAccessMode: .nonInteractive)
         } catch {
             lastErrorMessage = message(for: error)
         }
@@ -248,7 +271,7 @@ final class AppModel: ObservableObject {
         publishCachedState()
         Task {
             await refreshCoordinator.invalidateActiveRefresh()
-            await refresh()
+            await refresh(credentialAccessMode: .nonInteractive)
         }
     }
 
@@ -386,7 +409,7 @@ private extension AppModel {
                     return
                 }
                 guard let self else { return }
-                await self.refresh()
+                await self.refresh(credentialAccessMode: .nonInteractive)
             }
         }
     }

@@ -121,6 +121,8 @@ Provider 特殊情况：
 
 升级前保存的 API Info 账户会自动迁移，原 UUID、设置和 Keychain 项保持不变。为避免凭据迁移风险，Keychain service identifier 仍使用历史名称 `com.liangrui.QuotaGlance.api-info`；它现在只是所有 provider key 共用的内部存储命名空间。
 
+当前临时签名版本升级后，macOS 可能要求为新 app build 重新批准已有 Keychain 项。QuotaGlance 的启动和定时刷新不会主动弹出认证窗口；界面显示 `Keychain Locked` 时，点击刷新按钮，再按系统提示批准对应 key 即可。Developer ID 或 App Store 稳定签名会从根本上消除 build 身份变化。
+
 ## 添加桌面小组件（仅 macOS 14 完整版）
 
 1. 先启动 QuotaGlance 并至少成功刷新一次。
