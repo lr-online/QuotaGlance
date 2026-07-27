@@ -54,12 +54,15 @@ public enum AccountValidationError: Error, Equatable, Sendable {
 }
 
 public enum AccountValidator {
+    public static let maximumAccountCount = 20
+
     public static func validate(
         draft: AccountDraft,
         existingAccounts: [Account],
         editingAccountID: UUID? = nil
     ) throws -> ValidatedAccountDraft {
-        if editingAccountID == nil, existingAccounts.count >= 5 {
+        if editingAccountID == nil,
+           existingAccounts.count >= maximumAccountCount {
             throw AccountValidationError.maximumAccountsReached
         }
 

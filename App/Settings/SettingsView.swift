@@ -31,7 +31,9 @@ struct SettingsView: View {
                 } label: {
                     Label("Add Account", systemImage: "plus")
                 }
-                .disabled(model.accounts.count >= 5)
+                .disabled(
+                    model.accounts.count >= AccountValidator.maximumAccountCount
+                )
             }
 
             Section("Refresh") {

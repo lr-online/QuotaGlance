@@ -6,7 +6,7 @@ QuotaGlance 是一个个人使用的 macOS 菜单栏应用和桌面小组件，�
 
 ## 功能
 
-- 管理最多 5 个具名 provider 账户，key 只保存在 macOS Keychain。
+- 管理最多 20 个具名 provider 账户，key 只保存在 macOS Keychain。
 - 添加 key 时选择 provider；Kimi 和 MiniMax 自动识别中国站或国际站，OpenRouter 自动识别标准 key 或 Management Key。
 - 菜单栏按账户实际能力显示余额明细、消费上限、周期支出、配额窗口、近期趋势和模型用量。
 - All Accounts 只汇总真实余额，并按 `CNY`（人民币）和 `USD`（美元）等币种分别显示，不做汇率换算。
@@ -92,7 +92,7 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 1. 点击菜单栏中的 QuotaGlance 图标，打开 Settings。
 2. 选择 API Info、DeepSeek、Kimi、OpenRouter 或 MiniMax，填写账户名称和 key 后保存。
 3. 保存过程中会验证 key 并自动识别地域或 key 类型；识别结果会显示在 Settings 的账户行中。
-4. 重复添加其他账户；当前设计最多支持五个。
+4. 重复添加其他账户；当前设计最多支持 20 个。
 5. 在菜单栏面板切换 All Accounts 或单个账户，使用刷新按钮立即更新。
 
 Provider 特殊情况：

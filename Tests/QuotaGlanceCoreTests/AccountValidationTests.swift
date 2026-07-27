@@ -37,11 +37,23 @@ struct AccountValidationTests {
         }
     }
 
-    @Test("Adding a sixth account is rejected while editing remains allowed")
-    func maximumFiveAccounts() throws {
-        let accounts = (1...5).map { Account(displayName: "Account \($0)") }
+    @Test("Twenty accounts are allowed while a twenty-first is rejected")
+    func maximumTwentyAccounts() throws {
+        let firstFive = (1...5).map { Account(displayName: "Account \($0)") }
+        let sixth = try AccountValidator.validate(
+            draft: AccountDraft(
+                displayName: "Account 6",
+                apiKey: "test-key",
+                isEnabled: true,
+                lowBalanceThresholdText: ""
+            ),
+            existingAccounts: firstFive
+        )
+        #expect(sixth.displayName == "Account 6")
+
+        let accounts = (1...20).map { Account(displayName: "Account \($0)") }
         let draft = AccountDraft(
-            displayName: "Sixth",
+            displayName: "Account 21",
             apiKey: "test-key",
             isEnabled: true,
             lowBalanceThresholdText: ""

@@ -8,7 +8,7 @@ public enum ErrorPresenter {
         case AccountValidationError.emptyAPIKey:
             "Enter an API key."
         case AccountValidationError.maximumAccountsReached:
-            "QuotaGlance supports up to five accounts."
+            "QuotaGlance supports up to \(AccountValidator.maximumAccountCount) accounts."
         case AccountValidationError.duplicateDisplayName:
             "Account names must be unique."
         case AccountValidationError.invalidThreshold:
