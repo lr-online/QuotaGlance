@@ -87,6 +87,20 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 
 接收者需将应用拖入 Applications，并在首次启动时按住 Control 点击应用后选择“打开”；如果仍被拦截，请在“系统设置 > 隐私与安全性”中选择“仍要打开”。这是临时签名版本的已知限制，不代表 DMG 损坏。
 
+## GitHub Actions
+
+- `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test`、版本构建约束、DMG 打包约束和本地安装安全检查。
+- `Release` 会在推送 `v*` tag 时自动打包 DMG，并把 `dist/*.dmg` 与对应的 `.sha256` 发布到 GitHub Release。
+
+示例：
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+后续跨平台、国际化和商店发布安排记录在 [`docs/roadmap.md`](docs/roadmap.md)。
+
 ## 添加账户
 
 1. 点击菜单栏中的 QuotaGlance 图标，打开 Settings。

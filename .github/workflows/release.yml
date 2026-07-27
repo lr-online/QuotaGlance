@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  package:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Run Swift tests
+        run: swift test
+
+      - name: Verify app icon assets
+        run: /bin/bash Tests/ScriptTests/AppIconTests.sh
+
+      - name: Verify build editions
+        run: /bin/bash Tests/ScriptTests/BuildEditionTests.sh
+
+      - name: Verify DMG packaging
+        run: /bin/bash Tests/ScriptTests/DMGPackagingTests.sh
+
+      - name: Verify local install safety
+        run: /bin/bash Tests/ScriptTests/LocalInstallSafetyTests.sh
+
+      - name: Package release DMGs
+        run: ./scripts/package-dmg.sh
+
+      - name: Upload packaged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuotaGlance-${{ github.ref_name }}
+          path: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+          generate_release_notes: true

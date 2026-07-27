@@ -23,6 +23,8 @@ targets:
         excludes:
           - Info.plist
           - QuotaGlance.entitlements
+          - Assets.xcassets
+      - path: App/Assets.xcassets
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore
@@ -35,6 +37,7 @@ targets:
         PRODUCT_NAME: QuotaGlance
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/QuotaGlance.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
   QuotaGlanceLegacy:
     type: application
@@ -44,6 +47,8 @@ targets:
         excludes:
           - Info.plist
           - QuotaGlance.entitlements
+          - Assets.xcassets
+      - path: App/Assets.xcassets
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore
@@ -54,6 +59,7 @@ targets:
         PRODUCT_NAME: QuotaGlance
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/QuotaGlance.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
   QuotaGlanceWidget:
     type: app-extension

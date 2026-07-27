@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		014B069753244683B9A162FC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C45122AC2A088F188D8933A2 /* Assets.xcassets */; };
 		099C061B9F970D976EE45467 /* SetupWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69694925CA743815D1C0D4F9 /* SetupWindowPresenter.swift */; };
 		1292B68322AABEFC4BEEE058 /* UsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */; };
 		187535FE3E842869AB4C8E8A /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */; };
@@ -21,6 +22,7 @@
 		56551C9AC6D51235B805F689 /* UsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */; };
 		7399855A0C9D4D9F9F272B7C /* LaunchAtLoginService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9A030DF83E171017402EB2F /* LaunchAtLoginService.swift */; };
 		74506F59B85B171E0146DA46 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56FA82CF2B4BECD91167B38B /* NotificationService.swift */; };
+		7D3785BAF503FE040CE12484 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C45122AC2A088F188D8933A2 /* Assets.xcassets */; };
 		8B6B38C8CBC47B32B1B7C231 /* CompatibleFormStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47270B3E4DC923E4EA8BB5F /* CompatibleFormStyle.swift */; };
 		8CEEAB5DE8D34F186837556C /* QuotaGlanceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0E9F2892EEC90A01AD6AE577 /* QuotaGlanceCore */; };
 		9F1F1D5FE13BCA2A1FC834DB /* AccountEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07DFB7E297E0D88831C554BD /* AccountEditorView.swift */; };
@@ -77,11 +79,12 @@
 		A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceApp.swift; sourceTree = "<group>"; };
 		A9A030DF83E171017402EB2F /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
 		B47270B3E4DC923E4EA8BB5F /* CompatibleFormStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompatibleFormStyle.swift; sourceTree = "<group>"; };
+		C45122AC2A088F188D8933A2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C5FBD3A267751C980B056DCF /* QuotaGlanceWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaGlanceWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageChartView.swift; sourceTree = "<group>"; };
 		D971C09B24488E62B4C029BB /* QuotaGlanceLegacy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaGlanceLegacy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E2E65E4350977ACA208C7BA8 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
-		ED7EA9943734797C1A6E9F1D /* quota-glance-phase-one */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "quota-glance-phase-one"; path = .; sourceTree = SOURCE_ROOT; };
+		EBF6A1E8E37588D6073A1C22 /* QuotaGlance */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QuotaGlance; path = .; sourceTree = SOURCE_ROOT; };
 		F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarDashboardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -146,6 +149,7 @@
 			isa = PBXGroup;
 			children = (
 				86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */,
+				C45122AC2A088F188D8933A2 /* Assets.xcassets */,
 				A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */,
 				69694925CA743815D1C0D4F9 /* SetupWindowPresenter.swift */,
 				146CF1D0FC44D5465CD5263E /* MenuBar */,
@@ -169,7 +173,7 @@
 		D07B3C2CF093B6F542C3103C /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				ED7EA9943734797C1A6E9F1D /* quota-glance-phase-one */,
+				EBF6A1E8E37588D6073A1C22 /* QuotaGlance */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -221,6 +225,7 @@
 			buildConfigurationList = 18AA717E0A848EC124AF5506 /* Build configuration list for PBXNativeTarget "QuotaGlance" */;
 			buildPhases = (
 				E09C69B762E98536EE9DC67B /* Sources */,
+				8A46750CCE7C8D96EB57F569 /* Resources */,
 				67AE5798B1484467FB24CBEF /* Frameworks */,
 				FEEC86918060C47A7386465C /* Embed Foundation Extensions */,
 			);
@@ -242,6 +247,7 @@
 			buildConfigurationList = E68FCA8941092233FFE0FC9A /* Build configuration list for PBXNativeTarget "QuotaGlanceLegacy" */;
 			buildPhases = (
 				7538719EA69FF71B0A4C937B /* Sources */,
+				A7E522ADEFC1AE1F0C59B50E /* Resources */,
 				EC30A0E1CA11945974FB0FBE /* Frameworks */,
 			);
 			buildRules = (
@@ -299,6 +305,25 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8A46750CCE7C8D96EB57F569 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7D3785BAF503FE040CE12484 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A7E522ADEFC1AE1F0C59B50E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				014B069753244683B9A162FC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7538719EA69FF71B0A4C937B /* Sources */ = {

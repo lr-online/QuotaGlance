@@ -27,6 +27,10 @@ rg -q '^  QuotaGlanceLegacy:$' "$ROOT_DIR/project.yml" \
   || fail "legacy host target is missing"
 rg -q 'QuotaGlanceLegacy' "$ROOT_DIR/scripts/build-local.sh" \
   || fail "local build script cannot select the legacy edition"
+[[ -f "$ROOT_DIR/Tests/ScriptTests/AppIconTests.sh" ]] \
+  || fail "app icon contract test is missing"
+[[ -f "$ROOT_DIR/Tests/ScriptTests/GitHubActionsTests.sh" ]] \
+  || fail "GitHub Actions contract test is missing"
 
 SCHEMES="$(
   DEVELOPER_DIR="$XCODE_DEVELOPER_DIR" /usr/bin/xcodebuild \

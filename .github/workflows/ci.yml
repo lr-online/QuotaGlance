@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Run Swift tests
+        run: swift test
+
+      - name: Verify app icon assets
+        run: /bin/bash Tests/ScriptTests/AppIconTests.sh
+
+      - name: Verify GitHub Actions contracts
+        run: /bin/bash Tests/ScriptTests/GitHubActionsTests.sh
+
+      - name: Verify build editions
+        run: /bin/bash Tests/ScriptTests/BuildEditionTests.sh
+
+      - name: Verify DMG packaging
+        run: /bin/bash Tests/ScriptTests/DMGPackagingTests.sh
+
+      - name: Verify local install safety
+        run: /bin/bash Tests/ScriptTests/LocalInstallSafetyTests.sh
