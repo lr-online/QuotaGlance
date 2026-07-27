@@ -46,6 +46,7 @@ final class AppModel: ObservableObject {
             OpenRouterProvider(),
             MiniMaxProvider(),
             BailianProvider(),
+            BioMapCodingProvider(),
         ])
         let sharedStore = QuotaGlanceShared.snapshotStore()
         let notificationService = NotificationService()

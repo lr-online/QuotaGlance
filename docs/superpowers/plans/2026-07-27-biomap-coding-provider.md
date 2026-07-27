@@ -16,10 +16,10 @@
 - Modify: `Sources/QuotaGlanceCore/Domain/Provider.swift`
 - Modify: `Tests/QuotaGlanceCoreTests/DomainModelTests.swift`
 
-- [ ] Add failing tests for `ProviderID.bioMapCoding`, display name, global profile label, and disabled low-balance threshold.
-- [ ] Run `swift test --filter DomainModelTests` and confirm the new identity is missing.
-- [ ] Add the provider identity and capability switches.
-- [ ] Re-run the focused tests and confirm they pass.
+- [x] Add failing tests for `ProviderID.bioMapCoding`, display name, global profile label, and disabled low-balance threshold.
+- [x] Run `swift test --filter DomainModelTests` and confirm the new identity is missing.
+- [x] Add the provider identity and capability switches.
+- [x] Re-run the focused tests and confirm they pass.
 
 ### Task 2: LiteLLM Key Info Adapter
 
@@ -27,10 +27,10 @@
 - Create: `Sources/QuotaGlanceCore/Providers/BioMapCodingProvider.swift`
 - Create: `Tests/QuotaGlanceCoreTests/BioMapCodingProviderTests.swift`
 
-- [ ] Add failing tests for nested key info, precise spend and cap mapping, no query key, missing metrics, blocked keys, typed HTTP failures, and fixed profile validation.
-- [ ] Run `swift test --filter BioMapCodingProviderTests` and confirm the adapter is missing.
-- [ ] Implement `GET /key/info` parsing and capability mapping.
-- [ ] Re-run the focused tests and confirm they pass.
+- [x] Add failing tests for nested key info, precise spend and cap mapping, no query key, missing metrics, blocked keys, typed HTTP failures, and fixed profile validation.
+- [x] Run `swift test --filter BioMapCodingProviderTests` and confirm the adapter is missing.
+- [x] Implement `GET /key/info` parsing and capability mapping.
+- [x] Re-run the focused tests and confirm they pass.
 
 ### Task 3: Restricted-Route Fallback And Registration
 
@@ -39,10 +39,10 @@
 - Modify: `Tests/QuotaGlanceCoreTests/BioMapCodingProviderTests.swift`
 - Modify: `App/AppModel.swift`
 
-- [ ] Add failing tests that only 403/404/405 fall back to `/v1/models`, validate the model-list shape, and expose a connection-only notice.
-- [ ] Run the focused provider tests and confirm fallback calls are missing.
-- [ ] Implement fallback and register the provider in `AppModel`.
-- [ ] Re-run provider tests and build the app.
+- [x] Add failing tests that only 403/404/405 fall back to `/v1/models`, validate the model-list shape, and expose a connection-only notice.
+- [x] Run the focused provider tests and confirm fallback calls are missing.
+- [x] Implement fallback and register the provider in `AppModel`.
+- [x] Re-run provider tests and build the app.
 
 ### Task 4: Documentation And Verification
 
@@ -50,8 +50,7 @@
 - Modify: `README.md`
 - Modify: `docs/research/provider-capabilities.md`
 
-- [ ] Document the fixed BioMap endpoint, LiteLLM version, USD spend semantics, and permission fallback.
-- [ ] Run `swift test` and all script tests.
-- [ ] Build and install the Release app, verify signing/process/Widget registration, and run the configured-key secret scan when a key is available.
-- [ ] Run `git diff --check`, commit, and push `main`.
-
+- [x] Document the fixed BioMap endpoint, LiteLLM version, USD spend semantics, and permission fallback.
+- [x] Run `swift test` and all script tests.
+- [x] Build and install the Release app, verify signing/process/Widget registration, and run the configured-key secret scan when a key is available.
+- [x] Run `git diff --check`, commit, and push `main`.

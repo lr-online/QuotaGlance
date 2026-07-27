@@ -5,12 +5,13 @@ Date: 2026-07-27
 
 ## Decision
 
-QuotaGlance implements six visible provider families: API Info, DeepSeek,
-Kimi, OpenRouter, MiniMax, and Alibaba Cloud Model Studio (Bailian). Kimi and
-MiniMax each remain one provider in the picker; the app detects China versus
-international credentials and persists the resolved region. OpenRouter detects
-standard versus management credentials. Bailian detects region from its
-validated official Base URL.
+QuotaGlance implements seven visible provider families: API Info, DeepSeek,
+Kimi, OpenRouter, MiniMax, Alibaba Cloud Model Studio (Bailian), and BioMap
+Coding. Kimi and MiniMax each remain one provider in the picker; the app detects
+China versus international credentials and persists the resolved region.
+OpenRouter detects standard versus management credentials. Bailian detects
+region from its validated official Base URL. BioMap Coding uses its fixed
+company LiteLLM deployment.
 
 Provider responses map into independent balance, spending-limit, spend-period,
 and quota-window capabilities. Only real balances enter All Accounts totals.
@@ -175,6 +176,35 @@ Official sources:
 - https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope
 - https://help.aliyun.com/zh/user-center/developer-reference/api-bssopenapi-2017-12-14-queryaccountbalance
 
+## BioMap Coding
+
+Status: Implemented for LiteLLM virtual keys.
+
+- Fixed deployment: `https://coding.biomap-int.com`
+- The deployment's public OpenAPI document reported LiteLLM `1.82.3` during
+  research on 2026-07-27.
+- Authentication: Bearer virtual key. The credential is never placed in a URL
+  query parameter.
+- Primary endpoint: `GET /key/info`, called without a `key` query parameter so
+  LiteLLM resolves the authorized Bearer key itself.
+- The nested `info.spend` value maps to cumulative `USD` key spend.
+  `info.max_budget` maps to a spending cap, and the displayed remainder is
+  `max_budget - spend`. Neither the cap nor its remainder is a cash balance, so
+  it never enters All Accounts monetary totals.
+- An `info.blocked` key is treated as inactive. Missing spend or budget fields
+  remain unavailable rather than becoming zero.
+- Some LiteLLM deployments restrict the key-info management route. Only an
+  explicit 403, 404, or 405 response falls back to `GET /v1/models`; a valid
+  model list then produces a connection-only snapshot with model count and a
+  clear budget-unavailable notice.
+- Authentication failures, rate limits, server errors, and malformed responses
+  do not trigger fallback and remain typed errors.
+
+Research sources:
+
+- https://coding.biomap-int.com/openapi.json
+- https://docs.litellm.ai/docs/proxy/virtual_keys
+
 ## Implemented Provider Boundary
 
 Provider adapters map vendor responses into capability-based domain values
@@ -220,4 +250,4 @@ introduced. Spending limits and quota windows never enter cash totals.
 - Healthy connection-only accounts show `Connected` and the provider's reason
   that quantitative metrics are unavailable instead of `No metric`.
 - Low-balance alerts apply only to a real primary balance. They are unavailable
-  for MiniMax, Bailian, and OpenRouter standard keys.
+  for MiniMax, Bailian, BioMap Coding, and OpenRouter standard keys.

@@ -7,6 +7,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
     case openRouter
     case miniMax
     case bailian
+    case bioMapCoding
 
     public var id: String { rawValue }
 
@@ -18,6 +19,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .openRouter: "OpenRouter"
         case .miniMax: "MiniMax"
         case .bailian: "Alibaba Cloud Model Studio"
+        case .bioMapCoding: "BioMap Coding"
         }
     }
 
@@ -41,7 +43,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
             case .international: "International endpoint"
             case .global: "Global endpoint"
             }
-        case .apiInfo, .deepSeek:
+        case .apiInfo, .deepSeek, .bioMapCoding:
             "\(profile.region.displayName) / \(profile.credentialKind.displayName)"
         }
     }
@@ -50,7 +52,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         profile: ProviderProfile?
     ) -> Bool {
         return switch self {
-        case .miniMax, .bailian:
+        case .miniMax, .bailian, .bioMapCoding:
             false
         case .openRouter:
             profile == nil || profile?.credentialKind == .management

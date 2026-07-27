@@ -52,6 +52,7 @@ struct DomainModelTests {
             .openRouter,
             .miniMax,
             .bailian,
+            .bioMapCoding,
         ])
     }
 
@@ -78,6 +79,12 @@ struct DomainModelTests {
             ) == "International / Token Plan"
         )
         #expect(ProviderID.deepSeek.profileDescription(for: nil) == "Not detected")
+        #expect(ProviderID.bioMapCoding.displayName == "BioMap Coding")
+        #expect(
+            ProviderID.bioMapCoding.profileDescription(
+                for: ProviderProfile(region: .global, credentialKind: .standard)
+            ) == "Global / Standard key"
+        )
     }
 
     @Test("Low-balance thresholds are available only for balance credentials")
@@ -94,6 +101,7 @@ struct DomainModelTests {
         #expect(ProviderID.openRouter.supportsLowBalanceThreshold(profile: management))
         #expect(!ProviderID.miniMax.supportsLowBalanceThreshold(profile: tokenPlan))
         #expect(!ProviderID.bailian.supportsLowBalanceThreshold(profile: standard))
+        #expect(!ProviderID.bioMapCoding.supportsLowBalanceThreshold(profile: standard))
         #expect(
             ProviderID.miniMax.normalizedLowBalanceThreshold(
                 20,
