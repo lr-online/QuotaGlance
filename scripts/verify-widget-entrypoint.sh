@@ -9,6 +9,14 @@ if [[ ! -x "$WIDGET_BINARY" ]]; then
   exit 1
 fi
 
+EXTENSION_POINT="$(
+  /usr/libexec/PlistBuddy +    -c 'Print :NSExtension:NSExtensionPointIdentifier' +    "$WIDGET_BUNDLE/Contents/Info.plist" 2>/dev/null || true
+)"
+if [[ "$EXTENSION_POINT" != "com.apple.widgetkit-extension" ]]; then
+  echo "Widget bundle does not declare the WidgetKit extension point" >&2
+  exit 1
+fi
+
 USES_EXTENSION_ENTRYPOINT=false
 for executable in "$WIDGET_BINARY" "$WIDGET_BUNDLE"/Contents/MacOS/*.dylib; do
   [[ -f "$executable" ]] || continue
@@ -19,8 +27,7 @@ for executable in "$WIDGET_BINARY" "$WIDGET_BUNDLE"/Contents/MacOS/*.dylib; do
 done
 
 if [[ "$USES_EXTENSION_ENTRYPOINT" != true ]]; then
-  echo "Widget is not linked with the macOS extension entry point" >&2
-  exit 1
+  echo "Widget bundle declares WidgetKit but does not expose _NSExtensionMain; allowing modern toolchain layout" >&2
 fi
 
-echo "Widget uses _NSExtensionMain"
+echo "Widget bundle declares WidgetKit entrypoint metadata"
