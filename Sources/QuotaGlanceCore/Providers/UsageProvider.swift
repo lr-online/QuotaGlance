@@ -103,3 +103,27 @@ enum ProviderHTTPStatus {
         }
     }
 }
+
+struct ProviderDecimal: Decodable, Equatable, Sendable {
+    let value: Decimal
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let decimal = try? container.decode(Decimal.self) {
+            value = decimal
+            return
+        }
+        if let string = try? container.decode(String.self),
+           let decimal = Decimal(
+               string: string,
+               locale: Locale(identifier: "en_US_POSIX")
+           ) {
+            value = decimal
+            return
+        }
+        throw DecodingError.dataCorruptedError(
+            in: container,
+            debugDescription: "Expected a decimal number or numeric string."
+        )
+    }
+}
