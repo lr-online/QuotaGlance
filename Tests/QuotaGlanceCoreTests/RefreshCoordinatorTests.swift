@@ -93,6 +93,45 @@ struct RefreshCoordinatorTests {
         #expect(firstResult.outcome == .fresh)
     }
 
+    @Test("A changed account configuration supersedes an in-flight refresh")
+    func changedAccountConfigurationSupersedesInFlightRefresh() async throws {
+        let oldAccount = testAccounts()[0]
+        var renamedAccount = oldAccount
+        renamedAccount.displayName = "Renamed"
+        let provider = BlockingUsageProvider(snapshot: usage(remaining: "10"))
+        let coordinator = RefreshCoordinator(
+            credentialStore: MemoryCredentialStore(values: [oldAccount.id: "key"]),
+            provider: provider,
+            aggregator: SnapshotAggregator(calendar: utcCalendar),
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+
+        let oldRefresh = Task {
+            try await coordinator.refresh(accounts: [oldAccount])
+        }
+        await provider.waitForCallCount(1)
+        let renamedRefresh = Task {
+            try await coordinator.refresh(accounts: [renamedAccount])
+        }
+        let startedSecondCall = await provider.reachesCallCount(2)
+        await provider.release()
+
+        let oldRefreshWasSuperseded: Bool
+        do {
+            _ = try await oldRefresh.value
+            oldRefreshWasSuperseded = false
+        } catch {
+            oldRefreshWasSuperseded = true
+        }
+        let renamedResult = try await renamedRefresh.value
+
+        #expect(startedSecondCall)
+        #expect(oldRefreshWasSuperseded)
+        #expect(await provider.callCount == 2)
+        #expect(renamedResult.accountSnapshots[oldAccount.id]?.displayName == "Renamed")
+    }
+
     @Test("A failed account keeps its last success and marks the aggregate partial")
     func failedAccountKeepsLastSuccess() async throws {
         let accounts = testAccounts()
@@ -132,6 +171,161 @@ struct RefreshCoordinatorTests {
         #expect(result.aggregate.isPartial)
         #expect(result.outcome == .partial)
         #expect(await recorder.snapshots == [result.envelope])
+    }
+
+    @Test("A detected replacement snapshot becomes the refresh failure fallback")
+    func detectedReplacementSnapshotBecomesFailureFallback() async throws {
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-000000000021")!
+        let oldAccount = Account(
+            id: accountID,
+            displayName: "Old API Info",
+            provider: .apiInfo
+        )
+        let replacementAccount = Account(
+            id: accountID,
+            displayName: "Kimi China",
+            provider: .kimi,
+            detectedProfile: ProviderProfile(
+                region: .china,
+                credentialKind: .standard
+            )
+        )
+        let oldSnapshot = accountSnapshot(
+            account: oldAccount,
+            usage: usage(remaining: "100"),
+            health: .healthy
+        )
+        let detectedUsage = ProviderUsageSnapshot(
+            remaining: Money(amount: 25, currency: "CNY"),
+            receivedAt: Date(timeIntervalSince1970: 150)
+        )
+        let detectedSnapshot = accountSnapshot(
+            account: replacementAccount,
+            usage: detectedUsage,
+            health: .healthy
+        )
+        let coordinator = RefreshCoordinator(
+            credentialStore: MemoryCredentialStore(values: [accountID: "replacement-key"]),
+            registry: ProviderRegistry(providers: [
+                FailingUsageProvider(id: .kimi, error: .rateLimited),
+            ]),
+            aggregator: SnapshotAggregator(calendar: utcCalendar),
+            initialSnapshots: [oldSnapshot],
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 200) }
+        )
+
+        await coordinator.recordSuccessfulSnapshot(detectedSnapshot)
+        let result = try await coordinator.refresh(accounts: [replacementAccount])
+        let fallback = try #require(result.accountSnapshots[accountID])
+
+        #expect(fallback.provider == .kimi)
+        #expect(fallback.detectedProfile == replacementAccount.detectedProfile)
+        #expect(fallback.usage == detectedUsage)
+        #expect(fallback.health == .stale(.rateLimited))
+    }
+
+    @Test("Recording a detected snapshot supersedes an in-flight refresh")
+    func detectedSnapshotSupersedesInFlightRefresh() async throws {
+        let account = testAccounts()[0]
+        let provider = BlockingThenFailingUsageProvider(
+            firstSnapshot: usage(remaining: "100")
+        )
+        let coordinator = RefreshCoordinator(
+            credentialStore: MemoryCredentialStore(values: [account.id: "key"]),
+            provider: provider,
+            aggregator: SnapshotAggregator(calendar: utcCalendar),
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 200) }
+        )
+        let detectedUsage = usage(remaining: "25")
+        let detectedSnapshot = accountSnapshot(
+            account: account,
+            usage: detectedUsage,
+            health: .healthy
+        )
+
+        let oldRefresh = Task {
+            try await coordinator.refresh(accounts: [account])
+        }
+        await provider.waitForFirstCall()
+        await coordinator.recordSuccessfulSnapshot(detectedSnapshot)
+        await provider.releaseFirstCall()
+
+        let oldRefreshWasSuperseded: Bool
+        do {
+            _ = try await oldRefresh.value
+            oldRefreshWasSuperseded = false
+        } catch {
+            oldRefreshWasSuperseded = true
+        }
+        #expect(oldRefreshWasSuperseded)
+
+        let nextRefresh = try await coordinator.refresh(accounts: [account])
+        let fallback = try #require(nextRefresh.accountSnapshots[account.id])
+        #expect(fallback.usage == detectedUsage)
+        #expect(fallback.health == .stale(.rateLimited))
+    }
+
+    @Test("Removing an account also removes its refresh failure fallback")
+    func removingAccountRemovesFailureFallback() async throws {
+        let account = testAccounts()[0]
+        let previous = accountSnapshot(
+            account: account,
+            usage: usage(remaining: "100"),
+            health: .healthy
+        )
+        let coordinator = RefreshCoordinator(
+            credentialStore: MemoryCredentialStore(values: [:]),
+            provider: FailingUsageProvider(id: .apiInfo, error: .invalidCredential),
+            aggregator: SnapshotAggregator(calendar: utcCalendar),
+            initialSnapshots: [previous],
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 200) }
+        )
+
+        await coordinator.removeSnapshot(for: account.id)
+        let result = try await coordinator.refresh(accounts: [account])
+        let fallback = try #require(result.accountSnapshots[account.id])
+
+        #expect(fallback.usage == nil)
+        #expect(fallback.health == .unavailable(.missingCredential))
+    }
+
+    @Test("Removing a snapshot supersedes an in-flight refresh")
+    func removingSnapshotSupersedesInFlightRefresh() async throws {
+        let account = testAccounts()[0]
+        let provider = BlockingThenFailingUsageProvider(
+            firstSnapshot: usage(remaining: "100")
+        )
+        let coordinator = RefreshCoordinator(
+            credentialStore: MemoryCredentialStore(values: [account.id: "key"]),
+            provider: provider,
+            aggregator: SnapshotAggregator(calendar: utcCalendar),
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 200) }
+        )
+
+        let oldRefresh = Task {
+            try await coordinator.refresh(accounts: [account])
+        }
+        await provider.waitForFirstCall()
+        await coordinator.removeSnapshot(for: account.id)
+        await provider.releaseFirstCall()
+
+        let oldRefreshWasSuperseded: Bool
+        do {
+            _ = try await oldRefresh.value
+            oldRefreshWasSuperseded = false
+        } catch {
+            oldRefreshWasSuperseded = true
+        }
+        #expect(oldRefreshWasSuperseded)
+
+        let nextRefresh = try await coordinator.refresh(accounts: [account])
+        let fallback = try #require(nextRefresh.accountSnapshots[account.id])
+        #expect(fallback.usage == nil)
+        #expect(fallback.health == .unavailable(.rateLimited))
     }
 
     @Test("A provider call exceeding its deadline is marked timed out")
@@ -252,6 +446,16 @@ private actor BlockingUsageProvider: UsageProvider {
         }
     }
 
+    func reachesCallCount(_ expected: Int) async -> Bool {
+        for _ in 0..<50 {
+            if callCount >= expected {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000)
+        }
+        return callCount >= expected
+    }
+
     func release() {
         isReleased = true
         let continuations = blocked
@@ -263,6 +467,43 @@ private actor BlockingUsageProvider: UsageProvider {
         let satisfied = callWaiters.filter { $0.0 <= callCount }
         callWaiters.removeAll { $0.0 <= callCount }
         satisfied.forEach { $0.1.resume() }
+    }
+}
+
+private actor BlockingThenFailingUsageProvider: UsageProvider {
+    private let firstSnapshot: ProviderUsageSnapshot
+    private var firstCallContinuation: CheckedContinuation<Void, Never>?
+    private var firstCallWaiters: [CheckedContinuation<Void, Never>] = []
+    private var callCount = 0
+
+    init(firstSnapshot: ProviderUsageSnapshot) {
+        self.firstSnapshot = firstSnapshot
+    }
+
+    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+        callCount += 1
+        if callCount == 1 {
+            let waiters = firstCallWaiters
+            firstCallWaiters.removeAll()
+            waiters.forEach { $0.resume() }
+            await withCheckedContinuation { continuation in
+                firstCallContinuation = continuation
+            }
+            return firstSnapshot
+        }
+        throw ProviderError.rateLimited
+    }
+
+    func waitForFirstCall() async {
+        guard callCount == 0 else { return }
+        await withCheckedContinuation { continuation in
+            firstCallWaiters.append(continuation)
+        }
+    }
+
+    func releaseFirstCall() {
+        firstCallContinuation?.resume()
+        firstCallContinuation = nil
     }
 }
 
@@ -283,6 +524,15 @@ private actor ScriptedUsageProvider: UsageProvider {
             throw failure
         }
         return try #require(successes[apiKey])
+    }
+}
+
+private struct FailingUsageProvider: UsageProvider {
+    let id: ProviderID
+    let error: ProviderError
+
+    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+        throw error
     }
 }
 

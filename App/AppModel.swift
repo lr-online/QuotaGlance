@@ -23,6 +23,8 @@ final class AppModel: ObservableObject {
     private let launchAtLoginService: LaunchAtLoginService
     private var scheduleTask: Task<Void, Never>?
     private var hasStarted = false
+    private var accountStateRevision: UInt64 = 0
+    private var activeRefreshCount = 0
 
     init() {
         let preferencesStore = AccountPreferencesStore()
@@ -48,15 +50,6 @@ final class AppModel: ObservableObject {
         let notificationService = NotificationService()
         let launchAtLoginService = LaunchAtLoginService()
         let cachedEnvelope = sharedStore.flatMap { try? $0.read() }
-        let snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)?
-        if let sharedStore {
-            snapshotWriter = { snapshot in
-                try sharedStore.write(snapshot)
-                WidgetCenter.shared.reloadAllTimelines()
-            }
-        } else {
-            snapshotWriter = nil
-        }
 
         self.accounts = stored.accounts.sorted { $0.sortOrder < $1.sortOrder }
         self.preferences = stored.preferences
@@ -71,8 +64,7 @@ final class AppModel: ObservableObject {
         self.refreshCoordinator = RefreshCoordinator(
             credentialStore: credentialStore,
             registry: registry,
-            initialSnapshots: cachedEnvelope?.accounts ?? [],
-            snapshotWriter: snapshotWriter
+            initialSnapshots: cachedEnvelope?.accounts ?? []
         )
     }
 
@@ -106,13 +98,23 @@ final class AppModel: ObservableObject {
             publishCachedState()
             return
         }
+        let expectedAccountStateRevision = accountStateRevision
+        activeRefreshCount += 1
         isRefreshing = true
-        defer { isRefreshing = false }
+        defer {
+            activeRefreshCount -= 1
+            isRefreshing = activeRefreshCount > 0
+        }
 
         do {
             let result = try await refreshCoordinator.refresh(accounts: accounts)
+            guard accountStateRevision == expectedAccountStateRevision else { return }
+            if result.outcome != .allFailed {
+                try writeSharedSnapshot(result.envelope)
+            }
             latestEnvelope = result.envelope
-            await evaluateAlerts(result: result)
+            await evaluateAlerts(snapshots: result.accountSnapshots)
+            guard accountStateRevision == expectedAccountStateRevision else { return }
             switch result.outcome {
             case .fresh:
                 lastErrorMessage = nil
@@ -121,7 +123,10 @@ final class AppModel: ObservableObject {
             case .allFailed:
                 lastErrorMessage = "No account could be refreshed."
             }
+        } catch RefreshCoordinatorError.superseded {
+            return
         } catch {
+            guard accountStateRevision == expectedAccountStateRevision else { return }
             lastErrorMessage = message(for: error)
         }
     }
@@ -168,20 +173,29 @@ final class AppModel: ObservableObject {
                 detectedProfile: detection?.profile
             )
         }
+        markAccountStateChanged()
 
         try persist()
+        let detectedSnapshot: AccountSnapshot?
         if let detection {
-            publishDetectedSnapshot(
+            detectedSnapshot = publishDetectedSnapshot(
                 accountID: savedAccountID,
                 usage: detection.snapshot
             )
+            if let detectedSnapshot {
+                await refreshCoordinator.recordSuccessfulSnapshot(detectedSnapshot)
+            }
         } else {
+            detectedSnapshot = nil
+            await refreshCoordinator.invalidateActiveRefresh()
             publishCachedState()
         }
         if !previouslyHadThreshold, validated.lowBalanceThreshold != nil {
             notificationPermission = await notificationService.requestAuthorization()
         }
-        if detection == nil {
+        if let detectedSnapshot {
+            await evaluateAlerts(snapshots: [savedAccountID: detectedSnapshot])
+        } else {
             await refresh()
         }
     }
@@ -189,12 +203,14 @@ final class AppModel: ObservableObject {
     func deleteAccount(id: UUID) async {
         guard let index = accounts.firstIndex(where: { $0.id == id }) else { return }
         let removed = accounts.remove(at: index)
+        markAccountStateChanged()
         do {
             try await credentialStore.delete(for: id)
         } catch CredentialStoreError.notFound {
             // The metadata should still be removed when the Keychain item is already gone.
         } catch {
             accounts.insert(removed, at: index)
+            markAccountStateChanged()
             lastErrorMessage = message(for: error)
             return
         }
@@ -205,6 +221,7 @@ final class AppModel: ObservableObject {
         normalizeSortOrder()
         do {
             try persist()
+            await refreshCoordinator.removeSnapshot(for: id)
             publishCachedState()
             await refresh()
         } catch {
@@ -218,9 +235,13 @@ final class AppModel: ObservableObject {
         if !isEnabled {
             accounts[index].alertEpisodeActive = false
         }
+        markAccountStateChanged()
         persistReportingErrors()
         publishCachedState()
-        Task { await refresh() }
+        Task {
+            await refreshCoordinator.invalidateActiveRefresh()
+            await refresh()
+        }
     }
 
     func moveAccount(id: UUID, offset: Int) {
@@ -229,6 +250,7 @@ final class AppModel: ObservableObject {
         guard accounts.indices.contains(destination) else { return }
         accounts.swapAt(index, destination)
         normalizeSortOrder()
+        markAccountStateChanged()
         persistReportingErrors()
         publishCachedState()
     }
@@ -357,6 +379,10 @@ private extension AppModel {
         }
     }
 
+    func markAccountStateChanged() {
+        accountStateRevision &+= 1
+    }
+
     func persist() throws {
         try preferencesStore.save(
             accounts: accounts,
@@ -388,50 +414,40 @@ private extension AppModel {
         }
     }
 
-    func evaluateAlerts(result: RefreshResult) async {
-        var changed = false
-        for index in accounts.indices {
-            guard let snapshot = result.accountSnapshots[accounts[index].id],
-                  let remaining = snapshot.remaining
-            else {
-                continue
-            }
-            switch snapshot.health {
-            case .healthy, .belowThreshold:
-                break
-            case .stale, .unavailable:
-                continue
-            }
-
-            let action = AlertEvaluator.evaluate(
-                account: &accounts[index],
-                freshRemaining: remaining.amount
-            )
-            guard action != .none else { continue }
-            changed = true
-            if action == .notify, notificationPermission == .authorized {
-                do {
-                    try await notificationService.sendLowBalance(
-                        account: accounts[index],
-                        remaining: remaining
-                    )
-                } catch {
-                    lastErrorMessage = message(for: error)
-                }
-            }
-        }
-        if changed {
+    func evaluateAlerts(snapshots: [UUID: AccountSnapshot]) async {
+        let expectedAccountStateRevision = accountStateRevision
+        let evaluation = AlertEvaluator.evaluate(
+            accounts: &accounts,
+            freshSnapshots: snapshots
+        )
+        if evaluation.didChange {
             persistReportingErrors()
+        }
+        guard notificationPermission == .authorized else { return }
+
+        for notification in evaluation.notifications {
+            guard accountStateRevision == expectedAccountStateRevision,
+                  accounts.contains(where: { $0.id == notification.account.id }) else {
+                return
+            }
+            do {
+                try await notificationService.sendLowBalance(
+                    account: notification.account,
+                    remaining: notification.remaining
+                )
+            } catch {
+                lastErrorMessage = message(for: error)
+            }
         }
     }
 
     func publishDetectedSnapshot(
         accountID: UUID,
         usage: ProviderUsageSnapshot
-    ) {
+    ) -> AccountSnapshot? {
         guard let account = accounts.first(where: { $0.id == accountID }) else {
             publishCachedState()
-            return
+            return nil
         }
         let health: AccountHealth
         if let remaining = usage.primaryBalance?.available.amount,
@@ -443,19 +459,19 @@ private extension AppModel {
         }
         var snapshots = latestEnvelope?.accounts ?? []
         snapshots.removeAll { $0.accountID == accountID }
-        snapshots.append(
-            AccountSnapshot(
-                accountID: account.id,
-                displayName: account.displayName,
-                provider: account.provider,
-                detectedProfile: account.detectedProfile,
-                lowBalanceThreshold: account.lowBalanceThreshold,
-                usage: usage,
-                health: health,
-                lastSuccessAt: usage.receivedAt
-            )
+        let detectedSnapshot = AccountSnapshot(
+            accountID: account.id,
+            displayName: account.displayName,
+            provider: account.provider,
+            detectedProfile: account.detectedProfile,
+            lowBalanceThreshold: account.lowBalanceThreshold,
+            usage: usage,
+            health: health,
+            lastSuccessAt: usage.receivedAt
         )
+        snapshots.append(detectedSnapshot)
         publish(snapshots: snapshots, capturedAt: usage.receivedAt)
+        return detectedSnapshot
     }
 
     func publishCachedState() {
@@ -477,12 +493,16 @@ private extension AppModel {
             accounts: aggregate.accounts
         )
         latestEnvelope = envelope
-        guard let sharedSnapshotStore else { return }
         do {
-            try sharedSnapshotStore.write(envelope)
-            WidgetCenter.shared.reloadAllTimelines()
+            try writeSharedSnapshot(envelope)
         } catch {
             lastErrorMessage = message(for: error)
         }
+    }
+
+    func writeSharedSnapshot(_ envelope: WidgetSnapshotEnvelope) throws {
+        guard let sharedSnapshotStore else { return }
+        try sharedSnapshotStore.write(envelope)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }

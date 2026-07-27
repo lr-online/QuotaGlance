@@ -85,6 +85,70 @@ struct WidgetPresentationTests {
         )
     }
 
+    @Test("All Accounts falls back to a labeled compact account metric")
+    func aggregateFallsBackToCompactAccountMetric() throws {
+        let quotaAccount = AccountSnapshot(
+            accountID: UUID(uuidString: "00000000-0000-0000-0000-000000000091")!,
+            displayName: "MiniMax",
+            provider: .miniMax,
+            detectedProfile: ProviderProfile(
+                region: .china,
+                credentialKind: .tokenPlan
+            ),
+            usage: ProviderUsageSnapshot(
+                quotaWindows: [
+                    QuotaWindow(label: "5-hour quota", remaining: 900, unit: "requests"),
+                ],
+                receivedAt: Date(timeIntervalSince1970: 100)
+            ),
+            health: .healthy
+        )
+        let spendAccount = AccountSnapshot(
+            accountID: UUID(uuidString: "00000000-0000-0000-0000-000000000092")!,
+            displayName: "OpenRouter",
+            provider: .openRouter,
+            detectedProfile: ProviderProfile(
+                region: .global,
+                credentialKind: .standard
+            ),
+            usage: ProviderUsageSnapshot(
+                spend: SpendSummary(month: usd("12")),
+                receivedAt: Date(timeIntervalSince1970: 100)
+            ),
+            health: .healthy
+        )
+        let accounts = [quotaAccount, spendAccount]
+        let envelope = WidgetSnapshotEnvelope(
+            capturedAt: Date(timeIntervalSince1970: 100),
+            aggregate: AggregateSnapshot(accounts: accounts),
+            accounts: accounts
+        )
+
+        let presentation = WidgetPresenter.make(
+            selection: .allAccounts,
+            envelope: envelope
+        )
+
+        #expect(presentation.balances.isEmpty)
+        #expect(
+            presentation.primaryMetric
+                == PrimaryMetric(
+                    label: "5-hour quota",
+                    value: .quantity(900, unit: "requests")
+                )
+        )
+        let firstRow = try #require(presentation.accountRows.first)
+        #expect(firstRow.displayName == "MiniMax")
+        #expect(firstRow.primaryMetric == presentation.primaryMetric)
+        #expect(
+            presentation.accountRows[1].primaryMetric
+                == PrimaryMetric(
+                    label: "Spent this month",
+                    value: .money(usd("12"))
+                )
+        )
+    }
+
     @Test("A valid account selection maps only that account")
     func validAccountSelection() {
         let fixture = widgetFixture()

@@ -413,7 +413,7 @@ struct MenuBarDashboardView: View {
     }
 
     @ViewBuilder
-    private func accountSection(_ accounts: [AccountSnapshot]) -> some View {
+    private func accountSection(_ accounts: [CompactAccountPresentation]) -> some View {
         if !accounts.isEmpty {
             VStack(alignment: .leading, spacing: 7) {
                 sectionHeader("Accounts")
@@ -431,13 +431,20 @@ struct MenuBarDashboardView: View {
                         Text(account.displayName)
                             .lineLimit(1)
                         Spacer()
-                        Text(
-                            DashboardPresenter.primaryMetric(for: account.usage).map {
-                                PrimaryMetricFormatter.string($0.value)
-                            } ?? "--"
-                        )
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        if let metric = account.primaryMetric {
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text(PrimaryMetricFormatter.string(metric.value))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                Text(metric.label)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        } else {
+                            Text("--")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .font(.caption)
                 }

@@ -115,6 +115,10 @@ struct MenuBarPresentationTests {
         #expect(presentation.accountRows.count == 5)
         #expect(presentation.accountRows[0].health == .healthy)
         #expect(presentation.accountRows[1].health == .stale(.offline))
+        #expect(
+            presentation.accountRows[0].primaryMetric
+                == PrimaryMetric(label: "Balance", value: .money(usd("100")))
+        )
         #expect(presentation.status == .partial)
     }
 

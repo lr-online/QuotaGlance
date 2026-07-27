@@ -29,6 +29,21 @@ public struct PrimaryMetric: Equatable, Sendable {
     }
 }
 
+public struct CompactAccountPresentation: Equatable, Identifiable, Sendable {
+    public var id: UUID { accountID }
+    public let accountID: UUID
+    public let displayName: String
+    public let health: AccountHealth
+    public let primaryMetric: PrimaryMetric?
+
+    public init(account: AccountSnapshot) {
+        accountID = account.accountID
+        displayName = account.displayName
+        health = account.health
+        primaryMetric = DashboardPresenter.primaryMetric(for: account.usage)
+    }
+}
+
 public enum PrimaryMetricFormatter {
     public static func string(
         _ value: PrimaryMetricValue,

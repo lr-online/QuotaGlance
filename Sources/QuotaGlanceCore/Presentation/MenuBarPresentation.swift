@@ -21,7 +21,7 @@ public struct MenuBarPresentation: Equatable, Sendable {
     public let todayActualCost: Money?
     public let todayRequests: Int64?
     public let days: [MenuBarDayPresentation]
-    public let accountRows: [AccountSnapshot]
+    public let accountRows: [CompactAccountPresentation]
     public let balanceRows: [MonetaryBalance]
     public let spendingLimit: SpendingLimit?
     public let spend: SpendSummary
@@ -69,7 +69,9 @@ public enum MenuBarPresenter {
             todayActualCost: dashboard.todayActualCost,
             todayRequests: dashboard.todayRequests,
             days: makeDays(dashboard.dailyUsage),
-            accountRows: Array(dashboard.accountRows.prefix(5)),
+            accountRows: dashboard.accountRows.prefix(5).map {
+                CompactAccountPresentation(account: $0)
+            },
             balanceRows: dashboard.usage?.balances ?? [],
             spendingLimit: dashboard.usage?.spendingLimit,
             spend: dashboard.usage?.spend ?? SpendSummary(),

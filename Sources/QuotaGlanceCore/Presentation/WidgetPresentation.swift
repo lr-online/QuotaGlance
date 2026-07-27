@@ -19,7 +19,7 @@ public struct WidgetPresentation: Equatable, Sendable {
     public var todayActualCost: Money?
     public var todayRequests: Int64?
     public var dailyUsage: [DailyUsage]
-    public var accountRows: [AccountSnapshot]
+    public var accountRows: [CompactAccountPresentation]
     public var state: WidgetPresentationState
     public var lastSuccessAt: Date?
     public var capturedAt: Date?
@@ -33,7 +33,7 @@ public struct WidgetPresentation: Equatable, Sendable {
         todayActualCost: Money? = nil,
         todayRequests: Int64? = nil,
         dailyUsage: [DailyUsage] = [],
-        accountRows: [AccountSnapshot] = [],
+        accountRows: [CompactAccountPresentation] = [],
         state: WidgetPresentationState,
         lastSuccessAt: Date? = nil,
         capturedAt: Date? = nil,
@@ -90,15 +90,27 @@ public enum WidgetPresenter {
             )
         }
 
+        let accountRows = dashboard.accountRows.map {
+            CompactAccountPresentation(account: $0)
+        }
+        let primaryMetric: PrimaryMetric?
+        switch selection {
+        case .allAccounts:
+            primaryMetric = dashboard.primaryMetric
+                ?? accountRows.compactMap(\.primaryMetric).first
+        case .account:
+            primaryMetric = dashboard.primaryMetric
+        }
+
         return WidgetPresentation(
             title: dashboard.title,
             balances: Array(dashboard.balances.prefix(2)),
             remaining: dashboard.remaining,
-            primaryMetric: dashboard.primaryMetric,
+            primaryMetric: primaryMetric,
             todayActualCost: dashboard.todayActualCost,
             todayRequests: dashboard.todayRequests,
             dailyUsage: dashboard.dailyUsage,
-            accountRows: dashboard.accountRows,
+            accountRows: accountRows,
             state: .available(dashboard.status),
             lastSuccessAt: dashboard.lastSuccessAt,
             capturedAt: envelope.capturedAt,

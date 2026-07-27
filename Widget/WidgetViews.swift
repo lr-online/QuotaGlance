@@ -97,11 +97,20 @@ struct QuotaGlanceWidgetView: View {
                             Text(account.displayName)
                                 .lineLimit(1)
                             Spacer()
-                            Text(
-                                accountPrimaryMetric(account)
-                            )
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                            if let metric = account.primaryMetric {
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    Text(PrimaryMetricFormatter.string(metric.value))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                    Text(metric.label)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            } else {
+                                Text("--")
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .font(.caption)
                     }
@@ -154,10 +163,10 @@ struct QuotaGlanceWidgetView: View {
                     .font(.system(size: size, weight: .semibold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                Text(metric.label)
+                Text(primaryMetricLabel(metric))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
         } else {
             VStack(alignment: .leading, spacing: 2) {
@@ -170,10 +179,14 @@ struct QuotaGlanceWidgetView: View {
         }
     }
 
-    private func accountPrimaryMetric(_ account: AccountSnapshot) -> String {
-        DashboardPresenter.primaryMetric(for: account.usage).map {
-            PrimaryMetricFormatter.string($0.value)
-        } ?? "--"
+    private func primaryMetricLabel(_ metric: PrimaryMetric) -> String {
+        guard entry.presentation.balances.isEmpty,
+              let fallback = entry.presentation.accountRows.first(where: {
+                  $0.primaryMetric == metric
+              }) else {
+            return metric.label
+        }
+        return "\(fallback.displayName) · \(metric.label)"
     }
 
     private func metricLine(label: String, value: String) -> some View {

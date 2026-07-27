@@ -6,6 +6,10 @@ public enum RefreshOutcome: Equatable, Sendable {
     case allFailed
 }
 
+public enum RefreshCoordinatorError: Error, Equatable, Sendable {
+    case superseded
+}
+
 public struct RefreshResult: Equatable, Sendable {
     public var outcome: RefreshOutcome
     public var accountSnapshots: [UUID: AccountSnapshot]
@@ -26,6 +30,12 @@ public struct RefreshResult: Equatable, Sendable {
 }
 
 public actor RefreshCoordinator {
+    private struct InFlightRefresh {
+        let id: UUID
+        let accounts: [Account]
+        let task: Task<RefreshResult, Error>
+    }
+
     private let credentialStore: any CredentialStore
     private let registry: ProviderRegistry
     private let aggregator: SnapshotAggregator
@@ -34,7 +44,8 @@ public actor RefreshCoordinator {
     private let snapshotWriter: (@Sendable (WidgetSnapshotEnvelope) async throws -> Void)?
 
     private var previousSnapshots: [UUID: AccountSnapshot]
-    private var inFlight: Task<RefreshResult, Error>?
+    private var stateRevision: UInt64 = 0
+    private var inFlight: InFlightRefresh?
 
     public init(
         credentialStore: any CredentialStore,
@@ -79,13 +90,47 @@ public actor RefreshCoordinator {
 
     public func refresh(accounts: [Account]) async throws -> RefreshResult {
         if let inFlight {
-            return try await inFlight.value
+            if inFlight.accounts == accounts {
+                return try await inFlight.task.value
+            }
+            supersedeInFlightRefresh()
         }
 
-        let task = Task { try await self.performRefresh(accounts: accounts) }
-        inFlight = task
-        defer { inFlight = nil }
+        let refreshID = UUID()
+        let expectedStateRevision = stateRevision
+        let task = Task {
+            try await self.performRefresh(
+                accounts: accounts,
+                expectedStateRevision: expectedStateRevision
+            )
+        }
+        inFlight = InFlightRefresh(id: refreshID, accounts: accounts, task: task)
+        defer {
+            if inFlight?.id == refreshID {
+                inFlight = nil
+            }
+        }
         return try await task.value
+    }
+
+    public func recordSuccessfulSnapshot(_ snapshot: AccountSnapshot) {
+        guard snapshot.usage != nil else { return }
+        switch snapshot.health {
+        case .healthy, .belowThreshold:
+            supersedeInFlightRefresh()
+            previousSnapshots[snapshot.accountID] = snapshot
+        case .stale, .unavailable:
+            return
+        }
+    }
+
+    public func removeSnapshot(for accountID: UUID) {
+        supersedeInFlightRefresh()
+        previousSnapshots.removeValue(forKey: accountID)
+    }
+
+    public func invalidateActiveRefresh() {
+        supersedeInFlightRefresh()
     }
 }
 
@@ -95,7 +140,10 @@ private extension RefreshCoordinator {
         case failure(Account, SnapshotFailure)
     }
 
-    func performRefresh(accounts: [Account]) async throws -> RefreshResult {
+    func performRefresh(
+        accounts: [Account],
+        expectedStateRevision: UInt64
+    ) async throws -> RefreshResult {
         let enabledAccounts = accounts.filter(\.isEnabled)
         let credentialStore = credentialStore
         let registry = registry
@@ -131,6 +179,10 @@ private extension RefreshCoordinator {
                 results.append(result)
             }
             return results
+        }
+
+        guard stateRevision == expectedStateRevision else {
+            throw RefreshCoordinatorError.superseded
         }
 
         var accountSnapshots: [UUID: AccountSnapshot] = [:]
@@ -202,6 +254,9 @@ private extension RefreshCoordinator {
         if successCount > 0 {
             try await snapshotWriter?(envelope)
         }
+        guard stateRevision == expectedStateRevision else {
+            throw RefreshCoordinatorError.superseded
+        }
 
         return RefreshResult(
             outcome: outcome,
@@ -209,6 +264,12 @@ private extension RefreshCoordinator {
             aggregate: aggregate,
             envelope: envelope
         )
+    }
+
+    func supersedeInFlightRefresh() {
+        stateRevision &+= 1
+        inFlight?.task.cancel()
+        inFlight = nil
     }
 
     func health(account: Account, remaining: Decimal?) -> AccountHealth {

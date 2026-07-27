@@ -63,7 +63,7 @@ struct AccountEditorView: View {
                 )
                 if supportsLowBalanceThreshold {
                     TextField(
-                        "Low Balance Threshold (Optional)",
+                        thresholdFieldLabel,
                         text: $draft.lowBalanceThresholdText
                     )
                 }
@@ -115,6 +115,13 @@ struct AccountEditorView: View {
                 isSaving = false
             }
         }
+    }
+
+    private var thresholdFieldLabel: String {
+        if draft.provider == .openRouter {
+            return "Management Key Low Balance Threshold (Optional)"
+        }
+        return "Low Balance Threshold (Optional)"
     }
 
     private static func thresholdText(for account: Account?) -> String {

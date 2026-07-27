@@ -45,7 +45,7 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         case .miniMax:
             false
         case .openRouter:
-            profile?.credentialKind == .management
+            profile == nil || profile?.credentialKind == .management
         case .apiInfo, .deepSeek, .kimi:
             true
         }

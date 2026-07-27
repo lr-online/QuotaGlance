@@ -88,7 +88,7 @@ struct DomainModelTests {
         #expect(ProviderID.apiInfo.supportsLowBalanceThreshold(profile: standard))
         #expect(ProviderID.deepSeek.supportsLowBalanceThreshold(profile: standard))
         #expect(ProviderID.kimi.supportsLowBalanceThreshold(profile: standard))
-        #expect(!ProviderID.openRouter.supportsLowBalanceThreshold(profile: nil))
+        #expect(ProviderID.openRouter.supportsLowBalanceThreshold(profile: nil))
         #expect(!ProviderID.openRouter.supportsLowBalanceThreshold(profile: standard))
         #expect(ProviderID.openRouter.supportsLowBalanceThreshold(profile: management))
         #expect(!ProviderID.miniMax.supportsLowBalanceThreshold(profile: tokenPlan))
