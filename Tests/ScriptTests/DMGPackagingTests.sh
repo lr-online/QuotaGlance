@@ -71,9 +71,6 @@ test_secret_scan_fails_closed_when_scanners_error() {
 }
 
 test_distribution_path_policy() {
-  local prefix="QuotaGlance-$VERSION-source"
-  local safe_items
-  local unsafe_items
   local mount_root="$TEST_ROOT/mounted-payload"
   local attach_plist="$TEST_ROOT/attach.plist"
   local mount_info
@@ -81,44 +78,16 @@ test_distribution_path_policy() {
 
   source "$ROOT_DIR/scripts/distribution-validation.sh"
 
-  safe_items="$(printf '%s\n' \
-    "$prefix/" \
-    "$prefix/README.md" \
-    "$prefix/App/Info.plist" \
-    "$prefix/Sources/QuotaGlanceCore/Storage/SharedSnapshotStore.swift" \
-    "$prefix/Tests/Fixtures/usage.json")"
-  quota_glance_validate_source_items "$safe_items" "$prefix"
-
-  for unsafe_items in \
-    "/absolute/path" \
-    "$prefix/../outside" \
-    "$prefix/.env.local" \
-    "$prefix/Logs/build.txt" \
-    "$prefix/build.log" \
-    "$prefix/quota-snapshot-v1.json" \
-    "$prefix/Library/Preferences/com.liangrui.QuotaGlance.plist" \
-    "$prefix/export.keychain-db" \
-    "$prefix/signing.p12" \
-    "AnotherPrefix/README.md"; do
-    assert_fails quota_glance_validate_source_items "$unsafe_items" "$prefix"
-  done
-
   /bin/mkdir -p "$mount_root/QuotaGlance.app/Contents/MacOS"
   /usr/bin/touch \
     "$mount_root/QuotaGlance.app/Contents/MacOS/QuotaGlance" \
-    "$mount_root/README.txt" \
-    "$mount_root/SOURCE-COMMIT.txt" \
-    "$mount_root/QuotaGlance-$VERSION-source.zip"
+    "$mount_root/README.txt"
   /bin/ln -s /Applications "$mount_root/Applications"
-  quota_glance_validate_mounted_payload \
-    "$mount_root" \
-    "QuotaGlance-$VERSION-source.zip"
+  quota_glance_validate_mounted_payload "$mount_root"
 
   /bin/mv "$mount_root/README.txt" "$mount_root/README.real"
   /bin/ln -s "$mount_root/README.real" "$mount_root/README.txt"
-  assert_fails quota_glance_validate_mounted_payload \
-    "$mount_root" \
-    "QuotaGlance-$VERSION-source.zip"
+  assert_fails quota_glance_validate_mounted_payload "$mount_root"
 
   quota_glance_validate_gatekeeper_rejection \
     3 \
@@ -159,8 +128,9 @@ test_distribution_contract() {
       || fail "distribution README does not disclose Gatekeeper limitations"
     rg -q '@VERSION@' "$readme" \
       || fail "distribution README does not use the version placeholder"
-    rg -q '@SOURCE_ARCHIVE@' "$readme" \
-      || fail "distribution README does not identify the source archive"
+    if rg -q '@SOURCE_ARCHIVE@|SOURCE-COMMIT|source\.zip' "$readme"; then
+      fail "distribution README still mentions bundled source artifacts"
+    fi
   done
   rg -q '不包含桌面小组件' "$ROOT_DIR/Distribution/README-macOS12.txt" \
     || fail "macOS 12 README does not explain the Widget limitation"

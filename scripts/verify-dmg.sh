@@ -127,7 +127,6 @@ APP="$MOUNT_POINT/QuotaGlance.app"
 }
 VERSION="$(/usr/libexec/PlistBuddy \
   -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-SOURCE_NAME="QuotaGlance-$VERSION-source.zip"
 EXPECTED_DMG_NAME="QuotaGlance-$VERSION-$OS_TAG-arm64.dmg"
 [[ "$(/usr/bin/basename "$DMG_PATH")" == "$EXPECTED_DMG_NAME" ]] || {
   echo "DMG file name does not match its app version and edition" >&2
@@ -147,9 +146,7 @@ ACTUAL_ITEMS="$(
 EXPECTED_ITEMS="$(printf '%s\n' \
   'Applications' \
   'QuotaGlance.app' \
-  'README.txt' \
-  'SOURCE-COMMIT.txt' \
-  "$SOURCE_NAME" | LC_ALL=C /usr/bin/sort)"
+  'README.txt' | LC_ALL=C /usr/bin/sort)"
 [[ "$ACTUAL_ITEMS" == "$EXPECTED_ITEMS" ]] || {
   echo "DMG top-level layout is invalid:" >&2
   printf '%s\n' "$ACTUAL_ITEMS" >&2
@@ -161,7 +158,7 @@ EXPECTED_ITEMS="$(printf '%s\n' \
   echo "DMG Applications shortcut is invalid" >&2
   exit 1
 }
-quota_glance_validate_mounted_payload "$MOUNT_POINT" "$SOURCE_NAME" || {
+quota_glance_validate_mounted_payload "$MOUNT_POINT" || {
   echo "DMG payload contains an unsafe file type or symbolic link" >&2
   exit 1
 }
@@ -229,36 +226,8 @@ else
     exit 1
   }
 fi
-if rg -q '@VERSION@|@SOURCE_ARCHIVE@' "$MOUNT_POINT/README.txt"; then
+if rg -q '@VERSION@|@SOURCE_ARCHIVE@|SOURCE-COMMIT|source\.zip' "$MOUNT_POINT/README.txt"; then
   echo "DMG README contains an unresolved template placeholder" >&2
-  exit 1
-fi
-
-SOURCE_ZIP="$MOUNT_POINT/$SOURCE_NAME"
-SOURCE_COMMIT="$(/usr/bin/sed -n 's/^Git commit: //p' \
-  "$MOUNT_POINT/SOURCE-COMMIT.txt")"
-[[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
-  echo "DMG source commit record is invalid" >&2
-  exit 1
-}
-/usr/bin/unzip -tq "$SOURCE_ZIP" >/dev/null
-ARCHIVE_COMMENT="$(/usr/bin/unzip -z "$SOURCE_ZIP" | /usr/bin/tail -n 1 \
-  | /usr/bin/tr -d '\r')"
-[[ "$ARCHIVE_COMMENT" == "$SOURCE_COMMIT" ]] || {
-  echo "Source archive comment does not match SOURCE-COMMIT.txt" >&2
-  exit 1
-}
-SOURCE_ITEMS="$(/usr/bin/unzip -Z1 "$SOURCE_ZIP")"
-SOURCE_PREFIXES="$(printf '%s\n' "$SOURCE_ITEMS" | /usr/bin/cut -d/ -f1 \
-  | LC_ALL=C /usr/bin/sort -u)"
-[[ "$SOURCE_PREFIXES" == "QuotaGlance-$VERSION-source" ]] || {
-  echo "Source archive has an unexpected top-level prefix" >&2
-  exit 1
-}
-if ! quota_glance_validate_source_items \
-  "$SOURCE_ITEMS" \
-  "QuotaGlance-$VERSION-source"; then
-  echo "Source archive contains an unsafe or forbidden path" >&2
   exit 1
 fi
 

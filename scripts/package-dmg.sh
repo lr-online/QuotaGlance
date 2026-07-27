@@ -84,7 +84,6 @@ SOURCE_COMMIT="$($GIT rev-parse HEAD)"
   echo "Unable to create an immutable source checkout" >&2
   exit 1
 }
-
 package_edition() {
   local edition="$1"
   local os_tag
@@ -93,7 +92,6 @@ package_edition() {
   local built_app
   local built_version
   local widget
-  local source_name
   local dmg_name
   local checksum_name
   local final_dmg
@@ -137,7 +135,6 @@ package_edition() {
     exit 1
   fi
 
-  source_name="QuotaGlance-$VERSION-source.zip"
   dmg_name="QuotaGlance-$VERSION-$os_tag-arm64.dmg"
   checksum_name="$dmg_name.sha256"
   final_dmg="$OUTPUT_DIR/$dmg_name"
@@ -181,16 +178,8 @@ package_edition() {
   /usr/bin/ditto "$built_app" "$staging_dir/QuotaGlance.app"
   /usr/bin/sed \
     -e "s/@VERSION@/$VERSION/g" \
-    -e "s/@SOURCE_ARCHIVE@/$source_name/g" \
     "$readme_source" > "$staging_dir/README.txt"
   /bin/ln -s /Applications "$staging_dir/Applications"
-  "$GIT" -C "$SOURCE_DIR" archive \
-    --format=zip \
-    --prefix="QuotaGlance-$VERSION-source/" \
-    --output="$staging_dir/$source_name" \
-    "$SOURCE_COMMIT"
-  printf 'Git commit: %s\n' "$SOURCE_COMMIT" \
-    > "$staging_dir/SOURCE-COMMIT.txt"
 
   /usr/bin/hdiutil create \
     -volname "$volume_name" \

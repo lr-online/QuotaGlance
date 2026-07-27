@@ -66,7 +66,7 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 
 默认构建使用完整版 Xcode 生成可配置 Widget 所需的 App Intent 元数据，然后使用稳定的本地临时签名；不需要 App Store 或 Apple Developer 证书。安装器会将应用放到 `~/Applications/QuotaGlance.app`。若已有同 bundle ID 的版本，会先移动到 `~/Library/Application Support/QuotaGlance/Backups`；若目标路径属于其他 bundle ID，安装器会拒绝覆盖。
 
-## 生成分享版 DMG
+## 生成发布版 DMG
 
 默认同时生成 macOS 12 兼容版和 macOS 14 完整版；两者都使用临时签名且未经过 Apple 公证：
 
@@ -74,7 +74,7 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 ./scripts/package-dmg.sh
 ```
 
-产物位于 `dist/QuotaGlance-<version>-macOS12-arm64.dmg` 和 `dist/QuotaGlance-<version>-macOS14-arm64.dmg`，相邻的 `.sha256` 文件用于校验下载或传输完整性。两个 DMG 都包含 `QuotaGlance-<version>-source.zip` 和 `SOURCE-COMMIT.txt`，且对应同一个 Git commit，供接收者核对并审查源码。
+产物位于 `dist/QuotaGlance-<version>-macOS12-arm64.dmg` 和 `dist/QuotaGlance-<version>-macOS14-arm64.dmg`，相邻的 `.sha256` 文件用于校验下载或传输完整性。DMG 仅包含应用本体、安装说明和 `Applications` 快捷方式，属于纯净发布产物。
 
 只生成一个版本时，可在输出目录后指定 `legacy` 或 `full`：
 
