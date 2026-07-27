@@ -10,7 +10,9 @@ if [[ ! -x "$WIDGET_BINARY" ]]; then
 fi
 
 EXTENSION_POINT="$(
-  /usr/libexec/PlistBuddy +    -c 'Print :NSExtension:NSExtensionPointIdentifier' +    "$WIDGET_BUNDLE/Contents/Info.plist" 2>/dev/null || true
+  /usr/libexec/PlistBuddy \
+    -c 'Print :NSExtension:NSExtensionPointIdentifier' \
+    "$WIDGET_BUNDLE/Contents/Info.plist" 2>/dev/null || true
 )"
 if [[ "$EXTENSION_POINT" != "com.apple.widgetkit-extension" ]]; then
   echo "Widget bundle does not declare the WidgetKit extension point" >&2

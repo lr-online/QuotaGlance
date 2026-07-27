@@ -159,6 +159,9 @@ test_real_dmg_round_trip() {
     "$VALIDATION_SCRIPT" \
     "$clean_repo/scripts/distribution-validation.sh"
   /usr/bin/ditto \
+    "$ROOT_DIR/scripts/verify-widget-entrypoint.sh" \
+    "$clean_repo/scripts/verify-widget-entrypoint.sh"
+  /usr/bin/ditto \
     "$LEGACY_README" \
     "$clean_repo/Distribution/README-macOS12.txt"
   /usr/bin/ditto \
@@ -186,6 +189,7 @@ test_real_dmg_round_trip() {
     scripts/package-dmg.sh \
     scripts/verify-dmg.sh \
     scripts/distribution-validation.sh \
+    scripts/verify-widget-entrypoint.sh \
     Distribution/README-macOS12.txt \
     Distribution/README-macOS14.txt
   if ! /usr/bin/git -C "$clean_repo" diff --cached --quiet; then
