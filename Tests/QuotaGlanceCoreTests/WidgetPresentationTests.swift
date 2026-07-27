@@ -13,9 +13,51 @@ struct WidgetPresentationTests {
         )
 
         #expect(presentation.title == "All Accounts")
+        #expect(presentation.balances == [usd("125")])
         #expect(presentation.remaining == usd("125"))
         #expect(presentation.state == .available(.partial))
         #expect(presentation.accountRows.count == 2)
+    }
+
+    @Test("A quota-only account has an explicitly labeled primary metric")
+    func quotaOnlyAccountHasLabeledPrimaryMetric() {
+        let id = UUID(uuidString: "00000000-0000-0000-0000-000000000099")!
+        let usage = ProviderUsageSnapshot(
+            quotaWindows: [
+                QuotaWindow(label: "5-hour quota", remaining: 900, unit: "requests"),
+            ],
+            receivedAt: Date(timeIntervalSince1970: 100)
+        )
+        let account = AccountSnapshot(
+            accountID: id,
+            displayName: "MiniMax",
+            provider: .miniMax,
+            detectedProfile: ProviderProfile(
+                region: .international,
+                credentialKind: .tokenPlan
+            ),
+            usage: usage,
+            health: .healthy
+        )
+        let envelope = WidgetSnapshotEnvelope(
+            capturedAt: usage.receivedAt,
+            aggregate: AggregateSnapshot(accounts: [account]),
+            accounts: [account]
+        )
+
+        let presentation = WidgetPresenter.make(
+            selection: .account(id),
+            envelope: envelope
+        )
+
+        #expect(presentation.remaining == nil)
+        #expect(
+            presentation.primaryMetric
+                == PrimaryMetric(
+                    label: "5-hour quota",
+                    value: .quantity(900, unit: "requests")
+                )
+        )
     }
 
     @Test("A valid account selection maps only that account")

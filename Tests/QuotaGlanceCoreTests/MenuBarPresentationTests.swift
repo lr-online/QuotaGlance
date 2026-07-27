@@ -117,6 +117,49 @@ struct MenuBarPresentationTests {
         #expect(presentation.accountRows[1].health == .stale(.offline))
         #expect(presentation.status == .partial)
     }
+
+    @Test("Account presentation exposes each available capability section")
+    func accountPresentationExposesCapabilitySections() throws {
+        let usage = ProviderUsageSnapshot(
+            balances: [
+                MonetaryBalance(
+                    label: "Balance",
+                    available: usd("12"),
+                    breakdown: [
+                        MonetaryValue(label: "Voucher", value: usd("2")),
+                    ]
+                ),
+            ],
+            spendingLimit: SpendingLimit(
+                label: "Key limit",
+                used: usd("5"),
+                limit: usd("20"),
+                remaining: usd("15")
+            ),
+            spend: SpendSummary(today: usd("1"), month: usd("4")),
+            quotaWindows: [
+                QuotaWindow(label: "5-hour quota", remaining: 90, unit: "%"),
+            ],
+            receivedAt: Date(timeIntervalSince1970: 200)
+        )
+        let snapshot = AccountSnapshot(
+            accountID: UUID(),
+            displayName: "Capabilities",
+            usage: usage,
+            health: .healthy
+        )
+
+        let presentation = try #require(makePresentation(account: snapshot))
+
+        #expect(presentation.balanceRows == usage.balances)
+        #expect(presentation.spendingLimit == usage.spendingLimit)
+        #expect(presentation.spend == usage.spend)
+        #expect(presentation.quotaWindows == usage.quotaWindows)
+        #expect(
+            presentation.primaryMetric
+                == PrimaryMetric(label: "Balance", value: .money(usd("12")))
+        )
+    }
 }
 
 private func makePresentation(

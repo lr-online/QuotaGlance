@@ -14,9 +14,26 @@ public enum DashboardStatus: Equatable, Sendable {
     case empty
 }
 
+public enum PrimaryMetricValue: Equatable, Sendable {
+    case money(Money)
+    case quantity(Decimal, unit: String)
+}
+
+public struct PrimaryMetric: Equatable, Sendable {
+    public var label: String
+    public var value: PrimaryMetricValue
+
+    public init(label: String, value: PrimaryMetricValue) {
+        self.label = label
+        self.value = value
+    }
+}
+
 public struct DashboardPresentation: Equatable, Sendable {
     public var title: String
+    public var balances: [Money]
     public var remaining: Money?
+    public var primaryMetric: PrimaryMetric?
     public var todayActualCost: Money?
     public var todayRequests: Int64?
     public var dailyUsage: [DailyUsage]
@@ -27,7 +44,9 @@ public struct DashboardPresentation: Equatable, Sendable {
 
     public init(
         title: String,
+        balances: [Money],
         remaining: Money?,
+        primaryMetric: PrimaryMetric?,
         todayActualCost: Money?,
         todayRequests: Int64?,
         dailyUsage: [DailyUsage],
@@ -37,7 +56,9 @@ public struct DashboardPresentation: Equatable, Sendable {
         lastSuccessAt: Date?
     ) {
         self.title = title
+        self.balances = balances
         self.remaining = remaining
+        self.primaryMetric = primaryMetric
         self.todayActualCost = todayActualCost
         self.todayRequests = todayRequests
         self.dailyUsage = dailyUsage
@@ -58,7 +79,11 @@ public enum DashboardPresenter {
             let aggregate = envelope.aggregate
             return DashboardPresentation(
                 title: "All Accounts",
+                balances: aggregate.balances,
                 remaining: aggregate.remaining,
+                primaryMetric: aggregate.remaining.map {
+                    PrimaryMetric(label: "Balance", value: .money($0))
+                },
                 todayActualCost: aggregate.todayActualCost,
                 todayRequests: aggregate.todayRequests,
                 dailyUsage: aggregate.dailyUsage,
@@ -78,8 +103,11 @@ public enum DashboardPresenter {
             }
             return DashboardPresentation(
                 title: account.displayName,
+                balances: account.usage?.balances.map(\.available) ?? [],
                 remaining: account.usage?.remaining,
-                todayActualCost: account.usage?.today?.actualCost,
+                primaryMetric: primaryMetric(for: account.usage),
+                todayActualCost: account.usage?.spend.today
+                    ?? account.usage?.today?.actualCost,
                 todayRequests: account.usage?.today?.requests,
                 dailyUsage: account.usage?.dailyUsage ?? [],
                 accountRows: [],
@@ -101,6 +129,52 @@ public enum DashboardPresenter {
         case let .unavailable(failure):
             .unavailable(failure)
         }
+    }
+
+    public static func primaryMetric(
+        for usage: ProviderUsageSnapshot?
+    ) -> PrimaryMetric? {
+        guard let usage else { return nil }
+        if let balance = usage.primaryBalance {
+            return PrimaryMetric(
+                label: balance.label,
+                value: .money(balance.available)
+            )
+        }
+        if let spendingLimit = usage.spendingLimit,
+           let remaining = spendingLimit.remaining {
+            return PrimaryMetric(
+                label: spendingLimit.label,
+                value: .money(remaining)
+            )
+        }
+        if let quota = usage.quotaWindows.first {
+            if let remaining = quota.remaining {
+                return PrimaryMetric(
+                    label: quota.label,
+                    value: .quantity(remaining, unit: quota.unit)
+                )
+            }
+            if let used = quota.used, let limit = quota.limit, limit > 0 {
+                return PrimaryMetric(
+                    label: quota.label,
+                    value: .quantity(used / limit * 100, unit: "% used")
+                )
+            }
+        }
+        if let month = usage.spend.month {
+            return PrimaryMetric(label: "Spent this month", value: .money(month))
+        }
+        if let week = usage.spend.week {
+            return PrimaryMetric(label: "Spent this week", value: .money(week))
+        }
+        if let today = usage.spend.today {
+            return PrimaryMetric(label: "Spent today", value: .money(today))
+        }
+        if let total = usage.spend.total {
+            return PrimaryMetric(label: "Total spent", value: .money(total))
+        }
+        return nil
     }
 }
 

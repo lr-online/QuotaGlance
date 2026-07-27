@@ -27,13 +27,19 @@ public struct SnapshotAggregator: Sendable {
         let orderedSnapshots: [AccountSnapshot] = enabledAccounts.compactMap { account in
             guard var snapshot = snapshotsByID[account.id] else { return nil }
             snapshot.displayName = account.displayName
+            snapshot.provider = account.provider
+            snapshot.detectedProfile = account.detectedProfile
             snapshot.lowBalanceThreshold = account.lowBalanceThreshold
             return snapshot
         }
 
-        let remainingValues = orderedSnapshots.compactMap(\.usage?.remaining)
-        let remaining = sumMoney(remainingValues)
-        let todayCostValues = orderedSnapshots.compactMap(\.usage?.today?.actualCost)
+        let balanceValues = orderedSnapshots.flatMap { snapshot in
+            snapshot.usage?.balances.map(\.available) ?? []
+        }
+        let balances = sumMoneyByCurrency(balanceValues)
+        let todayCostValues = orderedSnapshots.compactMap { snapshot in
+            snapshot.usage?.spend.today ?? snapshot.usage?.today?.actualCost
+        }
         let todayCost = todayCostValues.count == orderedSnapshots.count
             ? sumMoney(todayCostValues)
             : nil
@@ -47,11 +53,10 @@ public struct SnapshotAggregator: Sendable {
             && todayRequests == nil
         let dailyUsage = makeDailyUsage(
             snapshots: orderedSnapshots,
-            fallbackCurrency: remaining?.currency,
+            fallbackCurrency: balances.count == 1 ? balances[0].currency : nil,
             now: now
         )
         let isPartial = orderedSnapshots.count != enabledAccounts.count
-            || Set(remainingValues.map(\.currency)).count > 1
             || todayRequestsOverflowed
             || orderedSnapshots.contains { snapshot in
                 switch snapshot.health {
@@ -63,7 +68,7 @@ public struct SnapshotAggregator: Sendable {
             }
 
         return AggregateSnapshot(
-            remaining: remaining,
+            balances: balances,
             todayActualCost: todayCost,
             todayRequests: todayRequests,
             dailyUsage: dailyUsage,
@@ -74,6 +79,15 @@ public struct SnapshotAggregator: Sendable {
 }
 
 private extension SnapshotAggregator {
+    func sumMoneyByCurrency(_ values: [Money]) -> [Money] {
+        Dictionary(grouping: values, by: \.currency)
+            .keys
+            .sorted()
+            .compactMap { currency in
+                sumMoney(values.filter { $0.currency == currency })
+            }
+    }
+
     func sumMoney(_ values: [Money]) -> Money? {
         guard let first = values.first else { return nil }
         guard values.allSatisfy({ $0.currency == first.currency }) else {

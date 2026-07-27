@@ -13,7 +13,9 @@ public enum WidgetPresentationState: Equatable, Sendable {
 
 public struct WidgetPresentation: Equatable, Sendable {
     public var title: String
+    public var balances: [Money]
     public var remaining: Money?
+    public var primaryMetric: PrimaryMetric?
     public var todayActualCost: Money?
     public var todayRequests: Int64?
     public var dailyUsage: [DailyUsage]
@@ -25,7 +27,9 @@ public struct WidgetPresentation: Equatable, Sendable {
 
     public init(
         title: String,
+        balances: [Money] = [],
         remaining: Money? = nil,
+        primaryMetric: PrimaryMetric? = nil,
         todayActualCost: Money? = nil,
         todayRequests: Int64? = nil,
         dailyUsage: [DailyUsage] = [],
@@ -36,7 +40,9 @@ public struct WidgetPresentation: Equatable, Sendable {
         deepLink: URL? = nil
     ) {
         self.title = title
+        self.balances = balances
         self.remaining = remaining
+        self.primaryMetric = primaryMetric
         self.todayActualCost = todayActualCost
         self.todayRequests = todayRequests
         self.dailyUsage = dailyUsage
@@ -86,7 +92,9 @@ public enum WidgetPresenter {
 
         return WidgetPresentation(
             title: dashboard.title,
+            balances: dashboard.balances,
             remaining: dashboard.remaining,
+            primaryMetric: dashboard.primaryMetric,
             todayActualCost: dashboard.todayActualCost,
             todayRequests: dashboard.todayRequests,
             dailyUsage: dashboard.dailyUsage,

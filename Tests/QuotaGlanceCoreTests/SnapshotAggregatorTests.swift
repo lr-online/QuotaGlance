@@ -140,7 +140,7 @@ struct SnapshotAggregatorTests {
         #expect(aggregate.remaining == usd("5"))
     }
 
-    @Test("Different currencies are never added together")
+    @Test("Different currencies produce separate complete balance totals")
     func differentCurrenciesAreNotAdded() {
         let first = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let second = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
@@ -159,8 +159,65 @@ struct SnapshotAggregatorTests {
             now: Date(timeIntervalSince1970: 100)
         )
 
+        #expect(aggregate.balances == [
+            Money(amount: 20, currency: "CNY"),
+            Money(amount: 10, currency: "USD"),
+        ])
         #expect(aggregate.remaining == nil)
-        #expect(aggregate.isPartial)
+        #expect(!aggregate.isPartial)
+    }
+
+    @Test("Only real balances participate in currency totals")
+    func spendingLimitsAndQuotaWindowsAreExcluded() {
+        let id = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let account = Account(
+            id: id,
+            displayName: "Mixed Capabilities",
+            provider: .openRouter,
+            detectedProfile: ProviderProfile(
+                region: .global,
+                credentialKind: .management
+            )
+        )
+        let usage = ProviderUsageSnapshot(
+            balances: [
+                MonetaryBalance(
+                    label: "Credits",
+                    available: Money(amount: 12, currency: "USD")
+                ),
+                MonetaryBalance(
+                    label: "Regional balance",
+                    available: Money(amount: 30, currency: "CNY")
+                ),
+            ],
+            spendingLimit: SpendingLimit(
+                label: "Key limit",
+                remaining: Money(amount: 999, currency: "USD")
+            ),
+            quotaWindows: [
+                QuotaWindow(label: "5-hour quota", remaining: 900, unit: "requests"),
+            ],
+            receivedAt: Date(timeIntervalSince1970: 100)
+        )
+        let snapshot = AccountSnapshot(
+            accountID: id,
+            displayName: account.displayName,
+            provider: account.provider,
+            detectedProfile: account.detectedProfile,
+            usage: usage,
+            health: .healthy
+        )
+
+        let aggregate = SnapshotAggregator(calendar: utcCalendar).aggregate(
+            accounts: [account],
+            snapshots: [snapshot],
+            now: Date(timeIntervalSince1970: 100)
+        )
+
+        #expect(aggregate.balances == [
+            Money(amount: 30, currency: "CNY"),
+            Money(amount: 12, currency: "USD"),
+        ])
     }
 
     @Test("Missing provider metrics remain absent instead of becoming zero")

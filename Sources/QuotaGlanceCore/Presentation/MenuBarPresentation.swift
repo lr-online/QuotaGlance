@@ -15,11 +15,17 @@ public struct MenuBarQuotaPresentation: Equatable, Sendable {
 
 public struct MenuBarPresentation: Equatable, Sendable {
     public let title: String
+    public let balances: [Money]
     public let remaining: Money?
+    public let primaryMetric: PrimaryMetric?
     public let todayActualCost: Money?
     public let todayRequests: Int64?
     public let days: [MenuBarDayPresentation]
     public let accountRows: [AccountSnapshot]
+    public let balanceRows: [MonetaryBalance]
+    public let spendingLimit: SpendingLimit?
+    public let spend: SpendSummary
+    public let quotaWindows: [QuotaWindow]
     public let quota: MenuBarQuotaPresentation?
     public let modelRows: [ModelUsage]
     public let status: DashboardStatus
@@ -57,11 +63,17 @@ public enum MenuBarPresenter {
 
         return MenuBarPresentation(
             title: dashboard.title,
+            balances: dashboard.balances,
             remaining: dashboard.remaining,
+            primaryMetric: dashboard.primaryMetric,
             todayActualCost: dashboard.todayActualCost,
             todayRequests: dashboard.todayRequests,
             days: makeDays(dashboard.dailyUsage),
             accountRows: Array(dashboard.accountRows.prefix(5)),
+            balanceRows: dashboard.usage?.balances ?? [],
+            spendingLimit: dashboard.usage?.spendingLimit,
+            spend: dashboard.usage?.spend ?? SpendSummary(),
+            quotaWindows: dashboard.usage?.quotaWindows ?? [],
             quota: makeQuota(dashboard.usage),
             modelRows: makeModelRows(dashboard.usage?.modelUsage ?? []),
             status: dashboard.status,
