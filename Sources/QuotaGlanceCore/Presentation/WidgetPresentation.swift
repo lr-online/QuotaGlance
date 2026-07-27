@@ -92,7 +92,7 @@ public enum WidgetPresenter {
 
         return WidgetPresentation(
             title: dashboard.title,
-            balances: dashboard.balances,
+            balances: Array(dashboard.balances.prefix(2)),
             remaining: dashboard.remaining,
             primaryMetric: dashboard.primaryMetric,
             todayActualCost: dashboard.todayActualCost,

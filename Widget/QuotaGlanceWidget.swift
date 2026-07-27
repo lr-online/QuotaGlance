@@ -122,7 +122,7 @@ struct LegacyQuotaGlanceWidget: Widget {
             QuotaGlanceWidgetView(entry: entry)
         }
         .configurationDisplayName("All Accounts")
-        .description("Combined API Info balance and usage.")
+        .description("Combined provider balances and usage.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .containerBackgroundRemovable(false)
     }

@@ -36,13 +36,7 @@ struct QuotaGlanceWidgetView: View {
         VStack(alignment: .leading, spacing: 8) {
             widgetHeader
             Spacer(minLength: 2)
-            balanceText(size: 24)
-            metricLine(
-                label: "Today",
-                value: entry.presentation.todayActualCost.map {
-                    MoneyFormatter.widgetString($0)
-                } ?? "--"
-            )
+            primaryMetricBlock(size: 24)
             freshness
         }
     }
@@ -52,7 +46,7 @@ struct QuotaGlanceWidgetView: View {
             VStack(alignment: .leading, spacing: 8) {
                 widgetHeader
                 Spacer(minLength: 2)
-                balanceText(size: 27)
+                primaryMetricBlock(size: 27)
                 metricLine(
                     label: "Today",
                     value: entry.presentation.todayActualCost.map {
@@ -75,7 +69,7 @@ struct QuotaGlanceWidgetView: View {
     private var largeView: some View {
         VStack(alignment: .leading, spacing: 12) {
             widgetHeader
-            balanceText(size: 30)
+            primaryMetricBlock(size: 30)
 
             HStack(spacing: 20) {
                 metricLine(
@@ -104,9 +98,7 @@ struct QuotaGlanceWidgetView: View {
                                 .lineLimit(1)
                             Spacer()
                             Text(
-                                account.remaining.map {
-                                    MoneyFormatter.widgetString($0)
-                                } ?? "--"
+                                accountPrimaryMetric(account)
                             )
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -132,15 +124,56 @@ struct QuotaGlanceWidgetView: View {
         }
     }
 
-    private func balanceText(size: CGFloat) -> some View {
-        Text(
-            entry.presentation.remaining.map {
-                MoneyFormatter.widgetString($0)
-            } ?? "--"
-        )
-            .font(.system(size: size, weight: .semibold, design: .rounded))
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
+    @ViewBuilder
+    private func primaryMetricBlock(size: CGFloat) -> some View {
+        if entry.presentation.balances.count > 1 {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(entry.presentation.balances.prefix(2), id: \.currency) { balance in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(MoneyFormatter.widgetString(balance))
+                            .font(
+                                .system(
+                                    size: max(size - 6, 16),
+                                    weight: .semibold,
+                                    design: .rounded
+                                )
+                            )
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        Spacer(minLength: 4)
+                        Text("\(balance.currency) balance")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+        } else if let metric = entry.presentation.primaryMetric {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(PrimaryMetricFormatter.string(metric.value))
+                    .font(.system(size: size, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(metric.label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("--")
+                    .font(.system(size: size, weight: .semibold, design: .rounded))
+                Text("No metric")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func accountPrimaryMetric(_ account: AccountSnapshot) -> String {
+        DashboardPresenter.primaryMetric(for: account.usage).map {
+            PrimaryMetricFormatter.string($0.value)
+        } ?? "--"
     }
 
     private func metricLine(label: String, value: String) -> some View {

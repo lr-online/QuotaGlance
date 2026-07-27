@@ -19,6 +19,31 @@ struct WidgetPresentationTests {
         #expect(presentation.accountRows.count == 2)
     }
 
+    @Test("Aggregate widgets expose at most two currency totals")
+    func aggregateWidgetsExposeAtMostTwoCurrencyTotals() {
+        let envelope = WidgetSnapshotEnvelope(
+            capturedAt: Date(timeIntervalSince1970: 100),
+            aggregate: AggregateSnapshot(
+                balances: [
+                    Money(amount: 30, currency: "CNY"),
+                    Money(amount: 20, currency: "EUR"),
+                    Money(amount: 10, currency: "USD"),
+                ]
+            ),
+            accounts: []
+        )
+
+        let presentation = WidgetPresenter.make(
+            selection: .allAccounts,
+            envelope: envelope
+        )
+
+        #expect(presentation.balances == [
+            Money(amount: 30, currency: "CNY"),
+            Money(amount: 20, currency: "EUR"),
+        ])
+    }
+
     @Test("A quota-only account has an explicitly labeled primary metric")
     func quotaOnlyAccountHasLabeledPrimaryMetric() {
         let id = UUID(uuidString: "00000000-0000-0000-0000-000000000099")!

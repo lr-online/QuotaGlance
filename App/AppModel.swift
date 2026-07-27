@@ -130,7 +130,7 @@ final class AppModel: ObservableObject {
         let previouslyHadThreshold = accountID.flatMap { id in
             accounts.first(where: { $0.id == id })?.lowBalanceThreshold
         } != nil
-        let validated = try AccountValidator.validate(
+        var validated = try AccountValidator.validate(
             draft: draft,
             existingAccounts: accounts,
             editingAccountID: accountID
@@ -143,6 +143,16 @@ final class AppModel: ObservableObject {
         } else {
             detection = nil
         }
+
+        let existingProfile = accountID.flatMap { id in
+            accounts.first(where: { $0.id == id })?.detectedProfile
+        }
+        let effectiveProfile = detection?.profile ?? existingProfile
+        validated.lowBalanceThreshold = validated.provider
+            .normalizedLowBalanceThreshold(
+                validated.lowBalanceThreshold,
+                profile: effectiveProfile
+            )
 
         let savedAccountID: UUID
         if let accountID {

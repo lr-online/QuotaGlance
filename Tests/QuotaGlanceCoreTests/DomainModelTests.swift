@@ -54,6 +54,52 @@ struct DomainModelTests {
         ])
     }
 
+    @Test("Provider profiles produce concise account labels")
+    func providerProfilesProduceAccountLabels() {
+        #expect(
+            ProviderID.kimi.profileDescription(
+                for: ProviderProfile(region: .china, credentialKind: .standard)
+            ) == "China / CNY"
+        )
+        #expect(
+            ProviderID.kimi.profileDescription(
+                for: ProviderProfile(region: .international, credentialKind: .standard)
+            ) == "International / USD"
+        )
+        #expect(
+            ProviderID.openRouter.profileDescription(
+                for: ProviderProfile(region: .global, credentialKind: .management)
+            ) == "Management key"
+        )
+        #expect(
+            ProviderID.miniMax.profileDescription(
+                for: ProviderProfile(region: .international, credentialKind: .tokenPlan)
+            ) == "International / Token Plan"
+        )
+        #expect(ProviderID.deepSeek.profileDescription(for: nil) == "Not detected")
+    }
+
+    @Test("Low-balance thresholds are available only for balance credentials")
+    func lowBalanceThresholdAvailabilityTracksCredentialCapabilities() {
+        let standard = ProviderProfile(region: .global, credentialKind: .standard)
+        let management = ProviderProfile(region: .global, credentialKind: .management)
+        let tokenPlan = ProviderProfile(region: .china, credentialKind: .tokenPlan)
+
+        #expect(ProviderID.apiInfo.supportsLowBalanceThreshold(profile: standard))
+        #expect(ProviderID.deepSeek.supportsLowBalanceThreshold(profile: standard))
+        #expect(ProviderID.kimi.supportsLowBalanceThreshold(profile: standard))
+        #expect(!ProviderID.openRouter.supportsLowBalanceThreshold(profile: nil))
+        #expect(!ProviderID.openRouter.supportsLowBalanceThreshold(profile: standard))
+        #expect(ProviderID.openRouter.supportsLowBalanceThreshold(profile: management))
+        #expect(!ProviderID.miniMax.supportsLowBalanceThreshold(profile: tokenPlan))
+        #expect(
+            ProviderID.miniMax.normalizedLowBalanceThreshold(
+                20,
+                profile: tokenPlan
+            ) == nil
+        )
+    }
+
     @Test("Legacy accounts migrate to API Info")
     func legacyAccountMigratesToAPIInfo() throws {
         let data = Data(

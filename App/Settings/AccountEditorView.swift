@@ -18,26 +18,55 @@ struct AccountEditorView: View {
             initialValue: AccountDraft(
                 displayName: account?.displayName ?? "",
                 apiKey: "",
+                provider: account?.provider ?? .apiInfo,
                 isEnabled: account?.isEnabled ?? true,
-                lowBalanceThresholdText: account?.lowBalanceThreshold.map {
-                    NSDecimalNumber(decimal: $0).stringValue
-                } ?? ""
+                lowBalanceThresholdText: Self.thresholdText(for: account)
             )
+        )
+    }
+
+    private var selectedProfile: ProviderProfile? {
+        guard draft.provider == account?.provider else { return nil }
+        return account?.detectedProfile
+    }
+
+    private var supportsLowBalanceThreshold: Bool {
+        draft.provider.supportsLowBalanceThreshold(profile: selectedProfile)
+    }
+
+    private var providerSelection: Binding<ProviderID> {
+        Binding(
+            get: { draft.provider },
+            set: { provider in
+                draft.provider = provider
+                if !provider.supportsLowBalanceThreshold(
+                    profile: selectedProfile
+                ) {
+                    draft.lowBalanceThresholdText = ""
+                }
+            }
         )
     }
 
     var body: some View {
         VStack(spacing: 0) {
             Form {
+                Picker("Provider", selection: providerSelection) {
+                    ForEach(ProviderID.allCases) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
                 TextField("Name", text: $draft.displayName)
                 SecureField(
                     account == nil ? "API Key" : "Replacement API Key (Optional)",
                     text: $draft.apiKey
                 )
-                TextField(
-                    "Low Balance Threshold (Optional)",
-                    text: $draft.lowBalanceThresholdText
-                )
+                if supportsLowBalanceThreshold {
+                    TextField(
+                        "Low Balance Threshold (Optional)",
+                        text: $draft.lowBalanceThresholdText
+                    )
+                }
                 Toggle("Enabled", isOn: $draft.isEnabled)
 
                 if let errorMessage {
@@ -71,7 +100,7 @@ struct AccountEditorView: View {
             }
             .padding(16)
         }
-        .frame(width: 430, height: 310)
+        .frame(width: 430, height: 340)
     }
 
     private func save() {
@@ -86,5 +115,16 @@ struct AccountEditorView: View {
                 isSaving = false
             }
         }
+    }
+
+    private static func thresholdText(for account: Account?) -> String {
+        guard let account,
+              account.provider.supportsLowBalanceThreshold(
+                  profile: account.detectedProfile
+              ),
+              let threshold = account.lowBalanceThreshold else {
+            return ""
+        }
+        return NSDecimalNumber(decimal: threshold).stringValue
     }
 }

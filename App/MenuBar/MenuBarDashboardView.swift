@@ -39,7 +39,10 @@ struct MenuBarDashboardView: View {
                 if model.accounts.isEmpty {
                     emptyState
                 } else if let presentation {
-                    dashboard(presentation)
+                    ScrollView {
+                        dashboard(presentation)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 } else {
                     unavailableState
                 }
@@ -105,49 +108,32 @@ struct MenuBarDashboardView: View {
     }
 
     private func dashboard(_ presentation: MenuBarPresentation) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Remaining")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(
-                    presentation.remaining.map {
-                        MoneyFormatter.dashboardString($0)
-                    } ?? "--"
-                )
-                    .font(.system(size: 32, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-                    .accessibilityLabel("Remaining balance")
+        VStack(alignment: .leading, spacing: 16) {
+            primarySection(presentation)
 
-                statusLabel(presentation.status)
-            }
+            if case .allAccounts = selection {
+                activitySection(presentation)
+            } else {
+                balanceSection(presentation.balanceRows)
 
-            if let quota = presentation.quota {
-                quotaSection(quota)
-            }
+                if let spendingLimit = presentation.spendingLimit {
+                    spendingLimitSection(spendingLimit)
+                }
 
-            HStack(spacing: 0) {
-                metric(
-                    title: "Today",
-                    value: presentation.todayActualCost.map {
-                        MoneyFormatter.dashboardString($0)
-                    } ?? "--"
-                )
-                Divider()
-                    .frame(height: 34)
-                    .padding(.horizontal, 12)
-                metric(
-                    title: "Requests",
-                    value: presentation.todayRequests?.formatted() ?? "--"
-                )
+                if !presentation.spend.isEmpty {
+                    spendSection(presentation.spend)
+                }
+
+                quotaWindowSection(presentation.quotaWindows)
+
+                if let requests = presentation.todayRequests {
+                    metric(title: "Requests today", value: requests.formatted())
+                }
             }
 
             if !presentation.days.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Last 7 Days")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    sectionHeader("Last 7 Days")
                     UsageChartView(days: presentation.days)
                 }
             }
@@ -167,6 +153,76 @@ struct MenuBarDashboardView: View {
         }
     }
 
+    @ViewBuilder
+    private func primarySection(_ presentation: MenuBarPresentation) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if case .allAccounts = selection {
+                sectionHeader("Balances")
+                if presentation.balances.isEmpty {
+                    Text("--")
+                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(presentation.balances, id: \.currency) { balance in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(MoneyFormatter.dashboardString(balance))
+                                .font(
+                                    .system(
+                                        size: presentation.balances.count == 1 ? 30 : 22,
+                                        weight: .semibold,
+                                        design: .rounded
+                                    )
+                                )
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.72)
+                            Spacer(minLength: 6)
+                            Text(balance.currency)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } else if let metric = presentation.primaryMetric {
+                Text(metric.label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(PrimaryMetricFormatter.string(metric.value))
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
+            } else {
+                Text("No metric")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("--")
+                    .font(.system(size: 30, weight: .semibold, design: .rounded))
+            }
+
+            statusLabel(presentation.status)
+        }
+    }
+
+    @ViewBuilder
+    private func activitySection(_ presentation: MenuBarPresentation) -> some View {
+        if presentation.todayActualCost != nil || presentation.todayRequests != nil {
+            HStack(spacing: 0) {
+                metric(
+                    title: "Spent today",
+                    value: presentation.todayActualCost.map {
+                        MoneyFormatter.dashboardString($0)
+                    } ?? "--"
+                )
+                Divider()
+                    .frame(height: 34)
+                    .padding(.horizontal, 12)
+                metric(
+                    title: "Requests",
+                    value: presentation.todayRequests?.formatted() ?? "--"
+                )
+            }
+        }
+    }
+
     private func metric(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
@@ -181,43 +237,186 @@ struct MenuBarDashboardView: View {
     }
 
     @ViewBuilder
-    private func quotaSection(_ quota: MenuBarQuotaPresentation) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let fraction = quota.fraction {
-                ProgressView(value: fraction)
-                    .progressViewStyle(.linear)
-                    .accessibilityLabel("Quota used")
-                    .accessibilityValue(
-                        fraction.formatted(
-                            .percent.precision(.fractionLength(0))
+    private func balanceSection(_ balances: [MonetaryBalance]) -> some View {
+        if !balances.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                sectionHeader("Balances")
+                ForEach(balances) { balance in
+                    VStack(alignment: .leading, spacing: 5) {
+                        valueRow(
+                            balance.label,
+                            value: MoneyFormatter.dashboardString(balance.available),
+                            emphasized: true
                         )
-                    )
-            }
-
-            HStack(spacing: 14) {
-                if let used = quota.used {
-                    metric(
-                        title: "Used",
-                        value: MoneyFormatter.dashboardString(used)
-                    )
-                }
-                if let limit = quota.limit {
-                    metric(
-                        title: "Limit",
-                        value: MoneyFormatter.dashboardString(limit)
-                    )
+                        ForEach(balance.breakdown) { item in
+                            valueRow(
+                                item.label,
+                                value: MoneyFormatter.dashboardString(item.value)
+                            )
+                            .padding(.leading, 10)
+                        }
+                    }
                 }
             }
         }
+    }
+
+    private func spendingLimitSection(_ limit: SpendingLimit) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader(limit.label)
+            if let fraction = moneyProgressFraction(limit) {
+                ProgressView(value: fraction)
+                    .progressViewStyle(.linear)
+                    .accessibilityLabel(limit.label)
+                    .accessibilityValue(
+                        fraction.formatted(.percent.precision(.fractionLength(0)))
+                    )
+            }
+            HStack(spacing: 12) {
+                if let remaining = limit.remaining {
+                    metric(
+                        title: "Remaining",
+                        value: MoneyFormatter.dashboardString(remaining)
+                    )
+                }
+                if let used = limit.used {
+                    metric(title: "Used", value: MoneyFormatter.dashboardString(used))
+                }
+                if let total = limit.limit {
+                    metric(title: "Limit", value: MoneyFormatter.dashboardString(total))
+                }
+            }
+            if let resetDescription = limit.resetDescription {
+                Text(resetDescription)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func spendSection(_ spend: SpendSummary) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionHeader("Spend")
+            if let today = spend.today {
+                valueRow("Today", value: MoneyFormatter.dashboardString(today))
+            }
+            if let week = spend.week {
+                valueRow("This week", value: MoneyFormatter.dashboardString(week))
+            }
+            if let month = spend.month {
+                valueRow("This month", value: MoneyFormatter.dashboardString(month))
+            }
+            if let total = spend.total {
+                valueRow("Total", value: MoneyFormatter.dashboardString(total))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func quotaWindowSection(_ windows: [QuotaWindow]) -> some View {
+        if !windows.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                sectionHeader("Quota Windows")
+                ForEach(windows) { window in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(window.label)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        if let fraction = progressFraction(
+                            used: window.used,
+                            limit: window.limit
+                        ) {
+                            ProgressView(value: fraction)
+                                .progressViewStyle(.linear)
+                                .accessibilityLabel(window.label)
+                                .accessibilityValue(
+                                    fraction.formatted(
+                                        .percent.precision(.fractionLength(0))
+                                    )
+                                )
+                        }
+                        HStack(spacing: 12) {
+                            if let remaining = window.remaining {
+                                metric(
+                                    title: "Remaining",
+                                    value: quantity(remaining, unit: window.unit)
+                                )
+                            }
+                            if let used = window.used {
+                                metric(
+                                    title: "Used",
+                                    value: quantity(used, unit: window.unit)
+                                )
+                            }
+                            if let limit = window.limit {
+                                metric(
+                                    title: "Limit",
+                                    value: quantity(limit, unit: window.unit)
+                                )
+                            }
+                        }
+                        if let resetsAt = window.resetsAt {
+                            Text("Resets \(resetsAt, style: .relative)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    private func valueRow(
+        _ title: String,
+        value: String,
+        emphasized: Bool = false
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(title)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Text(value)
+                .fontWeight(emphasized ? .medium : .regular)
+                .foregroundStyle(emphasized ? .primary : .secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .font(.caption)
+    }
+
+    private func quantity(_ value: Decimal, unit: String) -> String {
+        PrimaryMetricFormatter.string(.quantity(value, unit: unit))
+    }
+
+    private func moneyProgressFraction(_ limit: SpendingLimit) -> Double? {
+        guard let used = limit.used,
+              let total = limit.limit,
+              used.currency == total.currency else {
+            return nil
+        }
+        return progressFraction(used: used.amount, limit: total.amount)
+    }
+
+    private func progressFraction(
+        used: Decimal?,
+        limit: Decimal?
+    ) -> Double? {
+        guard let used, let limit, limit > 0 else { return nil }
+        let fraction = NSDecimalNumber(decimal: used / limit).doubleValue
+        return min(max(fraction, 0), 1)
     }
 
     @ViewBuilder
     private func accountSection(_ accounts: [AccountSnapshot]) -> some View {
         if !accounts.isEmpty {
             VStack(alignment: .leading, spacing: 7) {
-                Text("Accounts")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Accounts")
                 ForEach(accounts) { account in
                     HStack(spacing: 7) {
                         Circle()
@@ -233,8 +432,8 @@ struct MenuBarDashboardView: View {
                             .lineLimit(1)
                         Spacer()
                         Text(
-                            account.remaining.map {
-                                MoneyFormatter.dashboardString($0)
+                            DashboardPresenter.primaryMetric(for: account.usage).map {
+                                PrimaryMetricFormatter.string($0.value)
                             } ?? "--"
                         )
                         .foregroundStyle(.secondary)
@@ -250,9 +449,7 @@ struct MenuBarDashboardView: View {
     private func modelSection(_ models: [ModelUsage]) -> some View {
         if !models.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Top Models")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                sectionHeader("Top Models")
                 ForEach(models) { model in
                     HStack {
                         Text(model.model)

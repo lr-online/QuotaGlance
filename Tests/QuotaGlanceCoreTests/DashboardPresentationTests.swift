@@ -92,6 +92,25 @@ struct DashboardPresentationTests {
         #expect(try accountPresentation(spend).todayActualCost == usd("1"))
     }
 
+    @Test("Primary metric values preserve their semantic units")
+    func primaryMetricValuesPreserveSemanticUnits() {
+        #expect(
+            PrimaryMetricFormatter.string(
+                .quantity(900, unit: "requests")
+            ) == "900 requests"
+        )
+        #expect(
+            PrimaryMetricFormatter.string(
+                .quantity(90, unit: "%")
+            ) == "90%"
+        )
+        #expect(
+            PrimaryMetricFormatter.string(
+                .quantity(12.5, unit: "% used")
+            ) == "12.5% used"
+        )
+    }
+
     @Test("An account selection uses its individual usage and stale state")
     func accountSelectionUsesIndividualUsage() throws {
         let fixture = dashboardFixture()

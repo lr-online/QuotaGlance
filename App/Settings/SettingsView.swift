@@ -14,7 +14,7 @@ struct SettingsView: View {
                     VStack(spacing: 6) {
                         Label("No Accounts", systemImage: "key.horizontal")
                             .font(.headline)
-                        Text("Add an API Info account to begin.")
+                        Text("Add a provider account to begin.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -108,11 +108,10 @@ struct SettingsView: View {
             ) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(account.displayName)
-                    if let threshold = account.lowBalanceThreshold {
-                        Text("Threshold: \(NSDecimalNumber(decimal: threshold).stringValue)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(accountDetail(account))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
 
@@ -162,6 +161,19 @@ struct SettingsView: View {
         case .thirtyMinutes: "30 minutes"
         case .sixtyMinutes: "60 minutes"
         }
+    }
+
+    private func accountDetail(_ account: Account) -> String {
+        var parts = [
+            account.provider.displayName,
+            account.provider.profileDescription(for: account.detectedProfile),
+        ]
+        if account.provider.supportsLowBalanceThreshold(
+            profile: account.detectedProfile
+        ), let threshold = account.lowBalanceThreshold {
+            parts.append("Alert below \(NSDecimalNumber(decimal: threshold).stringValue)")
+        }
+        return parts.joined(separator: " - ")
     }
 
     private var notificationStatus: String {

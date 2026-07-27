@@ -29,6 +29,35 @@ public struct PrimaryMetric: Equatable, Sendable {
     }
 }
 
+public enum PrimaryMetricFormatter {
+    public static func string(
+        _ value: PrimaryMetricValue,
+        locale: Locale = .current
+    ) -> String {
+        switch value {
+        case let .money(money):
+            return MoneyFormatter.dashboardString(money, locale: locale)
+        case let .quantity(quantity, unit):
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.locale = locale
+            formatter.minimumFractionDigits = 0
+            formatter.maximumFractionDigits = 2
+            formatter.roundingMode = .halfEven
+            let number = formatter.string(
+                from: NSDecimalNumber(decimal: quantity)
+            ) ?? NSDecimalNumber(decimal: quantity).stringValue
+            if unit.isEmpty {
+                return number
+            }
+            if unit.hasPrefix("%") {
+                return number + unit
+            }
+            return "\(number) \(unit)"
+        }
+    }
+}
+
 public struct DashboardPresentation: Equatable, Sendable {
     public var title: String
     public var balances: [Money]
