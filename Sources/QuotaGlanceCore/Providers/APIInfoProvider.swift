@@ -2,6 +2,7 @@ import Foundation
 
 public struct APIInfoProvider: UsageProvider {
     public static let endpoint = URL(string: "https://www.api-info.net/v1/usage")!
+    public let id = ProviderID.apiInfo
 
     private let httpClient: any HTTPClient
     private let now: @Sendable () -> Date
@@ -21,16 +22,7 @@ public struct APIInfoProvider: UsageProvider {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
         let (data, response) = try await httpClient.data(for: request)
-        switch response.statusCode {
-        case 200..<300:
-            break
-        case 401, 403:
-            throw ProviderError.invalidCredential
-        case 429:
-            throw ProviderError.rateLimited
-        default:
-            throw ProviderError.httpStatus(response.statusCode)
-        }
+        try ProviderHTTPStatus.validate(response)
 
         do {
             let payload = try JSONDecoder().decode(Response.self, from: data)
@@ -44,20 +36,43 @@ public struct APIInfoProvider: UsageProvider {
                 throw ProviderError.invalidResponse
             }
 
+            let quotaLimit = payload.quota?.limit.map {
+                Money(amount: $0, currency: currency)
+            }
+            let quotaUsed = payload.quota?.used.map {
+                Money(amount: $0, currency: currency)
+            }
+            let quotaRemaining = payload.quota?.remaining.map {
+                Money(amount: $0, currency: currency)
+            }
+            let today = payload.usage?.today.map {
+                $0.snapshot(currency: currency)
+            }
+            let total = payload.usage?.total.map {
+                $0.snapshot(currency: currency)
+            }
+
             return ProviderUsageSnapshot(
-                remaining: Money(amount: remaining, currency: currency),
-                quotaLimit: payload.quota?.limit.map {
-                    Money(amount: $0, currency: currency)
-                },
-                quotaUsed: payload.quota?.used.map {
-                    Money(amount: $0, currency: currency)
-                },
-                today: payload.usage?.today.map {
-                    $0.snapshot(currency: currency)
-                },
-                total: payload.usage?.total.map {
-                    $0.snapshot(currency: currency)
-                },
+                balances: [
+                    MonetaryBalance(
+                        label: "Balance",
+                        available: Money(amount: remaining, currency: currency)
+                    )
+                ],
+                spendingLimit: quotaLimit != nil || quotaUsed != nil || quotaRemaining != nil
+                    ? SpendingLimit(
+                        label: "Quota",
+                        used: quotaUsed,
+                        limit: quotaLimit,
+                        remaining: quotaRemaining
+                    )
+                    : nil,
+                spend: SpendSummary(
+                    today: today?.actualCost,
+                    total: total?.actualCost
+                ),
+                today: today,
+                total: total,
                 dailyUsage: (payload.dailyUsage ?? []).compactMap {
                     $0.snapshot(currency: currency)
                 },
@@ -72,6 +87,23 @@ public struct APIInfoProvider: UsageProvider {
         } catch {
             throw ProviderError.invalidResponse
         }
+    }
+
+    public func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: try await fetch(apiKey: apiKey)
+        )
+    }
+
+    public func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
+        guard profile == .apiInfo else {
+            throw ProviderError.profileMismatch
+        }
+        return try await fetch(apiKey: apiKey)
     }
 }
 

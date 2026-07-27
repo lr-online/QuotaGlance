@@ -20,8 +20,61 @@ public struct URLSessionHTTPClient: HTTPClient {
     }
 }
 
+public struct ProviderDetection: Equatable, Sendable {
+    public var profile: ProviderProfile
+    public var snapshot: ProviderUsageSnapshot
+
+    public init(profile: ProviderProfile, snapshot: ProviderUsageSnapshot) {
+        self.profile = profile
+        self.snapshot = snapshot
+    }
+}
+
 public protocol UsageProvider: Sendable {
+    var id: ProviderID { get }
     func fetch(apiKey: String) async throws -> ProviderUsageSnapshot
+    func detect(apiKey: String) async throws -> ProviderDetection
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot
+}
+
+public extension UsageProvider {
+    var id: ProviderID { .apiInfo }
+
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: try await fetch(apiKey: apiKey)
+        )
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
+        try await fetch(apiKey: apiKey)
+    }
+}
+
+public struct ProviderRegistry: Sendable {
+    private let providers: [ProviderID: any UsageProvider]
+
+    public init(providers: [any UsageProvider]) {
+        var values: [ProviderID: any UsageProvider] = [:]
+        for provider in providers {
+            values[provider.id] = provider
+        }
+        self.providers = values
+    }
+
+    public func provider(for id: ProviderID) throws -> any UsageProvider {
+        guard let provider = providers[id] else {
+            throw ProviderError.providerUnavailable(id)
+        }
+        return provider
+    }
 }
 
 public enum ProviderError: Error, Equatable, Sendable {
@@ -30,4 +83,23 @@ public enum ProviderError: Error, Equatable, Sendable {
     case httpStatus(Int)
     case invalidResponse
     case providerInactive
+    case unsupportedCredential
+    case regionDetectionFailed
+    case profileMismatch
+    case providerUnavailable(ProviderID)
+}
+
+enum ProviderHTTPStatus {
+    static func validate(_ response: HTTPURLResponse) throws {
+        switch response.statusCode {
+        case 200..<300:
+            return
+        case 401, 403:
+            throw ProviderError.invalidCredential
+        case 429:
+            throw ProviderError.rateLimited
+        default:
+            throw ProviderError.httpStatus(response.statusCode)
+        }
+    }
 }

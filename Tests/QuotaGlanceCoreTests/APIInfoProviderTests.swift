@@ -4,6 +4,26 @@ import Testing
 
 @Suite("API Info provider")
 struct APIInfoProviderTests {
+    @Test("Detection returns the fixed API Info profile")
+    func detectionReturnsFixedProfile() async throws {
+        let provider = APIInfoProvider(
+            httpClient: StubHTTPClient(
+                data: try Fixture.data(named: "api-info-complete"),
+                statusCode: 200
+            ),
+            now: { Date(timeIntervalSince1970: 100) }
+        )
+
+        let detection = try await provider.detect(apiKey: "redacted-test-key")
+
+        #expect(provider.id == .apiInfo)
+        #expect(detection.profile == .apiInfo)
+        #expect(
+            detection.snapshot.primaryBalance?.available
+                == Money(amount: Decimal(string: "544.045471")!, currency: "USD")
+        )
+    }
+
     @Test("Top-level remaining is authoritative")
     func topLevelRemainingIsAuthoritative() async throws {
         let provider = APIInfoProvider(
@@ -101,8 +121,17 @@ struct APIInfoProviderTests {
         let snapshot = try await provider.fetch(apiKey: "redacted-test-key")
 
         #expect(snapshot.providerStatus == "active")
+        #expect(snapshot.balances.count == 1)
         #expect(snapshot.quotaLimit == Money(amount: 7200, currency: "USD"))
         #expect(snapshot.quotaUsed == Money(amount: Decimal(string: "6655.90")!, currency: "USD"))
+        #expect(
+            snapshot.spendingLimit?.remaining
+                == Money(amount: Decimal(string: "544.045471")!, currency: "USD")
+        )
+        #expect(
+            snapshot.spend.today
+                == Money(amount: Decimal(string: "12.34")!, currency: "USD")
+        )
         #expect(
             snapshot.today == UsageCounters(
                 actualCost: Money(amount: Decimal(string: "12.34")!, currency: "USD"),
