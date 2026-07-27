@@ -2,7 +2,7 @@ import Foundation
 import QuotaGlanceCore
 import UserNotifications
 
-enum NotificationPermissionState: Equatable {
+enum NotificationPermissionState: Equatable, Sendable {
     case notDetermined
     case denied
     case authorized
@@ -13,17 +13,7 @@ final class NotificationService {
     private let center = UNUserNotificationCenter.current()
 
     func permissionState() async -> NotificationPermissionState {
-        let settings = await center.notificationSettings()
-        return switch settings.authorizationStatus {
-        case .authorized, .provisional, .ephemeral:
-            .authorized
-        case .denied:
-            .denied
-        case .notDetermined:
-            .notDetermined
-        @unknown default:
-            .denied
-        }
+        await Self.currentPermissionState()
     }
 
     func requestAuthorization() async -> NotificationPermissionState {
@@ -32,7 +22,7 @@ final class NotificationService {
         } catch {
             return .denied
         }
-        return await permissionState()
+        return await Self.currentPermissionState()
     }
 
     func sendLowBalance(
@@ -50,5 +40,19 @@ final class NotificationService {
             trigger: nil
         )
         try await center.add(request)
+    }
+
+    nonisolated private static func currentPermissionState() async -> NotificationPermissionState {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        return switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            .authorized
+        case .denied:
+            .denied
+        case .notDetermined:
+            .notDetermined
+        @unknown default:
+            .denied
+        }
     }
 }
