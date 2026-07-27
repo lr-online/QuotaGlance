@@ -11,7 +11,7 @@ WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.Widget"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_PARENT="$ROOT_DIR/DerivedData/LocalBuild"
 XCODEBUILD="/usr/bin/xcodebuild"
-XCODE_DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
+XCODE_DEVELOPER_DIR="${DEVELOPER_DIR:-$(/usr/bin/xcode-select -p)}"
 
 case "$CONFIGURATION" in
   Debug)
