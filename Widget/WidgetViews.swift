@@ -47,16 +47,19 @@ struct QuotaGlanceWidgetView: View {
                 widgetHeader
                 Spacer(minLength: 2)
                 primaryMetricBlock(size: 27)
-                metricLine(
-                    label: "Today",
-                    value: entry.presentation.todayActualCost.map {
-                        MoneyFormatter.widgetString($0)
-                    } ?? "--"
-                )
-                metricLine(
-                    label: "Requests",
-                    value: entry.presentation.todayRequests?.formatted() ?? "--"
-                )
+                if entry.presentation.todayActualCost != nil
+                    || entry.presentation.todayRequests != nil {
+                    metricLine(
+                        label: "Today",
+                        value: entry.presentation.todayActualCost.map {
+                            MoneyFormatter.widgetString($0)
+                        } ?? "--"
+                    )
+                    metricLine(
+                        label: "Requests",
+                        value: entry.presentation.todayRequests?.formatted() ?? "--"
+                    )
+                }
                 freshness
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,21 +74,26 @@ struct QuotaGlanceWidgetView: View {
             widgetHeader
             primaryMetricBlock(size: 30)
 
-            HStack(spacing: 20) {
-                metricLine(
-                    label: "Today",
-                    value: entry.presentation.todayActualCost.map {
-                        MoneyFormatter.widgetString($0)
-                    } ?? "--"
-                )
-                metricLine(
-                    label: "Requests",
-                    value: entry.presentation.todayRequests?.formatted() ?? "--"
-                )
+            if entry.presentation.todayActualCost != nil
+                || entry.presentation.todayRequests != nil {
+                HStack(spacing: 20) {
+                    metricLine(
+                        label: "Today",
+                        value: entry.presentation.todayActualCost.map {
+                            MoneyFormatter.widgetString($0)
+                        } ?? "--"
+                    )
+                    metricLine(
+                        label: "Requests",
+                        value: entry.presentation.todayRequests?.formatted() ?? "--"
+                    )
+                }
             }
 
-            WidgetUsageChart(dailyUsage: entry.presentation.dailyUsage)
-                .frame(height: 74)
+            if !entry.presentation.dailyUsage.isEmpty {
+                WidgetUsageChart(dailyUsage: entry.presentation.dailyUsage)
+                    .frame(height: 74)
+            }
 
             if !entry.presentation.accountRows.isEmpty {
                 VStack(spacing: 6) {
@@ -107,6 +115,9 @@ struct QuotaGlanceWidgetView: View {
                                         .foregroundStyle(.secondary)
                                         .lineLimit(1)
                                 }
+                            } else if account.metricsUnavailableReason != nil {
+                                Text("Connected")
+                                    .foregroundStyle(.secondary)
                             } else {
                                 Text("--")
                                     .foregroundStyle(.secondary)
@@ -164,6 +175,17 @@ struct QuotaGlanceWidgetView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text(primaryMetricLabel(metric))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        } else if let reason = entry.presentation.metricsUnavailableReason {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Connected")
+                    .font(.system(size: max(size - 4, 18), weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(reason)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)

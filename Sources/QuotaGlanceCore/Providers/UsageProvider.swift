@@ -34,9 +34,18 @@ public protocol UsageProvider: Sendable {
     var id: ProviderID { get }
     func fetch(apiKey: String) async throws -> ProviderUsageSnapshot
     func detect(apiKey: String) async throws -> ProviderDetection
+    func detect(
+        apiKey: String,
+        configuration: ProviderConfiguration?
+    ) async throws -> ProviderDetection
     func fetch(
         apiKey: String,
         profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile,
+        configuration: ProviderConfiguration?
     ) async throws -> ProviderUsageSnapshot
 }
 
@@ -50,11 +59,26 @@ public extension UsageProvider {
         )
     }
 
+    func detect(
+        apiKey: String,
+        configuration: ProviderConfiguration?
+    ) async throws -> ProviderDetection {
+        try await detect(apiKey: apiKey)
+    }
+
     func fetch(
         apiKey: String,
         profile: ProviderProfile
     ) async throws -> ProviderUsageSnapshot {
         try await fetch(apiKey: apiKey)
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile,
+        configuration: ProviderConfiguration?
+    ) async throws -> ProviderUsageSnapshot {
+        try await fetch(apiKey: apiKey, profile: profile)
     }
 }
 
@@ -86,6 +110,7 @@ public enum ProviderError: Error, Equatable, Sendable {
     case unsupportedCredential
     case regionDetectionFailed
     case profileMismatch
+    case invalidEndpoint
     case providerUnavailable(ProviderID)
 }
 

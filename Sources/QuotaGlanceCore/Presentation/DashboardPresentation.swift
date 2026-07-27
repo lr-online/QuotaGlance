@@ -35,12 +35,14 @@ public struct CompactAccountPresentation: Equatable, Identifiable, Sendable {
     public let displayName: String
     public let health: AccountHealth
     public let primaryMetric: PrimaryMetric?
+    public let metricsUnavailableReason: String?
 
     public init(account: AccountSnapshot) {
         accountID = account.accountID
         displayName = account.displayName
         health = account.health
         primaryMetric = DashboardPresenter.primaryMetric(for: account.usage)
+        metricsUnavailableReason = account.usage?.metricsUnavailableReason
     }
 }
 
@@ -83,6 +85,7 @@ public struct DashboardPresentation: Equatable, Sendable {
     public var dailyUsage: [DailyUsage]
     public var accountRows: [AccountSnapshot]
     public var usage: ProviderUsageSnapshot?
+    public var metricsUnavailableReason: String?
     public var status: DashboardStatus
     public var lastSuccessAt: Date?
 
@@ -96,6 +99,7 @@ public struct DashboardPresentation: Equatable, Sendable {
         dailyUsage: [DailyUsage],
         accountRows: [AccountSnapshot],
         usage: ProviderUsageSnapshot?,
+        metricsUnavailableReason: String? = nil,
         status: DashboardStatus,
         lastSuccessAt: Date?
     ) {
@@ -108,6 +112,7 @@ public struct DashboardPresentation: Equatable, Sendable {
         self.dailyUsage = dailyUsage
         self.accountRows = accountRows
         self.usage = usage
+        self.metricsUnavailableReason = metricsUnavailableReason
         self.status = status
         self.lastSuccessAt = lastSuccessAt
     }
@@ -133,6 +138,9 @@ public enum DashboardPresenter {
                 dailyUsage: aggregate.dailyUsage,
                 accountRows: aggregate.accounts,
                 usage: nil,
+                metricsUnavailableReason: aggregate.accounts.compactMap {
+                    $0.usage?.metricsUnavailableReason
+                }.first,
                 status: aggregate.accounts.isEmpty
                     ? .empty
                     : aggregate.isPartial ? .partial : .healthy,
@@ -156,6 +164,7 @@ public enum DashboardPresenter {
                 dailyUsage: account.usage?.dailyUsage ?? [],
                 accountRows: [],
                 usage: account.usage,
+                metricsUnavailableReason: account.usage?.metricsUnavailableReason,
                 status: status(for: account.health),
                 lastSuccessAt: account.lastSuccessAt
             )

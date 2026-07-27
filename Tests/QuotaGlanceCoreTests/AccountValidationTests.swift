@@ -180,4 +180,60 @@ struct AccountValidationTests {
         #expect(validated.provider == .kimi)
         #expect(validated.apiKey == "replacement-key")
     }
+
+    @Test("Bailian defaults and normalizes its official Base URL")
+    func bailianBaseURLIsNormalized() throws {
+        let defaultDraft = AccountDraft(
+            displayName: "Bailian Public",
+            apiKey: "test-key",
+            provider: .bailian,
+            baseURLText: "",
+            isEnabled: true,
+            lowBalanceThresholdText: "50"
+        )
+
+        let defaultValue = try AccountValidator.validate(
+            draft: defaultDraft,
+            existingAccounts: []
+        )
+        #expect(
+            defaultValue.providerConfiguration?.baseURL.absoluteString
+                == "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        )
+        #expect(defaultValue.lowBalanceThreshold == 50)
+
+        var workspaceDraft = defaultDraft
+        workspaceDraft.baseURLText = "  https://llm-test.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/  "
+        let workspaceValue = try AccountValidator.validate(
+            draft: workspaceDraft,
+            existingAccounts: []
+        )
+        #expect(
+            workspaceValue.providerConfiguration?.baseURL.absoluteString
+                == "https://llm-test.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+        )
+    }
+
+    @Test("Bailian rejects Base URLs that could receive the API key")
+    func bailianRejectsUnsafeBaseURLs() {
+        for baseURL in [
+            "http://dashscope.aliyuncs.com/compatible-mode/v1",
+            "https://example.com/compatible-mode/v1",
+            "https://dashscope.aliyuncs.com/other-path",
+            "https://user@dashscope.aliyuncs.com/compatible-mode/v1",
+        ] {
+            let draft = AccountDraft(
+                displayName: "Bailian",
+                apiKey: "test-key",
+                provider: .bailian,
+                baseURLText: baseURL,
+                isEnabled: true,
+                lowBalanceThresholdText: ""
+            )
+
+            #expect(throws: ProviderError.invalidEndpoint) {
+                try AccountValidator.validate(draft: draft, existingAccounts: [])
+            }
+        }
+    }
 }

@@ -203,6 +203,56 @@ struct WidgetPresentationTests {
         #expect(presentation.todayRequests == nil)
         #expect(presentation.dailyUsage.isEmpty)
     }
+
+    @Test("A connected account without billing metrics explains the limitation")
+    func connectionOnlyAccountExplainsMissingMetrics() throws {
+        let accountID = UUID(
+            uuidString: "00000000-0000-0000-0000-000000000093"
+        )!
+        let usage = ProviderUsageSnapshot(
+            providerStatus: "connected",
+            metricsUnavailableReason: "231 models available. Billing metrics unavailable for this API key.",
+            receivedAt: Date(timeIntervalSince1970: 100)
+        )
+        let account = AccountSnapshot(
+            accountID: accountID,
+            displayName: "Bailian",
+            provider: .bailian,
+            detectedProfile: ProviderProfile(
+                region: .china,
+                credentialKind: .standard
+            ),
+            usage: usage,
+            health: .healthy,
+            lastSuccessAt: usage.receivedAt
+        )
+        let envelope = WidgetSnapshotEnvelope(
+            capturedAt: usage.receivedAt,
+            aggregate: AggregateSnapshot(accounts: [account]),
+            accounts: [account]
+        )
+
+        let selected = WidgetPresenter.make(
+            selection: .account(accountID),
+            envelope: envelope
+        )
+        let aggregate = WidgetPresenter.make(
+            selection: .allAccounts,
+            envelope: envelope
+        )
+
+        #expect(selected.primaryMetric == nil)
+        #expect(
+            selected.metricsUnavailableReason
+                == "231 models available. Billing metrics unavailable for this API key."
+        )
+        #expect(aggregate.primaryMetric == nil)
+        #expect(
+            try #require(aggregate.accountRows.first).metricsUnavailableReason
+                == selected.metricsUnavailableReason
+        )
+        #expect(aggregate.metricsUnavailableReason == selected.metricsUnavailableReason)
+    }
 }
 
 private struct WidgetFixture {

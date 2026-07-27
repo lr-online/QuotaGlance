@@ -51,6 +51,7 @@ struct DomainModelTests {
             .kimi,
             .openRouter,
             .miniMax,
+            .bailian,
         ])
     }
 
@@ -92,11 +93,39 @@ struct DomainModelTests {
         #expect(!ProviderID.openRouter.supportsLowBalanceThreshold(profile: standard))
         #expect(ProviderID.openRouter.supportsLowBalanceThreshold(profile: management))
         #expect(!ProviderID.miniMax.supportsLowBalanceThreshold(profile: tokenPlan))
+        #expect(!ProviderID.bailian.supportsLowBalanceThreshold(profile: standard))
         #expect(
             ProviderID.miniMax.normalizedLowBalanceThreshold(
                 20,
                 profile: tokenPlan
             ) == nil
+        )
+    }
+
+    @Test("Provider configuration persists a non-secret Base URL")
+    func providerConfigurationRoundTrips() throws {
+        let configuration = ProviderConfiguration(
+            baseURL: URL(
+                string: "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+            )!
+        )
+        let account = Account(
+            displayName: "Bailian",
+            provider: .bailian,
+            detectedProfile: ProviderProfile(
+                region: .china,
+                credentialKind: .standard
+            ),
+            providerConfiguration: configuration
+        )
+
+        let data = try JSONEncoder.quotaGlance.encode(account)
+        let decoded = try JSONDecoder.quotaGlance.decode(Account.self, from: data)
+
+        #expect(decoded.providerConfiguration == configuration)
+        #expect(
+            ProviderID.bailian.profileDescription(for: decoded.detectedProfile)
+                == "China endpoint"
         )
     }
 

@@ -50,13 +50,15 @@ struct RefreshCoordinatorTests {
         #expect(await kimi.calls == [
             ProviderFetchCall(
                 apiKey: "kimi-key",
-                profile: ProviderProfile(region: .china, credentialKind: .standard)
+                profile: ProviderProfile(region: .china, credentialKind: .standard),
+                configuration: nil
             ),
         ])
         #expect(await openRouter.calls == [
             ProviderFetchCall(
                 apiKey: "openrouter-key",
-                profile: ProviderProfile(region: .global, credentialKind: .management)
+                profile: ProviderProfile(region: .global, credentialKind: .management),
+                configuration: nil
             ),
         ])
         #expect(result.accountSnapshots[kimiAccount.id]?.provider == .kimi)
@@ -64,6 +66,52 @@ struct RefreshCoordinatorTests {
             result.accountSnapshots[openRouterAccount.id]?.detectedProfile
                 == openRouterAccount.detectedProfile
         )
+    }
+
+    @Test("Saved provider configuration reaches the provider refresh")
+    func providerConfigurationIsForwarded() async throws {
+        let configuration = ProviderConfiguration(
+            baseURL: URL(
+                string: "https://workspace.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+            )!
+        )
+        let account = Account(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000013")!,
+            displayName: "Bailian",
+            provider: .bailian,
+            detectedProfile: ProviderProfile(
+                region: .china,
+                credentialKind: .standard
+            ),
+            providerConfiguration: configuration
+        )
+        let provider = RoutingUsageProvider(
+            id: .bailian,
+            snapshot: ProviderUsageSnapshot(
+                providerStatus: "connected",
+                receivedAt: Date(timeIntervalSince1970: 100)
+            )
+        )
+        let coordinator = RefreshCoordinator(
+            credentialStore: MemoryCredentialStore(values: [account.id: "bailian-key"]),
+            registry: ProviderRegistry(providers: [provider]),
+            timeout: 1,
+            now: { Date(timeIntervalSince1970: 200) }
+        )
+
+        let result = try await coordinator.refresh(accounts: [account])
+
+        #expect(await provider.calls == [
+            ProviderFetchCall(
+                apiKey: "bailian-key",
+                profile: ProviderProfile(
+                    region: .china,
+                    credentialKind: .standard
+                ),
+                configuration: configuration
+            ),
+        ])
+        #expect(result.outcome == .fresh)
     }
 
     @Test("Concurrent refresh requests coalesce into one provider call per account")
@@ -557,6 +605,7 @@ private actor SnapshotRecorder {
 private struct ProviderFetchCall: Equatable, Sendable {
     let apiKey: String
     let profile: ProviderProfile
+    let configuration: ProviderConfiguration?
 }
 
 private actor RoutingUsageProvider: UsageProvider {
@@ -577,7 +626,28 @@ private actor RoutingUsageProvider: UsageProvider {
         apiKey: String,
         profile: ProviderProfile
     ) async throws -> ProviderUsageSnapshot {
-        calls.append(ProviderFetchCall(apiKey: apiKey, profile: profile))
+        calls.append(
+            ProviderFetchCall(
+                apiKey: apiKey,
+                profile: profile,
+                configuration: nil
+            )
+        )
+        return snapshot
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile,
+        configuration: ProviderConfiguration?
+    ) async throws -> ProviderUsageSnapshot {
+        calls.append(
+            ProviderFetchCall(
+                apiKey: apiKey,
+                profile: profile,
+                configuration: configuration
+            )
+        )
         return snapshot
     }
 }

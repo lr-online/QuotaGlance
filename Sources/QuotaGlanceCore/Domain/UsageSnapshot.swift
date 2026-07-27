@@ -177,6 +177,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
     public var dailyUsage: [DailyUsage]
     public var modelUsage: [ModelUsage]
     public var providerStatus: String?
+    public var metricsUnavailableReason: String?
     public var receivedAt: Date
 
     public init(
@@ -189,6 +190,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
         dailyUsage: [DailyUsage] = [],
         modelUsage: [ModelUsage] = [],
         providerStatus: String? = nil,
+        metricsUnavailableReason: String? = nil,
         receivedAt: Date
     ) {
         self.balances = balances
@@ -200,6 +202,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
         self.dailyUsage = dailyUsage
         self.modelUsage = modelUsage
         self.providerStatus = providerStatus
+        self.metricsUnavailableReason = metricsUnavailableReason
         self.receivedAt = receivedAt
     }
 
@@ -212,6 +215,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
         dailyUsage: [DailyUsage] = [],
         modelUsage: [ModelUsage] = [],
         providerStatus: String? = nil,
+        metricsUnavailableReason: String? = nil,
         receivedAt: Date
     ) {
         self.init(
@@ -233,6 +237,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
             dailyUsage: dailyUsage,
             modelUsage: modelUsage,
             providerStatus: providerStatus,
+            metricsUnavailableReason: metricsUnavailableReason,
             receivedAt: receivedAt
         )
     }

@@ -2,18 +2,18 @@
 
 QuotaGlance 是一个个人使用的 macOS 菜单栏应用和桌面小组件，用于集中查看多个 AI API provider 的余额、消费上限、支出或订阅配额。
 
-当前支持 API Info、DeepSeek、Kimi、OpenRouter 和 MiniMax。不同 provider 暴露的官方能力并不相同，QuotaGlance 只显示真实可查询的数据，不会把消费上限或请求配额伪装成现金余额。详细边界记录在 [`docs/research/provider-capabilities.md`](docs/research/provider-capabilities.md)。
+当前支持 API Info、DeepSeek、Kimi、OpenRouter、MiniMax 和阿里云百炼（Alibaba Cloud Model Studio）。不同 provider 暴露的官方能力并不相同，QuotaGlance 只显示真实可查询的数据，不会把消费上限、请求配额或连接状态伪装成现金余额。详细边界记录在 [`docs/research/provider-capabilities.md`](docs/research/provider-capabilities.md)。
 
 ## 功能
 
 - 管理最多 20 个具名 provider 账户，key 只保存在 macOS Keychain。
-- 添加 key 时选择 provider；Kimi 和 MiniMax 自动识别中国站或国际站，OpenRouter 自动识别标准 key 或 Management Key。
+- 添加 key 时选择 provider；Kimi 和 MiniMax 自动识别中国站或国际站，OpenRouter 自动识别标准 key 或 Management Key，百炼根据官方 Base URL 识别地域。
 - 菜单栏按账户实际能力显示余额明细、消费上限、周期支出、配额窗口、近期趋势和模型用量。
 - All Accounts 只汇总真实余额，并按 `CNY`（人民币）和 `USD`（美元）等币种分别显示，不做汇率换算。
 - 刷新间隔可选 1、5、15、30 或 60 分钟，默认 5 分钟。
 - macOS 14 完整版支持小、中、大三种 Widget，并可配置为全部账户或指定账户。
 - 网络或接口失败时保留上次成功数据并标记为过期。
-- 对具有真实余额的账户提供可选低余额通知；MiniMax 和 OpenRouter 标准 key 不显示该设置。
+- 对具有真实余额的账户提供可选低余额通知；MiniMax、百炼和 OpenRouter 标准 key 不显示该设置。
 - 支持开机启动。
 
 ## 系统要求
@@ -90,7 +90,7 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 ## 添加账户
 
 1. 点击菜单栏中的 QuotaGlance 图标，打开 Settings。
-2. 选择 API Info、DeepSeek、Kimi、OpenRouter 或 MiniMax，填写账户名称和 key 后保存。
+2. 选择 API Info、DeepSeek、Kimi、OpenRouter、MiniMax 或 Alibaba Cloud Model Studio，填写账户名称和 key 后保存。百炼还可以填写控制台显示的 OpenAI 兼容 Base URL；留空时使用北京公共地址 `https://dashscope.aliyuncs.com/compatible-mode/v1`。
 3. 保存过程中会验证 key 并自动识别地域或 key 类型；识别结果会显示在 Settings 的账户行中。
 4. 重复添加其他账户；当前设计最多支持 20 个。
 5. 在菜单栏面板切换 All Accounts 或单个账户，使用刷新按钮立即更新。
@@ -100,6 +100,8 @@ Provider 特殊情况：
 - Kimi 中国站余额使用 `CNY`，国际站余额使用 `USD`。应用先按当前系统地域尝试官方端点，仅在明确的 401/403 鉴权拒绝后尝试另一地域；后续刷新只访问已识别地域。
 - OpenRouter 标准 key 显示该 key 的支出和可选消费上限；Management Key 还会读取账户 credits，并将其作为 `USD` 余额。
 - MiniMax 只支持 Token/Coding Plan subscription key，并显示非现金的配额窗口。`sk-api-...` 按量付费 key 会在请求前被拒绝，因为 MiniMax 没有公开官方现金余额查询接口。
+- 百炼使用 `GET <Base URL>/models` 验证 API Key 和地域。支持北京公共地址及北京、新加坡、东京 workspace 专属地址和弗吉尼亚公共地址；为防止 Key 泄漏，应用拒绝非阿里云 Host、HTTP、自定义端口、查询参数和非 OpenAI 兼容路径。
+- 百炼没有公开使用同一 DashScope API Key 查询余额、累计支出或剩余免费额度的接口。因此账户和 Widget 会明确显示 `Connected` 与可用模型数量，并提示账务指标不可用；不会把整个阿里云账户的人民币或美元账务数据伪装成某个 Key 的余额。
 - DeepSeek 和 Kimi 的余额可能属于整个账户或组织。同一 provider 账户下添加多个 key 可能让 All Accounts 重复计算同一份余额，应用无法从官方响应中可靠识别这种重复。
 
 不要把真实 key 写入源码、提交记录或仓库内的 `.env`。QuotaGlance 不会从 `.env` 导入 key；请只通过应用内的安全编辑器录入。

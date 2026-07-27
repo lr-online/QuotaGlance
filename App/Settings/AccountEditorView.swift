@@ -19,6 +19,10 @@ struct AccountEditorView: View {
                 displayName: account?.displayName ?? "",
                 apiKey: "",
                 provider: account?.provider ?? .apiInfo,
+                baseURLText: account?.providerConfiguration?.baseURL.absoluteString
+                    ?? (account?.provider == .bailian
+                        ? BailianEndpoint.defaultBaseURL.absoluteString
+                        : ""),
                 isEnabled: account?.isEnabled ?? true,
                 lowBalanceThresholdText: Self.thresholdText(for: account)
             )
@@ -39,6 +43,9 @@ struct AccountEditorView: View {
             get: { draft.provider },
             set: { provider in
                 draft.provider = provider
+                if provider == .bailian, draft.baseURLText.isEmpty {
+                    draft.baseURLText = BailianEndpoint.defaultBaseURL.absoluteString
+                }
                 if !provider.supportsLowBalanceThreshold(
                     profile: selectedProfile
                 ) {
@@ -61,6 +68,9 @@ struct AccountEditorView: View {
                     account == nil ? "API Key" : "Replacement API Key (Optional)",
                     text: $draft.apiKey
                 )
+                if draft.provider == .bailian {
+                    TextField("Base URL", text: $draft.baseURLText)
+                }
                 if supportsLowBalanceThreshold {
                     TextField(
                         thresholdFieldLabel,
@@ -100,7 +110,7 @@ struct AccountEditorView: View {
             }
             .padding(16)
         }
-        .frame(width: 430, height: 340)
+        .frame(width: 460, height: draft.provider == .bailian ? 380 : 340)
     }
 
     private func save() {

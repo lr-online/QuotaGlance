@@ -159,9 +159,13 @@ struct MenuBarDashboardView: View {
             if case .allAccounts = selection {
                 sectionHeader("Balances")
                 if presentation.balances.isEmpty {
-                    Text("--")
-                        .font(.system(size: 30, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
+                    if let reason = presentation.metricsUnavailableReason {
+                        connectionOnlyMetric(reason)
+                    } else {
+                        Text("--")
+                            .font(.system(size: 30, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     ForEach(presentation.balances, id: \.currency) { balance in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -190,6 +194,8 @@ struct MenuBarDashboardView: View {
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.65)
+            } else if let reason = presentation.metricsUnavailableReason {
+                connectionOnlyMetric(reason)
             } else {
                 Text("No metric")
                     .font(.caption)
@@ -199,6 +205,17 @@ struct MenuBarDashboardView: View {
             }
 
             statusLabel(presentation.status)
+        }
+    }
+
+    private func connectionOnlyMetric(_ reason: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("Connected")
+                .font(.system(size: 24, weight: .semibold, design: .rounded))
+            Text(reason)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -441,6 +458,9 @@ struct MenuBarDashboardView: View {
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
                             }
+                        } else if account.metricsUnavailableReason != nil {
+                            Text("Connected")
+                                .foregroundStyle(.secondary)
                         } else {
                             Text("--")
                                 .foregroundStyle(.secondary)

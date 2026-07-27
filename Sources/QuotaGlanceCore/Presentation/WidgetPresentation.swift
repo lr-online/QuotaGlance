@@ -20,6 +20,7 @@ public struct WidgetPresentation: Equatable, Sendable {
     public var todayRequests: Int64?
     public var dailyUsage: [DailyUsage]
     public var accountRows: [CompactAccountPresentation]
+    public var metricsUnavailableReason: String?
     public var state: WidgetPresentationState
     public var lastSuccessAt: Date?
     public var capturedAt: Date?
@@ -34,6 +35,7 @@ public struct WidgetPresentation: Equatable, Sendable {
         todayRequests: Int64? = nil,
         dailyUsage: [DailyUsage] = [],
         accountRows: [CompactAccountPresentation] = [],
+        metricsUnavailableReason: String? = nil,
         state: WidgetPresentationState,
         lastSuccessAt: Date? = nil,
         capturedAt: Date? = nil,
@@ -47,6 +49,7 @@ public struct WidgetPresentation: Equatable, Sendable {
         self.todayRequests = todayRequests
         self.dailyUsage = dailyUsage
         self.accountRows = accountRows
+        self.metricsUnavailableReason = metricsUnavailableReason
         self.state = state
         self.lastSuccessAt = lastSuccessAt
         self.capturedAt = capturedAt
@@ -111,6 +114,8 @@ public enum WidgetPresenter {
             todayRequests: dashboard.todayRequests,
             dailyUsage: dashboard.dailyUsage,
             accountRows: accountRows,
+            metricsUnavailableReason: dashboard.metricsUnavailableReason
+                ?? accountRows.compactMap(\.metricsUnavailableReason).first,
             state: .available(dashboard.status),
             lastSuccessAt: dashboard.lastSuccessAt,
             capturedAt: envelope.capturedAt,

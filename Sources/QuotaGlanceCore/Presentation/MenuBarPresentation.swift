@@ -28,6 +28,7 @@ public struct MenuBarPresentation: Equatable, Sendable {
     public let quotaWindows: [QuotaWindow]
     public let quota: MenuBarQuotaPresentation?
     public let modelRows: [ModelUsage]
+    public let metricsUnavailableReason: String?
     public let status: DashboardStatus
     public let lastSuccessAt: Date?
 }
@@ -78,6 +79,7 @@ public enum MenuBarPresenter {
             quotaWindows: dashboard.usage?.quotaWindows ?? [],
             quota: makeQuota(dashboard.usage),
             modelRows: makeModelRows(dashboard.usage?.modelUsage ?? []),
+            metricsUnavailableReason: dashboard.metricsUnavailableReason,
             status: dashboard.status,
             lastSuccessAt: dashboard.lastSuccessAt
         )
