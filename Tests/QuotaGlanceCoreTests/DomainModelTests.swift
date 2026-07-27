@@ -23,7 +23,102 @@ struct DomainModelTests {
 
         #expect(account.isEnabled)
         #expect(account.lowBalanceThreshold == nil)
+        #expect(account.provider == .apiInfo)
+        #expect(account.detectedProfile == .apiInfo)
         #expect(AppPreferences.default.refreshInterval == .fiveMinutes)
+    }
+
+    @Test("Provider profiles round-trip all supported variants")
+    func providerProfilesRoundTrip() throws {
+        let profiles = [
+            ProviderProfile(region: .global, credentialKind: .standard),
+            ProviderProfile(region: .china, credentialKind: .standard),
+            ProviderProfile(region: .international, credentialKind: .management),
+            ProviderProfile(region: .international, credentialKind: .tokenPlan),
+        ]
+
+        for profile in profiles {
+            let data = try JSONEncoder.quotaGlance.encode(profile)
+            let decoded = try JSONDecoder.quotaGlance.decode(
+                ProviderProfile.self,
+                from: data
+            )
+            #expect(decoded == profile)
+        }
+        #expect(ProviderID.allCases == [
+            .apiInfo,
+            .deepSeek,
+            .kimi,
+            .openRouter,
+            .miniMax,
+        ])
+    }
+
+    @Test("Legacy accounts migrate to API Info")
+    func legacyAccountMigratesToAPIInfo() throws {
+        let data = Data(
+            #"{"alertEpisodeActive":false,"displayName":"Legacy","id":"00000000-0000-0000-0000-000000000001","isEnabled":true,"sortOrder":0}"#.utf8
+        )
+
+        let account = try JSONDecoder.quotaGlance.decode(Account.self, from: data)
+
+        #expect(account.provider == .apiInfo)
+        #expect(account.detectedProfile == .apiInfo)
+    }
+
+    @Test("Provider snapshots allow quota windows without money")
+    func providerSnapshotsAllowQuotaWindowsWithoutMoney() throws {
+        let snapshot = ProviderUsageSnapshot(
+            quotaWindows: [
+                QuotaWindow(
+                    label: "5-hour quota",
+                    used: 100,
+                    limit: 1_000,
+                    remaining: 900,
+                    unit: "requests"
+                )
+            ],
+            receivedAt: Date(timeIntervalSince1970: 100)
+        )
+
+        let data = try JSONEncoder.quotaGlance.encode(snapshot)
+        let decoded = try JSONDecoder.quotaGlance.decode(
+            ProviderUsageSnapshot.self,
+            from: data
+        )
+
+        #expect(decoded.balances.isEmpty)
+        #expect(decoded.spendingLimit == nil)
+        #expect(decoded.quotaWindows.first?.remaining == 900)
+        #expect(decoded.primaryBalance == nil)
+    }
+
+    @Test("Monetary capabilities preserve semantic boundaries")
+    func monetaryCapabilitiesPreserveSemanticBoundaries() {
+        let balance = MonetaryBalance(
+            label: "Balance",
+            available: Money(amount: 50, currency: "cny"),
+            breakdown: [
+                MonetaryValue(
+                    label: "Cash",
+                    value: Money(amount: 30, currency: "CNY")
+                )
+            ]
+        )
+        let limit = SpendingLimit(
+            label: "Key limit",
+            used: Money(amount: 25, currency: "USD"),
+            limit: Money(amount: 100, currency: "USD"),
+            remaining: Money(amount: 75, currency: "USD")
+        )
+        let snapshot = ProviderUsageSnapshot(
+            balances: [balance],
+            spendingLimit: limit,
+            receivedAt: .now
+        )
+
+        #expect(snapshot.primaryBalance?.available.currency == "CNY")
+        #expect(snapshot.spendingLimit?.remaining?.currency == "USD")
     }
 
     @Test("Widget snapshot envelope preserves schema version")
@@ -38,7 +133,7 @@ struct DomainModelTests {
             from: data
         )
 
-        #expect(decoded.schemaVersion == 1)
+        #expect(decoded.schemaVersion == 2)
         #expect(decoded.capturedAt == envelope.capturedAt)
     }
 }

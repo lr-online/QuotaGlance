@@ -1,7 +1,7 @@
 import Foundation
 
 public struct StoredAccountPreferences: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion: Int
     public var accounts: [Account]

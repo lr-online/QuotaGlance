@@ -27,7 +27,7 @@ struct StorageTests {
         try store.save(accounts: accounts, preferences: .default)
         let loaded = try store.load()
 
-        #expect(loaded.schemaVersion == 1)
+        #expect(loaded.schemaVersion == 2)
         #expect(loaded.accounts == accounts)
         #expect(loaded.preferences == .default)
     }

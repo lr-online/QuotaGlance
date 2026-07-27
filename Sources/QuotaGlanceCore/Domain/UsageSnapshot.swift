@@ -68,16 +68,140 @@ public struct ModelUsage: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+public struct MonetaryValue: Codable, Equatable, Identifiable, Sendable {
+    public var id: String { label }
+    public var label: String
+    public var value: Money
+
+    public init(label: String, value: Money) {
+        self.label = label
+        self.value = value
+    }
+}
+
+public struct MonetaryBalance: Codable, Equatable, Identifiable, Sendable {
+    public var id: String { "\(label)-\(available.currency)" }
+    public var label: String
+    public var available: Money
+    public var breakdown: [MonetaryValue]
+
+    public init(
+        label: String,
+        available: Money,
+        breakdown: [MonetaryValue] = []
+    ) {
+        self.label = label
+        self.available = available
+        self.breakdown = breakdown
+    }
+}
+
+public struct SpendingLimit: Codable, Equatable, Sendable {
+    public var label: String
+    public var used: Money?
+    public var limit: Money?
+    public var remaining: Money?
+    public var resetDescription: String?
+
+    public init(
+        label: String,
+        used: Money? = nil,
+        limit: Money? = nil,
+        remaining: Money? = nil,
+        resetDescription: String? = nil
+    ) {
+        self.label = label
+        self.used = used
+        self.limit = limit
+        self.remaining = remaining
+        self.resetDescription = resetDescription
+    }
+}
+
+public struct SpendSummary: Codable, Equatable, Sendable {
+    public var today: Money?
+    public var week: Money?
+    public var month: Money?
+    public var total: Money?
+
+    public init(
+        today: Money? = nil,
+        week: Money? = nil,
+        month: Money? = nil,
+        total: Money? = nil
+    ) {
+        self.today = today
+        self.week = week
+        self.month = month
+        self.total = total
+    }
+
+    public var isEmpty: Bool {
+        today == nil && week == nil && month == nil && total == nil
+    }
+}
+
+public struct QuotaWindow: Codable, Equatable, Identifiable, Sendable {
+    public var id: String { label }
+    public var label: String
+    public var used: Decimal?
+    public var limit: Decimal?
+    public var remaining: Decimal?
+    public var unit: String
+    public var resetsAt: Date?
+
+    public init(
+        label: String,
+        used: Decimal? = nil,
+        limit: Decimal? = nil,
+        remaining: Decimal? = nil,
+        unit: String,
+        resetsAt: Date? = nil
+    ) {
+        self.label = label
+        self.used = used
+        self.limit = limit
+        self.remaining = remaining
+        self.unit = unit
+        self.resetsAt = resetsAt
+    }
+}
+
 public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
-    public var remaining: Money
-    public var quotaLimit: Money?
-    public var quotaUsed: Money?
+    public var balances: [MonetaryBalance]
+    public var spendingLimit: SpendingLimit?
+    public var spend: SpendSummary
+    public var quotaWindows: [QuotaWindow]
     public var today: UsageCounters?
     public var total: UsageCounters?
     public var dailyUsage: [DailyUsage]
     public var modelUsage: [ModelUsage]
     public var providerStatus: String?
     public var receivedAt: Date
+
+    public init(
+        balances: [MonetaryBalance] = [],
+        spendingLimit: SpendingLimit? = nil,
+        spend: SpendSummary = SpendSummary(),
+        quotaWindows: [QuotaWindow] = [],
+        today: UsageCounters? = nil,
+        total: UsageCounters? = nil,
+        dailyUsage: [DailyUsage] = [],
+        modelUsage: [ModelUsage] = [],
+        providerStatus: String? = nil,
+        receivedAt: Date
+    ) {
+        self.balances = balances
+        self.spendingLimit = spendingLimit
+        self.spend = spend
+        self.quotaWindows = quotaWindows
+        self.today = today
+        self.total = total
+        self.dailyUsage = dailyUsage
+        self.modelUsage = modelUsage
+        self.providerStatus = providerStatus
+        self.receivedAt = receivedAt
+    }
 
     public init(
         remaining: Money,
@@ -90,15 +214,43 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
         providerStatus: String? = nil,
         receivedAt: Date
     ) {
-        self.remaining = remaining
-        self.quotaLimit = quotaLimit
-        self.quotaUsed = quotaUsed
-        self.today = today
-        self.total = total
-        self.dailyUsage = dailyUsage
-        self.modelUsage = modelUsage
-        self.providerStatus = providerStatus
-        self.receivedAt = receivedAt
+        self.init(
+            balances: [MonetaryBalance(label: "Balance", available: remaining)],
+            spendingLimit: quotaLimit != nil || quotaUsed != nil
+                ? SpendingLimit(
+                    label: "Quota",
+                    used: quotaUsed,
+                    limit: quotaLimit,
+                    remaining: nil
+                )
+                : nil,
+            spend: SpendSummary(
+                today: today?.actualCost,
+                total: total?.actualCost
+            ),
+            today: today,
+            total: total,
+            dailyUsage: dailyUsage,
+            modelUsage: modelUsage,
+            providerStatus: providerStatus,
+            receivedAt: receivedAt
+        )
+    }
+
+    public var primaryBalance: MonetaryBalance? {
+        balances.first
+    }
+
+    public var remaining: Money? {
+        primaryBalance?.available
+    }
+
+    public var quotaLimit: Money? {
+        spendingLimit?.limit
+    }
+
+    public var quotaUsed: Money? {
+        spendingLimit?.used
     }
 }
 
@@ -123,6 +275,8 @@ public struct AccountSnapshot: Codable, Equatable, Identifiable, Sendable {
     public var id: UUID { accountID }
     public var accountID: UUID
     public var displayName: String
+    public var provider: ProviderID
+    public var detectedProfile: ProviderProfile?
     public var lowBalanceThreshold: Decimal?
     public var usage: ProviderUsageSnapshot?
     public var health: AccountHealth
@@ -131,6 +285,8 @@ public struct AccountSnapshot: Codable, Equatable, Identifiable, Sendable {
     public init(
         accountID: UUID,
         displayName: String,
+        provider: ProviderID = .apiInfo,
+        detectedProfile: ProviderProfile? = nil,
         lowBalanceThreshold: Decimal? = nil,
         usage: ProviderUsageSnapshot? = nil,
         health: AccountHealth,
@@ -138,6 +294,8 @@ public struct AccountSnapshot: Codable, Equatable, Identifiable, Sendable {
     ) {
         self.accountID = accountID
         self.displayName = displayName
+        self.provider = provider
+        self.detectedProfile = detectedProfile ?? (provider == .apiInfo ? .apiInfo : nil)
         self.lowBalanceThreshold = lowBalanceThreshold
         self.usage = usage
         self.health = health
@@ -150,7 +308,7 @@ public struct AccountSnapshot: Codable, Equatable, Identifiable, Sendable {
 }
 
 public struct AggregateSnapshot: Codable, Equatable, Sendable {
-    public var remaining: Money?
+    public var balances: [Money]
     public var todayActualCost: Money?
     public var todayRequests: Int64?
     public var dailyUsage: [DailyUsage]
@@ -159,23 +317,28 @@ public struct AggregateSnapshot: Codable, Equatable, Sendable {
 
     public init(
         remaining: Money? = nil,
+        balances: [Money]? = nil,
         todayActualCost: Money? = nil,
         todayRequests: Int64? = nil,
         dailyUsage: [DailyUsage] = [],
         accounts: [AccountSnapshot] = [],
         isPartial: Bool = false
     ) {
-        self.remaining = remaining
+        self.balances = balances ?? remaining.map { [$0] } ?? []
         self.todayActualCost = todayActualCost
         self.todayRequests = todayRequests
         self.dailyUsage = dailyUsage
         self.accounts = accounts
         self.isPartial = isPartial
     }
+
+    public var remaining: Money? {
+        balances.count == 1 ? balances[0] : nil
+    }
 }
 
 public struct WidgetSnapshotEnvelope: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 1
+    public static let currentSchemaVersion = 2
 
     public var schemaVersion: Int
     public var capturedAt: Date

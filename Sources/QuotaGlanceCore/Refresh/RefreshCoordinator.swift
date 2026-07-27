@@ -117,9 +117,14 @@ private extension RefreshCoordinator {
                 let snapshot = AccountSnapshot(
                     accountID: account.id,
                     displayName: account.displayName,
+                    provider: account.provider,
+                    detectedProfile: account.detectedProfile,
                     lowBalanceThreshold: account.lowBalanceThreshold,
                     usage: usage,
-                    health: health(account: account, remaining: usage.remaining.amount),
+                    health: health(
+                        account: account,
+                        remaining: usage.primaryBalance?.available.amount
+                    ),
                     lastSuccessAt: usage.receivedAt
                 )
                 accountSnapshots[account.id] = snapshot
@@ -129,6 +134,8 @@ private extension RefreshCoordinator {
                 let snapshot: AccountSnapshot
                 if var previous = previousSnapshots[account.id], previous.usage != nil {
                     previous.displayName = account.displayName
+                    previous.provider = account.provider
+                    previous.detectedProfile = account.detectedProfile
                     previous.lowBalanceThreshold = account.lowBalanceThreshold
                     previous.health = .stale(failure)
                     snapshot = previous
@@ -136,6 +143,8 @@ private extension RefreshCoordinator {
                     snapshot = AccountSnapshot(
                         accountID: account.id,
                         displayName: account.displayName,
+                        provider: account.provider,
+                        detectedProfile: account.detectedProfile,
                         lowBalanceThreshold: account.lowBalanceThreshold,
                         health: .unavailable(failure)
                     )
@@ -177,8 +186,10 @@ private extension RefreshCoordinator {
         )
     }
 
-    func health(account: Account, remaining: Decimal) -> AccountHealth {
-        if let threshold = account.lowBalanceThreshold, remaining <= threshold {
+    func health(account: Account, remaining: Decimal?) -> AccountHealth {
+        if let remaining,
+           let threshold = account.lowBalanceThreshold,
+           remaining <= threshold {
             return .belowThreshold
         }
         return .healthy

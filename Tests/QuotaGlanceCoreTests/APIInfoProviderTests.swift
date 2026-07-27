@@ -16,9 +16,10 @@ struct APIInfoProviderTests {
 
         let snapshot = try await provider.fetch(apiKey: "redacted-test-key")
 
-        #expect(snapshot.remaining.amount == Decimal(string: "544.045471"))
+        let remaining = try #require(snapshot.remaining)
+        #expect(remaining.amount == Decimal(string: "544.045471"))
         #expect(
-            snapshot.remaining.amount
+            remaining.amount
                 != snapshot.quotaLimit!.amount - snapshot.quotaUsed!.amount
         )
         #expect(snapshot.receivedAt == Date(timeIntervalSince1970: 100))
