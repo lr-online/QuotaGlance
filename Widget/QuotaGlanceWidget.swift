@@ -43,14 +43,14 @@ struct QuotaGlanceTimelineProvider: AppIntentTimelineProvider {
 
     func snapshot(
         for configuration: QuotaGlanceWidgetConfigurationIntent,
-        in context: Context,
+        in context: Context
     ) async -> QuotaGlanceWidgetEntry {
         makeEntry(configuration: configuration)
     }
 
     func timeline(
         for configuration: QuotaGlanceWidgetConfigurationIntent,
-        in context: Context,
+        in context: Context
     ) async -> Timeline<QuotaGlanceWidgetEntry> {
         let entry = makeEntry(configuration: configuration)
         return Timeline(entries: [entry], policy: .after(nextCheck(for: entry)))
