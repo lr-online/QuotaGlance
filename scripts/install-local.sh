@@ -60,6 +60,11 @@ if [[ -e "$INSTALLED_APP" ]]; then
     exit 1
   fi
 
+  if [[ -d "$INSTALLED_WIDGET" ]]; then
+    require_bundle_id "$INSTALLED_WIDGET" "$WIDGET_BUNDLE_ID"
+    /usr/bin/pkill -x "$WIDGET_NAME" >/dev/null 2>&1 || true
+    /usr/bin/pluginkit -r "$INSTALLED_WIDGET" >/dev/null 2>&1 || true
+  fi
   /usr/bin/pkill -x "$APP_NAME" >/dev/null 2>&1 || true
   /bin/mv "$INSTALLED_APP" "$backup_path"
   echo "Previous installation moved to: $backup_path"

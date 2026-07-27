@@ -127,8 +127,32 @@ test_entitlement_validation() {
     "$app_entitlements" "$invalid_widget" "/Users/Shared/QuotaGlance/"
 }
 
+test_installer_restarts_widget_extension() {
+  local installer="$ROOT_DIR/scripts/install-local.sh"
+  local stop_widget='/usr/bin/pkill -x "$WIDGET_NAME"'
+  local unregister_widget='/usr/bin/pluginkit -r "$INSTALLED_WIDGET"'
+  local replace_app='/bin/mv "$INSTALLED_APP" "$backup_path"'
+  local stop_line
+  local unregister_line
+  local replace_line
+
+  stop_line="$(rg -nF "$stop_widget" "$installer" | head -1 | cut -d: -f1 || true)"
+  unregister_line="$(
+    rg -nF "$unregister_widget" "$installer" | head -1 | cut -d: -f1 || true
+  )"
+  replace_line="$(rg -nF "$replace_app" "$installer" | head -1 | cut -d: -f1 || true)"
+
+  [[ -n "$stop_line" ]] || fail "installer does not stop the existing widget"
+  [[ -n "$unregister_line" ]] || fail "installer does not unregister the existing widget"
+  [[ -n "$replace_line" ]] || fail "installer replacement step is missing"
+  (( stop_line < replace_line )) || fail "widget is stopped after replacing the app"
+  (( unregister_line < replace_line )) \
+    || fail "widget is unregistered after replacing the app"
+}
+
 test_snapshot_directory_validation
 test_snapshot_migration
 test_entitlement_validation
+test_installer_restarts_widget_extension
 
 echo "Local install safety tests passed"
