@@ -82,4 +82,15 @@ if rg -q 'QuotaGlanceWidget|PBXTargetDependency' <<< "$LEGACY_TARGET_BLOCK"; the
   fail "legacy host unexpectedly depends on the Widget"
 fi
 
+for required_source in \
+  ApplicationMenuInstaller.swift \
+  CompatibleSystemSymbol.swift \
+  PasteboardCommands.swift \
+  QuotaGlanceApplication.swift
+do
+  rg -Fq "$required_source in Sources" \
+    "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj" \
+    || fail "Xcode project is missing Compatibility source: $required_source"
+done
+
 echo "Build edition contract tests passed"
