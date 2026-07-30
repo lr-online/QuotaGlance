@@ -30,6 +30,8 @@ targets:
         product: QuotaGlanceCore
       - target: QuotaGlanceWidget
         embed: true
+      - target: QuotaGlanceNCWidget
+        embed: true
     settings:
       base:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
@@ -52,6 +54,8 @@ targets:
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore
+      - target: QuotaGlanceNCWidget
+        embed: true
     settings:
       base:
         MACOSX_DEPLOYMENT_TARGET: "12.0"
@@ -81,6 +85,26 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Widget/QuotaGlanceWidget.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
+  QuotaGlanceNCWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: NCWidget
+        excludes:
+          - Info.plist
+          - QuotaGlanceNCWidget.entitlements
+    dependencies:
+      - package: QuotaGlanceCore
+        product: QuotaGlanceCore
+    settings:
+      base:
+        MACOSX_DEPLOYMENT_TARGET: "12.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.NCWidget
+        PRODUCT_NAME: QuotaGlanceNCWidget
+        INFOPLIST_FILE: NCWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NCWidget/QuotaGlanceNCWidget.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
 schemes:
   QuotaGlance:
     build:
@@ -94,6 +118,10 @@ schemes:
     build:
       targets:
         QuotaGlanceWidget: all
+  QuotaGlanceNCWidget:
+    build:
+      targets:
+        QuotaGlanceNCWidget: all
   QuotaGlanceLegacy:
     build:
       targets:
