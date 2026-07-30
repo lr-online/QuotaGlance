@@ -82,28 +82,63 @@ rg -q '^  QuotaGlanceNCWidget:$' "$ROOT_DIR/project.yml" \
 rg -q '^  QuotaGlanceNCIntents:$' "$ROOT_DIR/project.yml" \
   || fail "NC intents target is missing"
 
-LEGACY_TARGET_BLOCK="$(/usr/bin/awk '
-  /\/\* QuotaGlanceLegacy \*\/ = \{/ { capture = 1 }
-  capture { print }
-  capture && /productType =/ { exit }
-' "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj")"
-if rg -q 'QuotaGlanceWidget\.appex|QuotaGlanceWidget";' <<< "$LEGACY_TARGET_BLOCK"; then
+# XcodeGen stores host→extension links as opaque PBXTargetDependency IDs.
+# Resolve those IDs to target names instead of grepping the native-target block.
+host_dependency_targets() {
+  local host_target="$1"
+  local pbxproj="$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj"
+  local dep_ids
+  local dep_id
+
+  dep_ids="$(
+    /usr/bin/awk -v host="$host_target" '
+      $0 ~ "^\\t\\t[A-F0-9]+ /\\* " host " \\*/ = \\{$" { capture = 1 }
+      capture && /dependencies = \(/ { in_deps = 1 }
+      in_deps {
+        for (i = 1; i <= NF; i++) {
+          if ($(i) ~ /^[A-F0-9]+$/ && $(i + 1) == "/*" && $(i + 2) == "PBXTargetDependency") {
+            print $(i)
+          }
+        }
+      }
+      in_deps && /\);/ { in_deps = 0 }
+      capture && /productType =/ { exit }
+    ' "$pbxproj"
+  )"
+
+  while IFS= read -r dep_id; do
+    [[ -n "$dep_id" ]] || continue
+    /usr/bin/awk -v id="$dep_id" '
+      index($0, id " /* PBXTargetDependency */ = {") { capture = 1 }
+      capture && /target = / {
+        start = index($0, "/* ")
+        end = index($0, " */")
+        if (start > 0 && end > start) {
+          print substr($0, start + 3, end - start - 3)
+        }
+        exit
+      }
+      capture && $0 == "\t\t};" { exit }
+    ' "$pbxproj"
+  done <<< "$dep_ids"
+}
+
+LEGACY_DEPENDENCIES="$(host_dependency_targets QuotaGlanceLegacy)"
+if rg -qx 'QuotaGlanceWidget' <<< "$LEGACY_DEPENDENCIES"; then
   fail "legacy host unexpectedly depends on the desktop Widget"
 fi
-rg -q 'QuotaGlanceNCWidget' <<< "$LEGACY_TARGET_BLOCK" \
+rg -qx 'QuotaGlanceNCWidget' <<< "$LEGACY_DEPENDENCIES" \
   || fail "legacy host does not depend on the NC widget"
-rg -q 'QuotaGlanceNCIntents' <<< "$LEGACY_TARGET_BLOCK" \
+rg -qx 'QuotaGlanceNCIntents' <<< "$LEGACY_DEPENDENCIES" \
   || fail "legacy host does not depend on the NC intents extension"
 
-FULL_TARGET_BLOCK="$(/usr/bin/awk '
-  /\/\* QuotaGlance \*\/ = \{/ { capture = 1 }
-  capture { print }
-  capture && /productType =/ { exit }
-' "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj")"
-rg -q 'QuotaGlanceNCWidget' <<< "$FULL_TARGET_BLOCK" \
+FULL_DEPENDENCIES="$(host_dependency_targets QuotaGlance)"
+rg -qx 'QuotaGlanceNCWidget' <<< "$FULL_DEPENDENCIES" \
   || fail "full host does not depend on the NC widget"
-rg -q 'QuotaGlanceNCIntents' <<< "$FULL_TARGET_BLOCK" \
+rg -qx 'QuotaGlanceNCIntents' <<< "$FULL_DEPENDENCIES" \
   || fail "full host does not depend on the NC intents extension"
+rg -qx 'QuotaGlanceWidget' <<< "$FULL_DEPENDENCIES" \
+  || fail "full host does not depend on the desktop Widget"
 
 for required_source in \
   ApplicationMenuInstaller.swift \
