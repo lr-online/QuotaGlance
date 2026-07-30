@@ -3,12 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Prefer ErBWs/setup-ohos (HOS_SDK_HOME) or an existing DEVECO_SDK_HOME, then DevEco.app.
+# Prefer ErBWs/setup-ohos (HOS_SDK_HOME points at .../sdk containing default/),
+# then an existing DEVECO_SDK_HOME, then DevEco.app.
 if [[ -z "${DEVECO_SDK_HOME:-}" ]]; then
-  if [[ -n "${HOS_SDK_HOME:-}" && -d "${HOS_SDK_HOME}/default" ]]; then
-    export DEVECO_SDK_HOME="${HOS_SDK_HOME}/default"
-  elif [[ -d "/Applications/DevEco-Studio.app/Contents/sdk/default" ]]; then
-    export DEVECO_SDK_HOME="/Applications/DevEco-Studio.app/Contents/sdk/default"
+  if [[ -n "${HOS_SDK_HOME:-}" && -d "${HOS_SDK_HOME}" ]]; then
+    export DEVECO_SDK_HOME="${HOS_SDK_HOME}"
+  elif [[ -d "/Applications/DevEco-Studio.app/Contents/sdk" ]]; then
+    export DEVECO_SDK_HOME="/Applications/DevEco-Studio.app/Contents/sdk"
   fi
 fi
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Build the HarmonyOS entry HAP with DevEco CLI tools or ErBWs/setup-ohos.
-# Expects hvigorw + ohpm on PATH (or DevEco Studio installed locally).
+# Build the HarmonyOS entry HAP with ErBWs/setup-ohos or DevEco CLI tools.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -15,12 +14,15 @@ fi
 
 cd "$HARMONY_DIR"
 
+# ErBWs/setup-ohos exports HOS_SDK_HOME=.../command-line-tools/sdk (contains default/).
+# Working CI examples set DEVECO_SDK_HOME to that sdk directory, not sdk/default.
 if [[ -n "${HOS_SDK_HOME:-}" ]]; then
-  export DEVECO_SDK_HOME="${DEVECO_SDK_HOME:-${HOS_SDK_HOME}/default}"
+  export DEVECO_SDK_HOME="${DEVECO_SDK_HOME:-${HOS_SDK_HOME}}"
   cat > local.properties <<EOF
 sdk.dir=${HOS_SDK_HOME}/default/openharmony
 hwsdk.dir=${HOS_SDK_HOME}/default
 EOF
+  echo "Configured DEVECO_SDK_HOME=${DEVECO_SDK_HOME}"
   echo "Configured local.properties from HOS_SDK_HOME=${HOS_SDK_HOME}"
 fi
 
@@ -29,65 +31,52 @@ if [[ -z "${DEVECO_SDK_HOME:-}" ]]; then
   exit 1
 fi
 
-PROFILE="$HARMONY_DIR/build-profile.json5"
-PROFILE_BACKUP=""
-restore_profile() {
-  if [[ -n "$PROFILE_BACKUP" && -f "$PROFILE_BACKUP" ]]; then
-    mv "$PROFILE_BACKUP" "$PROFILE"
-  fi
-}
-trap restore_profile EXIT
-
-if [[ "$SKIP_SIGN" == "1" ]]; then
-  # CI has no Huawei debug cert; drop the product signingConfig reference.
-  PROFILE_BACKUP="$(mktemp)"
-  cp "$PROFILE" "$PROFILE_BACKUP"
-  python3 - "$PROFILE" <<'PY'
-import pathlib
-import re
-import sys
-
-path = pathlib.Path(sys.argv[1])
-text = path.read_text()
-updated = re.sub(r'\n\s*"signingConfig"\s*:\s*"[^"]*"\s*,?', '', text, count=1)
-if updated == text:
-    raise SystemExit('error: signingConfig not found in build-profile.json5')
-path.write_text(updated)
-PY
-  echo "Removed signingConfig for unsigned CI build"
-fi
-
 if ! command -v ohpm >/dev/null 2>&1; then
   echo "error: ohpm not found on PATH" >&2
   exit 1
 fi
 
-if ! command -v hvigorw >/dev/null 2>&1 && [[ ! -x "$HARMONY_DIR/hvigorw" ]]; then
+# Prefer the CLI-tools hvigorw from PATH (ErBWs). Avoid the local wrapper when it would
+# recurse incorrectly or force a DevEco.app path on CI.
+if ! command -v hvigorw >/dev/null 2>&1; then
   echo "error: hvigorw not found on PATH" >&2
   exit 1
 fi
+HVIGORW=(hvigorw)
 
 echo "ohpm install --all"
-ohpm install --all
+ohpm install --all --registry https://ohpm.openharmony.cn/ohpm/ || ohpm install --all
 
-HVIGORW=(./hvigorw)
-if [[ ! -x "$HARMONY_DIR/hvigorw" ]]; then
-  HVIGORW=(hvigorw)
+HVIGOR_ARGS=(
+  assembleHap
+  --mode module
+  -p product=default
+  -p module=entry@default
+  -p "buildMode=${BUILD_MODE}"
+  --no-daemon
+)
+
+if [[ "$SKIP_SIGN" == "1" ]]; then
+  # Matches open-source CI (e.g. OHOTP) that builds without a Huawei debug cert.
+  HVIGOR_ARGS+=(--config properties.ignoreSignHap=true)
 fi
 
 echo "Building entry HAP (buildMode=${BUILD_MODE}, skipSign=${SKIP_SIGN})"
-"${HVIGORW[@]}" assembleHap \
-  --mode module \
-  -p product=default \
-  -p module=entry@default \
-  -p "buildMode=${BUILD_MODE}" \
-  --no-daemon
+echo "Using hvigorw: $(command -v hvigorw)"
+ls -la "${DEVECO_SDK_HOME}" || true
+ls -la "${DEVECO_SDK_HOME}/default" 2>/dev/null || true
+
+"${HVIGORW[@]}" "${HVIGOR_ARGS[@]}"
 
 HAP_DIR="$HARMONY_DIR/entry/build/default/outputs/default"
 shopt -s nullglob
 haps=("$HAP_DIR"/*.hap)
 if [[ ${#haps[@]} -eq 0 ]]; then
-  echo "error: no .hap produced under $HAP_DIR" >&2
+  # Fallback: search common output locations
+  mapfile -t haps < <(find "$HARMONY_DIR" -type f -name '*.hap' 2>/dev/null | head -20)
+fi
+if [[ ${#haps[@]} -eq 0 ]]; then
+  echo "error: no .hap produced under $HARMONY_DIR" >&2
   exit 1
 fi
 

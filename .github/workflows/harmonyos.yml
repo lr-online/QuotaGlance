@@ -36,6 +36,7 @@ jobs:
           sudo apt-get install -y libgl1-mesa-dev
 
       - name: Setup HarmonyOS CLI tools
+        id: setup-ohos
         uses: ErBWs/setup-ohos@v2
         with:
           # Matches HarmonyOS/build-profile.json5 targetSdkVersion 6.1.1(24)
@@ -43,10 +44,21 @@ jobs:
           version: 6.1.1.280
           cache: true
 
+      - name: Configure SDK env for hvigor
+        run: |
+          set -euo pipefail
+          echo "HOS_SDK_HOME=${HOS_SDK_HOME}"
+          echo "DEVECO_SDK_HOME=${HOS_SDK_HOME}" >> "$GITHUB_ENV"
+          echo "SDK tree (depth 3):"
+          find "${HOS_SDK_HOME}" -maxdepth 3 -type d | sort | head -80
+          test -f "${HOS_SDK_HOME}/default/sdk-pkg.json"
+          test -f "${HOS_SDK_HOME}/default/openharmony/ets/oh-uni-package.json"
+          test -f "${HOS_SDK_HOME}/default/hms/ets/uni-package.json"
+
       - name: Show toolchain versions
         run: |
           echo "HOS_SDK_HOME=${HOS_SDK_HOME}"
-          echo "DEVECO_SDK_HOME will be ${HOS_SDK_HOME}/default"
+          echo "DEVECO_SDK_HOME=${DEVECO_SDK_HOME}"
           hvigorw -v
           ohpm -v
           node -v
@@ -64,5 +76,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: QuotaGlance-HarmonyOS-${{ github.sha }}
-          path: HarmonyOS/entry/build/default/outputs/default/*.hap
+          path: |
+            HarmonyOS/entry/build/default/outputs/default/*.hap
+            HarmonyOS/**/outputs/**/*.hap
           if-no-files-found: error
+          retention-days: 14

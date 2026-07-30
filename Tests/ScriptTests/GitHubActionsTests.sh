@@ -67,6 +67,7 @@ rg -Fq "scripts/build-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS wor
 rg -Fq "scripts/sync-contracts-to-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync contract fixtures"
 rg -q "upload-artifact" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not upload HAP artifacts"
 rg -Fq "HARMONYOS_SKIP_SIGN" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing unsigned CI mode"
+rg -Fq "properties.ignoreSignHap=true" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing ignoreSignHap"
 rg -Fq "ohpm install --all" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not install ohpm deps"
 rg -Fq "assembleHap" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not assemble HAP"
 
