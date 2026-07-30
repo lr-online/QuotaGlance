@@ -7,6 +7,7 @@ QuotaGlance @VERSION@ macOS 14 完整版安装说明
 版本范围
 - 支持菜单栏余额、用量、账户切换、手动刷新、定时刷新和开机启动。
 - 包含可选择全部账户或指定账户的桌面小组件。
+- 同时包含通知中心中号小组件；设置中可配置默认账户。
 
 安装
 1. 将 QuotaGlance.app 拖到 Applications。
@@ -19,6 +20,7 @@ QuotaGlance @VERSION@ macOS 14 完整版安装说明
 2. key 只保存在本机 Keychain，不会写入源码或安装包。
 3. 成功刷新一次后，在桌面小组件库中搜索 QuotaGlance。
 4. 添加 QuotaGlance 小组件；右键“编辑小组件”可以选择全部账户或指定账户。
+5. 也可在通知中心添加同一套中号小组件，并在设置中配置默认账户。
 
 说明
 - 此版本仅支持 API Info 和 Apple Silicon Mac。

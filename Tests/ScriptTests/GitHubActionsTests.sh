@@ -3,7 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CI_WORKFLOW="$ROOT_DIR/.github/workflows/ci.yml"
+PACKAGE_WORKFLOW="$ROOT_DIR/.github/workflows/package.yml"
 RELEASE_WORKFLOW="$ROOT_DIR/.github/workflows/release.yml"
+FETCH_SCRIPT="$ROOT_DIR/scripts/fetch-ci-package.sh"
 
 fail() {
   echo "FAIL: $*" >&2
@@ -11,7 +13,9 @@ fail() {
 }
 
 [[ -f "$CI_WORKFLOW" ]] || fail "missing CI workflow"
+[[ -f "$PACKAGE_WORKFLOW" ]] || fail "missing Package workflow"
 [[ -f "$RELEASE_WORKFLOW" ]] || fail "missing release workflow"
+[[ -x "$FETCH_SCRIPT" ]] || fail "CI package fetch script is missing or not executable"
 
 rg -q "^name: CI$" "$CI_WORKFLOW" || fail "CI workflow name changed"
 rg -q "pull_request:" "$CI_WORKFLOW" || fail "CI workflow missing pull_request trigger"
@@ -24,6 +28,17 @@ rg -Fq "swift test" "$CI_WORKFLOW" || fail "CI workflow does not run swift test"
 rg -Fq "Tests/ScriptTests/BuildEditionTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing build edition contract test"
 rg -Fq "Tests/ScriptTests/DMGPackagingTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing DMG packaging test"
 rg -Fq "Tests/ScriptTests/LocalInstallSafetyTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing local install safety test"
+
+rg -q "^name: Package$" "$PACKAGE_WORKFLOW" || fail "Package workflow name changed"
+rg -q "workflow_dispatch:" "$PACKAGE_WORKFLOW" || fail "Package workflow missing workflow_dispatch"
+rg -q "pull_request:" "$PACKAGE_WORKFLOW" || fail "Package workflow missing pull_request trigger"
+rg -Fq "maxim-lobanov/setup-xcode@v1" "$PACKAGE_WORKFLOW" || fail "Package workflow does not select Xcode explicitly"
+rg -Fq "xcode-version: '16.2'" "$PACKAGE_WORKFLOW" || fail "Package workflow does not pin the supported Xcode version"
+rg -Fq "./scripts/package-dmg.sh dist" "$PACKAGE_WORKFLOW" || fail "Package workflow does not package DMGs"
+rg -q "upload-artifact" "$PACKAGE_WORKFLOW" || fail "Package workflow does not upload artifacts"
+rg -Fq "fetch-ci-package.sh" "$FETCH_SCRIPT" || fail "fetch script self-path changed"
+rg -q -- "--install" "$FETCH_SCRIPT" || fail "fetch script missing --install mode"
+rg -q -- "--verify" "$FETCH_SCRIPT" || fail "fetch script missing --verify mode"
 
 rg -q "^name: Release$" "$RELEASE_WORKFLOW" || fail "release workflow name changed"
 rg -q "tags:" "$RELEASE_WORKFLOW" || fail "release workflow missing tag trigger"

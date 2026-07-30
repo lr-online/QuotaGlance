@@ -175,6 +175,11 @@ struct DomainModelTests {
         #expect(snapshot.spendingLimit?.remaining?.currency == "USD")
     }
 
+    @Test("Notification Center widget default account starts unset")
+    func notificationCenterDefaultAccountStartsUnset() {
+        #expect(AppPreferences.default.notificationCenterDefaultAccountID == nil)
+    }
+
     @Test("Widget snapshot envelope preserves schema version")
     func snapshotEnvelopeRoundTripsSchemaVersion() throws {
         let envelope = WidgetSnapshotEnvelope.empty(

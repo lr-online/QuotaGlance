@@ -6,10 +6,13 @@ final class SetupWindowPresenter {
     private var windowController: NSWindowController?
 
     func show(model: AppModel, title: String = "QuotaGlance Setup") {
+        ApplicationMenuInstaller.installMainMenuIfNeeded()
+
         if let windowController {
             windowController.window?.title = title
             windowController.showWindow(nil)
             windowController.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
             return
         }
 
