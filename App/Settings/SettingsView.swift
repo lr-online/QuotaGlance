@@ -11,14 +11,7 @@ struct SettingsView: View {
         Form {
             Section("Accounts") {
                 if model.accounts.isEmpty {
-                    VStack(spacing: 6) {
-                        Label("No Accounts", systemImage: "key.horizontal")
-                            .font(.headline)
-                        Text("Add a provider account to begin.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 80)
+                    emptyAccountsPlaceholder
                 } else {
                     ForEach(Array(model.accounts.enumerated()), id: \.element.id) {
                         index, account in
@@ -30,7 +23,10 @@ struct SettingsView: View {
                     editorContext = AccountEditorContext(account: nil)
                 } label: {
                     Label("Add Account", systemImage: "plus")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
+                .padding(.vertical, 2)
                 .disabled(
                     model.accounts.count >= AccountValidator.maximumAccountCount
                 )
@@ -62,19 +58,42 @@ struct SettingsView: View {
 
             if let error = model.lastErrorMessage {
                 Section("Status") {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
+                    Label {
+                        Text(error)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.yellow)
+                    }
                 }
             }
 
-            Section("Notifications") {
-                Label(
-                    notificationStatus,
-                    systemImage: model.notificationPermission == .authorized
-                        ? "checkmark.circle"
-                        : "bell.slash"
+            Section {
+                HStack {
+                    Label {
+                        Text("Low Balance Alerts")
+                    } icon: {
+                        Image(
+                            systemName: model.notificationPermission == .authorized
+                                ? "checkmark.circle.fill"
+                                : "bell.slash"
+                        )
+                        .foregroundStyle(
+                            model.notificationPermission == .authorized
+                                ? Color.green
+                                : Color.secondary
+                        )
+                    }
+                    Spacer()
+                    Text(notificationStatus)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Notifications")
+            } footer: {
+                Text(
+                    "QuotaGlance notifies you when an account balance drops below its alert threshold."
                 )
-                .foregroundStyle(.secondary)
             }
         }
         .compatibleGroupedFormStyle()
@@ -99,9 +118,24 @@ struct SettingsView: View {
         }
     }
 
+    private var emptyAccountsPlaceholder: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "key.horizontal")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("No Accounts")
+                .font(.headline)
+            Text("Add a provider account to begin.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
     @ViewBuilder
     private func accountRow(_ account: Account, index: Int) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Toggle(
                 isOn: Binding(
                     get: { account.isEnabled },
@@ -117,46 +151,58 @@ struct SettingsView: View {
                 }
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            Button {
-                model.moveAccount(id: account.id, offset: -1)
-            } label: {
-                Image(systemName: "chevron.up")
-                    .foregroundStyle(.primary)
-            }
-            .buttonStyle(.borderless)
-            .disabled(index == 0)
-            .help("Move Up")
+            HStack(spacing: 2) {
+                if model.accounts.count > 1 {
+                    rowActionButton(
+                        systemName: "chevron.up",
+                        help: "Move Up",
+                        isDisabled: index == 0
+                    ) {
+                        model.moveAccount(id: account.id, offset: -1)
+                    }
+                    rowActionButton(
+                        systemName: "chevron.down",
+                        help: "Move Down",
+                        isDisabled: index == model.accounts.count - 1
+                    ) {
+                        model.moveAccount(id: account.id, offset: 1)
+                    }
+                }
 
-            Button {
-                model.moveAccount(id: account.id, offset: 1)
-            } label: {
-                Image(systemName: "chevron.down")
-                    .foregroundStyle(.primary)
-            }
-            .buttonStyle(.borderless)
-            .disabled(index == model.accounts.count - 1)
-            .help("Move Down")
+                rowActionButton(systemName: "pencil", help: "Edit Account") {
+                    editorContext = AccountEditorContext(account: account)
+                }
 
-            Button {
-                editorContext = AccountEditorContext(account: account)
-            } label: {
-                Image(systemName: "pencil")
-                    .foregroundStyle(.primary)
+                rowActionButton(
+                    systemName: "trash",
+                    help: "Delete Account",
+                    tint: .red
+                ) {
+                    accountToDelete = account
+                }
             }
-            .buttonStyle(.borderless)
-            .help("Edit Account")
-
-            Button(role: .destructive) {
-                accountToDelete = account
-            } label: {
-                Image(systemName: "trash")
-                    .foregroundStyle(.red)
-            }
-            .buttonStyle(.borderless)
-            .help("Delete Account")
         }
+        .padding(.vertical, 5)
+    }
+
+    private func rowActionButton(
+        systemName: String,
+        help: String,
+        tint: Color = .primary,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .foregroundStyle(tint)
+                .frame(width: 24, height: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .disabled(isDisabled)
+        .help(help)
     }
 
     private func intervalTitle(_ interval: RefreshInterval) -> String {
