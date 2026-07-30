@@ -1,5 +1,4 @@
 import Foundation
-import Intents
 import QuotaGlanceCore
 import WidgetKit
 
@@ -8,28 +7,29 @@ struct NCWidgetEntry: TimelineEntry {
     let presentation: WidgetPresentation
 }
 
-struct NCWidgetTimelineProvider: IntentTimelineProvider {
-    typealias Intent = NCWidgetAccountIntent
+/// Certificate-free / ad-hoc builds cannot reliably drive SiriKit
+/// `IntentConfiguration` timelines (same constraint that forced the desktop
+/// widget onto `StaticConfiguration`). Account selection comes from the
+/// Settings default mirrored in `NCWidgetPreferencesStore`.
+struct NCWidgetTimelineProvider: TimelineProvider {
     typealias Entry = NCWidgetEntry
 
     func placeholder(in context: Context) -> Entry {
-        makeEntry(envelope: nil, choice: .allAccounts)
+        makeEntry(envelope: nil, selection: .allAccounts)
     }
 
     func getSnapshot(
-        for intent: Intent,
         in context: Context,
         completion: @escaping (Entry) -> Void
     ) {
-        completion(makeEntry(for: intent))
+        completion(makeEntry())
     }
 
     func getTimeline(
-        for intent: Intent,
         in context: Context,
         completion: @escaping (Timeline<Entry>) -> Void
     ) {
-        let entry = makeEntry(for: intent)
+        let entry = makeEntry()
         completion(
             Timeline(
                 entries: [entry],
@@ -38,28 +38,14 @@ struct NCWidgetTimelineProvider: IntentTimelineProvider {
         )
     }
 
-    private func makeEntry(for intent: Intent) -> Entry {
+    private func makeEntry() -> Entry {
         let defaultAccountID = try? QuotaGlanceShared.ncWidgetPreferencesStore()?.read()
             .defaultAccountID
         let selection = NCWidgetSelectionResolver.selection(
-            choice: ncWidgetAccountChoice(from: intent),
+            choice: .useAppDefault,
             defaultAccountID: defaultAccountID
         )
         return makeEntry(selection: selection)
-    }
-
-    private func makeEntry(
-        envelope: WidgetSnapshotEnvelope? = QuotaGlanceShared.snapshotStore()
-            .flatMap { try? $0.read() },
-        choice: NCWidgetAccountChoice
-    ) -> Entry {
-        let defaultAccountID = try? QuotaGlanceShared.ncWidgetPreferencesStore()?.read()
-            .defaultAccountID
-        let selection = NCWidgetSelectionResolver.selection(
-            choice: choice,
-            defaultAccountID: defaultAccountID
-        )
-        return makeEntry(envelope: envelope, selection: selection)
     }
 
     private func makeEntry(selection: WidgetSelection) -> Entry {
@@ -77,20 +63,5 @@ struct NCWidgetTimelineProvider: IntentTimelineProvider {
             date: .now,
             presentation: WidgetPresenter.make(selection: selection, envelope: envelope)
         )
-    }
-}
-
-func ncWidgetAccountChoice(from intent: NCWidgetAccountIntent) -> NCWidgetAccountChoice {
-    switch intent.accountChoice {
-    case nil, NCWidgetAccountIntentChoice.useAppDefault:
-        return .useAppDefault
-    case NCWidgetAccountIntentChoice.allAccounts:
-        return .allAccounts
-    case let value?:
-        if value.hasPrefix("account:"),
-           let id = UUID(uuidString: String(value.dropFirst("account:".count))) {
-            return .account(id)
-        }
-        return .useAppDefault
     }
 }

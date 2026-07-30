@@ -56,11 +56,11 @@ for executable in "$WIDGET_BINARY" "$INTENTS_BINARY"; do
   [[ "$archs" == "arm64" ]] || fail "NC extension must be arm64-only: $executable ($archs)"
 done
 
-# Search the binary directly. Avoid `strings | rg -q` under pipefail:
+# Search binaries directly. Avoid `strings | rg -q` under pipefail:
 # rg -q exits early on match and can SIGPIPE strings (exit 141), falsely failing.
 rg -a -q 'QuotaGlanceNCWidget' "$WIDGET_BINARY" \
   || fail "NC widget binary missing kind string"
-rg -a -q 'NCWidgetAccountIntent' "$WIDGET_BINARY" \
-  || fail "NC widget binary missing NCWidgetAccountIntent"
+rg -a -q 'NCWidgetAccountIntent' "$INTENTS_BINARY" \
+  || fail "NC intents binary missing NCWidgetAccountIntent"
 
 echo "NC extensions verified in $APP_BUNDLE" >&2

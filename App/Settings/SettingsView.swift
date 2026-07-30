@@ -120,7 +120,7 @@ struct SettingsView: View {
     private var notificationCenterWidgetSection: some View {
         settingsSection(
             title: "Notification Center Widget",
-            footer: "Applies to widgets still set to Use App Default. Widgets edited in Notification Center keep their own account."
+            footer: "Chooses which account the Notification Center medium widget displays."
         ) {
             settingsRow {
                 Text("Default Account")
