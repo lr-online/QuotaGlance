@@ -80,10 +80,23 @@ notificationCenterDefaultAccountID: UUID? // nil = All Accounts
 
 Rules:
 
-- Persist through the existing `AccountPreferencesStore` path.
+- Persist through the existing `AccountPreferencesStore` path (host-local).
 - Missing field on decode defaults to `nil`.
 - When an account is deleted and it matches the default ID, clear the default
   to `nil` (All Accounts).
+
+Host-local preferences are not visible to extensions. Whenever the host saves
+this default, it also mirrors a minimal sidecar next to the shared snapshot
+(App Group container, or `/Users/Shared/QuotaGlance` under certificate-free
+storage), for example `nc-widget-preferences-v1.json`:
+
+```swift
+{ "schemaVersion": 1, "defaultAccountID": UUID? }
+```
+
+The NC widget reads only that sidecar for Use App Default resolution. It does
+not read the host `UserDefaults` store. Changing the Settings picker writes
+both the host preferences and the sidecar, then reloads timelines.
 
 ### Intent options
 
