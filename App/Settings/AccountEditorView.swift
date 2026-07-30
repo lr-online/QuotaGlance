@@ -190,7 +190,8 @@ private struct APIKeyPasteShortcutBridge: NSViewRepresentable {
     final class BridgeView: NSView {
         var isAPIKeyFocused = false
         var onPaste: (() -> Void)?
-        private var monitor: Any?
+        // NSEvent monitors must be removable from deinit; the token is opaque.
+        nonisolated(unsafe) private var monitor: Any?
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
