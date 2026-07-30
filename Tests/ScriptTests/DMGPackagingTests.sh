@@ -134,8 +134,12 @@ test_distribution_contract() {
   done
   rg -q '不包含桌面小组件' "$ROOT_DIR/Distribution/README-macOS12.txt" \
     || fail "macOS 12 README does not explain the Widget limitation"
+  rg -q '通知中心' "$ROOT_DIR/Distribution/README-macOS12.txt" \
+    || fail "macOS 12 README does not describe Notification Center widgets"
   rg -q '桌面小组件' "$ROOT_DIR/Distribution/README-macOS14.txt" \
     || fail "macOS 14 README does not explain Widget setup"
+  rg -q '通知中心' "$ROOT_DIR/Distribution/README-macOS14.txt" \
+    || fail "macOS 14 README does not describe Notification Center widgets"
   rg -q '^dist/$' "$ROOT_DIR/.gitignore" \
     || fail "dist directory is not ignored"
   [[ -x "$PACKAGE_SCRIPT" ]] || fail "package script is missing"
@@ -162,6 +166,9 @@ test_real_dmg_round_trip() {
   /usr/bin/ditto \
     "$ROOT_DIR/scripts/verify-widget-entrypoint.sh" \
     "$clean_repo/scripts/verify-widget-entrypoint.sh"
+  /usr/bin/ditto \
+    "$ROOT_DIR/scripts/verify-nc-extensions.sh" \
+    "$clean_repo/scripts/verify-nc-extensions.sh"
   /usr/bin/ditto \
     "$LEGACY_README" \
     "$clean_repo/Distribution/README-macOS12.txt"
@@ -194,6 +201,7 @@ test_real_dmg_round_trip() {
     scripts/verify-dmg.sh \
     scripts/distribution-validation.sh \
     scripts/verify-widget-entrypoint.sh \
+    scripts/verify-nc-extensions.sh \
     Distribution/README-macOS12.txt \
     Distribution/README-macOS14.txt
   if ! /usr/bin/git -C "$clean_repo" diff --cached --quiet; then
