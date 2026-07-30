@@ -34,6 +34,24 @@ public enum QuotaGlanceShared {
             )
         )
     }
+
+    public static func ncWidgetPreferencesStore() -> NCWidgetPreferencesStore? {
+#if QUOTAGLANCE_CERTIFICATE_FREE_STORAGE
+        return NCWidgetPreferencesStore(
+            fileURL: certificateFreeSnapshotDirectory
+                .appendingPathComponent(NCWidgetPreferencesStore.fileName)
+        )
+#else
+        guard let containerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: appGroupIdentifier
+        ) else {
+            return nil
+        }
+        return NCWidgetPreferencesStore(
+            fileURL: containerURL.appendingPathComponent(NCWidgetPreferencesStore.fileName)
+        )
+#endif
+    }
 }
 
 public struct SharedSnapshotStore: Sendable {
