@@ -7,6 +7,10 @@ APP_NAME="QuotaGlance"
 APP_BUNDLE_ID="com.liangrui.QuotaGlance"
 WIDGET_NAME="QuotaGlanceWidget"
 WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.Widget"
+NC_WIDGET_NAME="QuotaGlanceNCWidget"
+NC_WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.NCWidget"
+NC_INTENTS_NAME="QuotaGlanceNCIntents"
+NC_INTENTS_BUNDLE_ID="com.liangrui.QuotaGlance.NCIntents"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_PARENT="$ROOT_DIR/DerivedData/LocalBuild"
@@ -31,7 +35,7 @@ case "$CONFIGURATION" in
     COMPILATION_CONDITIONS="QUOTAGLANCE_CERTIFICATE_FREE_STORAGE"
     ;;
   *)
-    echo "usage: $0 [Debug|Release]" >&2
+    echo "usage: $0 [Debug|Release] [full|legacy]" >&2
     exit 2
     ;;
 esac
@@ -73,6 +77,8 @@ DERIVED_DATA="$BUILD_DIR/DerivedData"
 BUILD_LOG="$BUILD_DIR/xcodebuild.log"
 APP_BUNDLE="$DERIVED_DATA/Build/Products/$CONFIGURATION/$APP_NAME.app"
 WIDGET_BUNDLE="$APP_BUNDLE/Contents/PlugIns/$WIDGET_NAME.appex"
+NC_WIDGET_BUNDLE="$APP_BUNDLE/Contents/PlugIns/$NC_WIDGET_NAME.appex"
+NC_INTENTS_BUNDLE="$APP_BUNDLE/Contents/PlugIns/$NC_INTENTS_NAME.appex"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister"
 
 XCODEBUILD_ARGS=(
@@ -110,8 +116,37 @@ if [[ "$EXPECTS_WIDGET" == false && -e "$WIDGET_BUNDLE" ]]; then
   echo "Legacy build unexpectedly contains a Widget bundle." >&2
   exit 1
 fi
+if [[ ! -d "$NC_WIDGET_BUNDLE" ]]; then
+  echo "Build did not produce the expected NC Widget bundle." >&2
+  exit 1
+fi
+if [[ ! -d "$NC_INTENTS_BUNDLE" ]]; then
+  echo "Build did not produce the expected NC Intents bundle." >&2
+  exit 1
+fi
 
 "$LSREGISTER" -u "$APP_BUNDLE" >/dev/null 2>&1 || true
+/usr/bin/pluginkit -r "$NC_WIDGET_BUNDLE" >/dev/null 2>&1 || true
+/usr/bin/pluginkit -r "$NC_INTENTS_BUNDLE" >/dev/null 2>&1 || true
+
+/usr/bin/codesign \
+  --force \
+  --sign - \
+  --timestamp=none \
+  --generate-entitlement-der \
+  --requirements "=designated => identifier \"$NC_WIDGET_BUNDLE_ID\"" \
+  --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceNCWidget.entitlements" \
+  "$NC_WIDGET_BUNDLE"
+
+/usr/bin/codesign \
+  --force \
+  --sign - \
+  --timestamp=none \
+  --generate-entitlement-der \
+  --requirements "=designated => identifier \"$NC_INTENTS_BUNDLE_ID\"" \
+  --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceNCIntents.entitlements" \
+  "$NC_INTENTS_BUNDLE"
+
 if [[ "$EXPECTS_WIDGET" == true ]]; then
   /usr/bin/pluginkit -r "$WIDGET_BUNDLE" >/dev/null 2>&1 || true
 
@@ -135,4 +170,5 @@ fi
   "$APP_BUNDLE"
 
 /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"
+"$ROOT_DIR/scripts/verify-nc-extensions.sh" "$APP_BUNDLE"
 printf '%s\n' "$APP_BUNDLE"

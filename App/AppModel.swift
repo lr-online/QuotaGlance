@@ -250,12 +250,23 @@ final class AppModel: ObservableObject {
             selectedAccountID = nil
         }
         normalizeSortOrder()
+        let previousPreferences = preferences
+        let updatedPreferences = NCWidgetDefaultAccountPolicy.clearingDefaultIfNeeded(
+            preferences: preferences,
+            deletedAccountID: id
+        )
+        let didClearNCWidgetDefault = updatedPreferences != previousPreferences
+        preferences = updatedPreferences
         do {
             try persist()
+            if didClearNCWidgetDefault {
+                mirrorNCWidgetPreferences()
+            }
             await refreshCoordinator.removeSnapshot(for: id)
             publishCachedState()
             await refresh(credentialAccessMode: .nonInteractive)
         } catch {
+            preferences = previousPreferences
             lastErrorMessage = message(for: error)
         }
     }
@@ -290,6 +301,17 @@ final class AppModel: ObservableObject {
         preferences.refreshInterval = interval
         persistReportingErrors()
         restartSchedule()
+    }
+
+    func setNotificationCenterDefaultAccountID(_ accountID: UUID?) {
+        preferences.notificationCenterDefaultAccountID = accountID
+        do {
+            try persist()
+            mirrorNCWidgetPreferences()
+            WidgetCenter.shared.reloadAllTimelines()
+        } catch {
+            lastErrorMessage = message(for: error)
+        }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -396,6 +418,16 @@ private extension AppModel {
         } catch {
             lastErrorMessage = message(for: error)
         }
+    }
+
+    func mirrorNCWidgetPreferences() {
+        guard let store = QuotaGlanceShared.ncWidgetPreferencesStore() else { return }
+        try? store.write(
+            NCWidgetPreferences(
+                schemaVersion: NCWidgetPreferences.currentSchemaVersion,
+                defaultAccountID: preferences.notificationCenterDefaultAccountID
+            )
+        )
     }
 
     func restartSchedule() {

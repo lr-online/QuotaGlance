@@ -7,6 +7,7 @@ QuotaGlance @VERSION@ macOS 12 兼容版安装说明
 版本范围
 - 支持菜单栏余额、用量、账户切换、手动刷新和定时刷新。
 - 此兼容版不包含桌面小组件，也不提供开机启动选项。
+- 包含可在通知中心添加的中号小组件，可选择全部账户或指定账户；也可在设置中配置默认账户。
 - macOS 14 或更高版本如需桌面小组件，请改用 macOS 14 完整版。
 
 安装
@@ -19,6 +20,7 @@ QuotaGlance @VERSION@ macOS 12 兼容版安装说明
 1. 启动 QuotaGlance，在设置窗口添加自己的 API Info 账户名称和 key。
 2. key 只保存在本机 Keychain，不会写入源码或安装包。
 3. 点击菜单栏的 QuotaGlance 图标，可切换全部账户或指定账户并刷新数据。
+4. 打开通知中心，添加 QuotaGlance 中号小组件；可编辑为全部账户、指定账户，或使用设置中的默认账户。
 
 说明
 - 此版本仅支持 API Info 和 Apple Silicon Mac。

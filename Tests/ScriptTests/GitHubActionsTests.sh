@@ -38,6 +38,7 @@ rg -Fq "./scripts/package-dmg.sh dist" "$PACKAGE_WORKFLOW" || fail "Package work
 rg -q "upload-artifact" "$PACKAGE_WORKFLOW" || fail "Package workflow does not upload artifacts"
 rg -Fq "fetch-ci-package.sh" "$FETCH_SCRIPT" || fail "fetch script self-path changed"
 rg -q -- "--install" "$FETCH_SCRIPT" || fail "fetch script missing --install mode"
+rg -q -- "--verify" "$FETCH_SCRIPT" || fail "fetch script missing --verify mode"
 
 rg -q "^name: Release$" "$RELEASE_WORKFLOW" || fail "release workflow name changed"
 rg -q "tags:" "$RELEASE_WORKFLOW" || fail "release workflow missing tag trigger"

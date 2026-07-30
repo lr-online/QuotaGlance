@@ -8,6 +8,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/distribution-validation.sh"
 APP_BUNDLE_ID="com.liangrui.QuotaGlance"
 WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.Widget"
+NC_WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.NCWidget"
+NC_INTENTS_BUNDLE_ID="com.liangrui.QuotaGlance.NCIntents"
 VERIFY_DIR="$(mktemp -d /tmp/QuotaGlance-dmg-verify.XXXXXX)"
 ATTACH_PLIST="$VERIFY_DIR/attach.plist"
 MOUNT_POINT=""
@@ -164,6 +166,8 @@ quota_glance_validate_mounted_payload "$MOUNT_POINT" || {
 }
 
 WIDGET="$APP/Contents/PlugIns/QuotaGlanceWidget.appex"
+NC_WIDGET="$APP/Contents/PlugIns/QuotaGlanceNCWidget.appex"
+NC_INTENTS="$APP/Contents/PlugIns/QuotaGlanceNCIntents.appex"
 [[ "$(bundle_id "$APP")" == "$APP_BUNDLE_ID" ]] || {
   echo "Unexpected host bundle identifier" >&2
   exit 1
@@ -171,6 +175,11 @@ WIDGET="$APP/Contents/PlugIns/QuotaGlanceWidget.appex"
 
 /usr/bin/codesign --verify --deep --strict "$APP"
 EXECUTABLES=("$APP/Contents/MacOS/QuotaGlance")
+"$ROOT_DIR/scripts/verify-nc-extensions.sh" "$APP"
+EXECUTABLES+=(
+  "$NC_WIDGET/Contents/MacOS/QuotaGlanceNCWidget"
+  "$NC_INTENTS/Contents/MacOS/QuotaGlanceNCIntents"
+)
 if [[ "$EDITION" == full ]]; then
   [[ "$(bundle_id "$WIDGET")" == "$WIDGET_BUNDLE_ID" ]] || {
     echo "Unexpected widget bundle identifier" >&2
@@ -186,11 +195,29 @@ if [[ "$EDITION" == full ]]; then
   "$ROOT_DIR/scripts/verify-widget-entrypoint.sh" "$WIDGET"
   EXECUTABLES+=("$WIDGET/Contents/MacOS/QuotaGlanceWidget")
 else
-  if [[ -n "$(/usr/bin/find "$APP/Contents" -type d -name '*.appex' -print -quit)" ]]; then
-    echo "macOS 12 edition unexpectedly contains an app extension" >&2
+  if [[ -e "$WIDGET" ]]; then
+    echo "macOS 12 edition unexpectedly contains the desktop Widget" >&2
     exit 1
   fi
 fi
+
+# Only allow the expected appexes for this edition.
+while IFS= read -r appex; do
+  case "$(basename "$appex")" in
+    QuotaGlanceNCWidget.appex|QuotaGlanceNCIntents.appex)
+      ;;
+    QuotaGlanceWidget.appex)
+      [[ "$EDITION" == full ]] || {
+        echo "Unexpected desktop Widget in macOS 12 edition" >&2
+        exit 1
+      }
+      ;;
+    *)
+      echo "Unexpected app extension: $appex" >&2
+      exit 1
+      ;;
+  esac
+done < <(/usr/bin/find "$APP/Contents/PlugIns" -maxdepth 1 -type d -name '*.appex' 2>/dev/null)
 
 for executable in "${EXECUTABLES[@]}"; do
   ARCHS="$(/usr/bin/lipo -archs "$executable")"
@@ -219,10 +246,18 @@ if [[ "$EDITION" == legacy ]]; then
     echo "macOS 12 README does not disclose the Widget limitation" >&2
     exit 1
   }
+  rg -q '通知中心' "$MOUNT_POINT/README.txt" || {
+    echo "macOS 12 README does not describe Notification Center widget support" >&2
+    exit 1
+  }
 else
   rg -q '包含可选择全部账户或指定账户的桌面小组件' \
     "$MOUNT_POINT/README.txt" || {
     echo "macOS 14 README does not describe Widget support" >&2
+    exit 1
+  }
+  rg -q '通知中心' "$MOUNT_POINT/README.txt" || {
+    echo "macOS 14 README does not describe Notification Center widget support" >&2
     exit 1
   }
 fi

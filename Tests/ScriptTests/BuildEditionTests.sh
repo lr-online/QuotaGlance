@@ -72,15 +72,38 @@ rg -q '^[[:space:]]+QuotaGlanceLegacy$' <<< "$SCHEMES" \
   || fail "full host deployment target changed"
 [[ "$(build_setting QuotaGlanceWidget MACOSX_DEPLOYMENT_TARGET)" == "14.0" ]] \
   || fail "Widget deployment target changed"
+[[ "$(build_setting QuotaGlanceNCWidget MACOSX_DEPLOYMENT_TARGET)" == "12.0" ]] \
+  || fail "NC widget deployment target is not macOS 12"
+[[ "$(build_setting QuotaGlanceNCIntents MACOSX_DEPLOYMENT_TARGET)" == "12.0" ]] \
+  || fail "NC intents deployment target is not macOS 12"
+
+rg -q '^  QuotaGlanceNCWidget:$' "$ROOT_DIR/project.yml" \
+  || fail "NC widget target is missing"
+rg -q '^  QuotaGlanceNCIntents:$' "$ROOT_DIR/project.yml" \
+  || fail "NC intents target is missing"
 
 LEGACY_TARGET_BLOCK="$(/usr/bin/awk '
   /\/\* QuotaGlanceLegacy \*\/ = \{/ { capture = 1 }
   capture { print }
   capture && /productType =/ { exit }
 ' "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj")"
-if rg -q 'QuotaGlanceWidget|PBXTargetDependency' <<< "$LEGACY_TARGET_BLOCK"; then
-  fail "legacy host unexpectedly depends on the Widget"
+if rg -q 'QuotaGlanceWidget\.appex|QuotaGlanceWidget";' <<< "$LEGACY_TARGET_BLOCK"; then
+  fail "legacy host unexpectedly depends on the desktop Widget"
 fi
+rg -q 'QuotaGlanceNCWidget' <<< "$LEGACY_TARGET_BLOCK" \
+  || fail "legacy host does not depend on the NC widget"
+rg -q 'QuotaGlanceNCIntents' <<< "$LEGACY_TARGET_BLOCK" \
+  || fail "legacy host does not depend on the NC intents extension"
+
+FULL_TARGET_BLOCK="$(/usr/bin/awk '
+  /\/\* QuotaGlance \*\/ = \{/ { capture = 1 }
+  capture { print }
+  capture && /productType =/ { exit }
+' "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj")"
+rg -q 'QuotaGlanceNCWidget' <<< "$FULL_TARGET_BLOCK" \
+  || fail "full host does not depend on the NC widget"
+rg -q 'QuotaGlanceNCIntents' <<< "$FULL_TARGET_BLOCK" \
+  || fail "full host does not depend on the NC intents extension"
 
 for required_source in \
   ApplicationMenuInstaller.swift \

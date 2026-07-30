@@ -91,14 +91,21 @@ public struct Account: Codable, Equatable, Identifiable, Sendable {
 public struct AppPreferences: Codable, Equatable, Sendable {
     public var refreshInterval: RefreshInterval
     public var launchAtLogin: Bool
+    public var notificationCenterDefaultAccountID: UUID?
 
-    public init(refreshInterval: RefreshInterval, launchAtLogin: Bool) {
+    public init(
+        refreshInterval: RefreshInterval,
+        launchAtLogin: Bool,
+        notificationCenterDefaultAccountID: UUID? = nil
+    ) {
         self.refreshInterval = refreshInterval
         self.launchAtLogin = launchAtLogin
+        self.notificationCenterDefaultAccountID = notificationCenterDefaultAccountID
     }
 
     public static let `default` = AppPreferences(
         refreshInterval: .fiveMinutes,
-        launchAtLogin: false
+        launchAtLogin: false,
+        notificationCenterDefaultAccountID: nil
     )
 }

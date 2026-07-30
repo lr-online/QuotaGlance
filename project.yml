@@ -30,6 +30,10 @@ targets:
         product: QuotaGlanceCore
       - target: QuotaGlanceWidget
         embed: true
+      - target: QuotaGlanceNCWidget
+        embed: true
+      - target: QuotaGlanceNCIntents
+        embed: true
     settings:
       base:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
@@ -52,6 +56,10 @@ targets:
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore
+      - target: QuotaGlanceNCWidget
+        embed: true
+      - target: QuotaGlanceNCIntents
+        embed: true
     settings:
       base:
         MACOSX_DEPLOYMENT_TARGET: "12.0"
@@ -81,6 +89,57 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Widget/QuotaGlanceWidget.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
+  QuotaGlanceNCWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: NCWidget
+        excludes:
+          - Info.plist
+          - QuotaGlanceNCWidget.entitlements
+          # Intent sources stay on QuotaGlanceNCIntents until IntentConfiguration
+          # is restored; the widget itself uses StaticConfiguration.
+          - NCWidgetAccountIntent.intentdefinition
+          - NCWidgetAccountIntent+Generated.swift
+          - NCWidgetAccountIntentChoice.swift
+    dependencies:
+      - package: QuotaGlanceCore
+        product: QuotaGlanceCore
+    settings:
+      base:
+        MACOSX_DEPLOYMENT_TARGET: "12.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.NCWidget
+        PRODUCT_NAME: QuotaGlanceNCWidget
+        INFOPLIST_FILE: NCWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NCWidget/QuotaGlanceNCWidget.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+  QuotaGlanceNCIntents:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: NCIntents
+        excludes:
+          - Info.plist
+          - QuotaGlanceNCIntents.entitlements
+      # Shared with QuotaGlanceNCWidget so both extensions agree on the
+      # intent's shape without Xcode generating conflicting classes twice.
+      - path: NCWidget/NCWidgetAccountIntent.intentdefinition
+        buildPhase: resources
+      - path: NCWidget/NCWidgetAccountIntent+Generated.swift
+      - path: NCWidget/NCWidgetAccountIntentChoice.swift
+    dependencies:
+      - package: QuotaGlanceCore
+        product: QuotaGlanceCore
+    settings:
+      base:
+        MACOSX_DEPLOYMENT_TARGET: "12.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.NCIntents
+        PRODUCT_NAME: QuotaGlanceNCIntents
+        INFOPLIST_FILE: NCIntents/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NCIntents/QuotaGlanceNCIntents.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
 schemes:
   QuotaGlance:
     build:
@@ -94,6 +153,14 @@ schemes:
     build:
       targets:
         QuotaGlanceWidget: all
+  QuotaGlanceNCWidget:
+    build:
+      targets:
+        QuotaGlanceNCWidget: all
+  QuotaGlanceNCIntents:
+    build:
+      targets:
+        QuotaGlanceNCIntents: all
   QuotaGlanceLegacy:
     build:
       targets:

@@ -13,6 +13,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 accountsSection
                 refreshSection
+                notificationCenterWidgetSection
                 notificationsSection
 
                 if let error = model.lastErrorMessage {
@@ -112,6 +113,33 @@ struct SettingsView: View {
                     )
                     .toggleStyle(.checkbox)
                 }
+            }
+        }
+    }
+
+    private var notificationCenterWidgetSection: some View {
+        settingsSection(
+            title: "Notification Center Widget",
+            footer: "Chooses which account the Notification Center medium widget displays."
+        ) {
+            settingsRow {
+                Text("Default Account")
+                Spacer(minLength: 12)
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { model.preferences.notificationCenterDefaultAccountID },
+                        set: { model.setNotificationCenterDefaultAccountID($0) }
+                    )
+                ) {
+                    Text("All Accounts").tag(Optional<UUID>.none)
+                    ForEach(model.accounts) { account in
+                        Text(account.displayName).tag(Optional(account.id))
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(minWidth: 128, alignment: .trailing)
             }
         }
     }

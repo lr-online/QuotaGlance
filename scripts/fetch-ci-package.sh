@@ -3,10 +3,11 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: fetch-ci-package.sh <pr-number|branch|run-id> [--install] [--edition legacy|full]
+usage: fetch-ci-package.sh <pr-number|branch|run-id> [--install] [--edition legacy|full] [--verify]
 
 Download Package workflow DMG artifacts from GitHub Actions.
 With --install, replace ~/Applications/QuotaGlance.app from the macOS12 (legacy) DMG.
+With --verify, run scripts/verify-dmg.sh against the downloaded DMG.
 EOF
   exit 2
 }
@@ -16,14 +17,19 @@ TARGET="${1:-}"
 shift || true
 
 INSTALL=false
+VERIFY=false
 EDITION="legacy"
 REPO="${QUOTAGLANCE_REPO:-lr-online/QuotaGlance}"
 OUT_DIR="${QUOTAGLANCE_PACKAGE_DIR:-$HOME/Downloads/QuotaGlance-ci}"
+SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --install)
       INSTALL=true
+      ;;
+    --verify)
+      VERIFY=true
       ;;
     --edition)
       shift
@@ -188,6 +194,9 @@ CHECKSUM="$DMG.sha256"
 )
 
 echo "Downloaded: $DMG"
+if [[ "$VERIFY" == true ]]; then
+  "$SCRIPT_ROOT/scripts/verify-dmg.sh" "$DMG" "$CHECKSUM" "$EDITION"
+fi
 if [[ "$INSTALL" == true ]]; then
   [[ "$EDITION" == "legacy" ]] || {
     echo "--install currently supports --edition legacy only" >&2

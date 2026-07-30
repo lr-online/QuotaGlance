@@ -152,12 +152,19 @@ package_edition() {
   /usr/bin/codesign --verify --deep --strict "$built_app"
   executables=("$built_app/Contents/MacOS/QuotaGlance")
   widget="$built_app/Contents/PlugIns/QuotaGlanceWidget.appex"
+  nc_widget="$built_app/Contents/PlugIns/QuotaGlanceNCWidget.appex"
+  nc_intents="$built_app/Contents/PlugIns/QuotaGlanceNCIntents.appex"
+  "$SOURCE_DIR/scripts/verify-nc-extensions.sh" "$built_app"
+  executables+=(
+    "$nc_widget/Contents/MacOS/QuotaGlanceNCWidget"
+    "$nc_intents/Contents/MacOS/QuotaGlanceNCIntents"
+  )
   if [[ "$edition" == full ]]; then
     "$SOURCE_DIR/scripts/verify-local-widget-bundle.sh" "$built_app"
     "$SOURCE_DIR/scripts/verify-widget-entrypoint.sh" "$widget"
     executables+=("$widget/Contents/MacOS/QuotaGlanceWidget")
   elif [[ -e "$widget" ]]; then
-    echo "macOS 12 build unexpectedly contains the Widget" >&2
+    echo "macOS 12 build unexpectedly contains the desktop Widget" >&2
     exit 1
   fi
   for executable in "${executables[@]}"; do
