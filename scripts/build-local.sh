@@ -75,21 +75,25 @@ APP_BUNDLE="$DERIVED_DATA/Build/Products/$CONFIGURATION/$APP_NAME.app"
 WIDGET_BUNDLE="$APP_BUNDLE/Contents/PlugIns/$WIDGET_NAME.appex"
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister"
 
-if ! "$XCODEBUILD" \
-  -project "$ROOT_DIR/QuotaGlance.xcodeproj" \
-  -scheme "$SCHEME" \
-  -configuration "$CONFIGURATION" \
-  -destination "platform=macOS,arch=arm64" \
-  -derivedDataPath "$DERIVED_DATA" \
-  ARCHS=arm64 \
-  ONLY_ACTIVE_ARCH=YES \
-  CODE_SIGNING_ALLOWED=NO \
-  CODE_SIGNING_REQUIRED=NO \
-  REGISTER_WITH_LAUNCH_SERVICES=NO \
-  "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$COMPILATION_CONDITIONS" \
-  "${VERSION_BUILD_SETTING[@]}" \
-  build \
-  > "$BUILD_LOG" 2>&1; then
+XCODEBUILD_ARGS=(
+  -project "$ROOT_DIR/QuotaGlance.xcodeproj"
+  -scheme "$SCHEME"
+  -configuration "$CONFIGURATION"
+  -destination "platform=macOS,arch=arm64"
+  -derivedDataPath "$DERIVED_DATA"
+  ARCHS=arm64
+  ONLY_ACTIVE_ARCH=YES
+  CODE_SIGNING_ALLOWED=NO
+  CODE_SIGNING_REQUIRED=NO
+  REGISTER_WITH_LAUNCH_SERVICES=NO
+  "SWIFT_ACTIVE_COMPILATION_CONDITIONS=$COMPILATION_CONDITIONS"
+)
+if [[ ${#VERSION_BUILD_SETTING[@]} -gt 0 ]]; then
+  XCODEBUILD_ARGS+=("${VERSION_BUILD_SETTING[@]}")
+fi
+XCODEBUILD_ARGS+=(build)
+
+if ! "$XCODEBUILD" "${XCODEBUILD_ARGS[@]}" > "$BUILD_LOG" 2>&1; then
   /usr/bin/tail -n 200 "$BUILD_LOG" >&2
   exit 1
 fi
