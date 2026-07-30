@@ -1,3 +1,4 @@
+import AppKit
 import QuotaGlanceCore
 import SwiftUI
 
@@ -8,76 +9,21 @@ struct SettingsView: View {
     @State private var accountToDelete: Account?
 
     var body: some View {
-        Form {
-            Section("Accounts") {
-                if model.accounts.isEmpty {
-                    VStack(spacing: 6) {
-                        Label("No Accounts", systemImage: "key.horizontal")
-                            .font(.headline)
-                        Text("Add a provider account to begin.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 80)
-                } else {
-                    ForEach(Array(model.accounts.enumerated()), id: \.element.id) {
-                        index, account in
-                        accountRow(account, index: index)
-                    }
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                accountsSection
+                refreshSection
+                notificationsSection
 
-                Button {
-                    editorContext = AccountEditorContext(account: nil)
-                } label: {
-                    Label("Add Account", systemImage: "plus")
-                }
-                .disabled(
-                    model.accounts.count >= AccountValidator.maximumAccountCount
-                )
-            }
-
-            Section("Refresh") {
-                Picker(
-                    "Interval",
-                    selection: Binding(
-                        get: { model.preferences.refreshInterval },
-                        set: { model.setRefreshInterval($0) }
-                    )
-                ) {
-                    ForEach(RefreshInterval.allCases) { interval in
-                        Text(intervalTitle(interval)).tag(interval)
-                    }
-                }
-
-                if model.supportsLaunchAtLogin {
-                    Toggle(
-                        "Launch at Login",
-                        isOn: Binding(
-                            get: { model.preferences.launchAtLogin },
-                            set: { model.setLaunchAtLogin($0) }
-                        )
-                    )
+                if let error = model.lastErrorMessage {
+                    statusSection(error)
                 }
             }
-
-            if let error = model.lastErrorMessage {
-                Section("Status") {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("Notifications") {
-                Label(
-                    notificationStatus,
-                    systemImage: model.notificationPermission == .authorized
-                        ? "checkmark.circle"
-                        : "bell.slash"
-                )
-                .foregroundStyle(.secondary)
-            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .compatibleGroupedFormStyle()
+        .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: 560, minHeight: 460)
         .sheet(item: $editorContext) { context in
             AccountEditorView(model: model, account: context.account)
@@ -99,60 +45,272 @@ struct SettingsView: View {
         }
     }
 
+    private var accountsSection: some View {
+        settingsSection(title: "Accounts") {
+            if model.accounts.isEmpty {
+                emptyAccountsPlaceholder
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(Array(model.accounts.enumerated()), id: \.element.id) {
+                    index, account in
+                    if index > 0 {
+                        settingsDivider
+                    }
+                    accountRow(account, index: index)
+                }
+            }
+
+            settingsDivider
+
+            Button {
+                editorContext = AccountEditorContext(account: nil)
+            } label: {
+                Label("Add Account", systemImage: "plus")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .disabled(
+                model.accounts.count >= AccountValidator.maximumAccountCount
+            )
+        }
+    }
+
+    private var refreshSection: some View {
+        settingsSection(title: "Refresh") {
+            settingsRow {
+                Text("Interval")
+                Spacer(minLength: 12)
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { model.preferences.refreshInterval },
+                        set: { model.setRefreshInterval($0) }
+                    )
+                ) {
+                    ForEach(RefreshInterval.allCases) { interval in
+                        Text(intervalTitle(interval)).tag(interval)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(minWidth: 128, alignment: .trailing)
+            }
+
+            if model.supportsLaunchAtLogin {
+                settingsDivider
+                settingsRow {
+                    Toggle(
+                        "Launch at Login",
+                        isOn: Binding(
+                            get: { model.preferences.launchAtLogin },
+                            set: { model.setLaunchAtLogin($0) }
+                        )
+                    )
+                    .toggleStyle(.checkbox)
+                }
+            }
+        }
+    }
+
+    private var notificationsSection: some View {
+        settingsSection(
+            title: "Notifications",
+            footer: "QuotaGlance notifies you when an account balance drops below its alert threshold."
+        ) {
+            settingsRow {
+                Label {
+                    Text("Low Balance Alerts")
+                } icon: {
+                    Image(systemName: notificationSymbol)
+                        .foregroundStyle(notificationSymbolColor)
+                }
+                Spacer(minLength: 12)
+                Text(notificationStatus)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+        }
+    }
+
+    private func statusSection(_ error: String) -> some View {
+        settingsSection(title: "Status") {
+            settingsRow(alignment: .top) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.yellow)
+                    .padding(.top, 1)
+                Text(error)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var emptyAccountsPlaceholder: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "key.horizontal")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("No Accounts")
+                .font(.headline)
+            Text("Add a provider account to begin.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 20)
+    }
+
     @ViewBuilder
     private func accountRow(_ account: Account, index: Int) -> some View {
-        HStack(spacing: 10) {
+        let detail = accountDetail(account)
+
+        settingsRow(alignment: .top) {
             Toggle(
+                "",
                 isOn: Binding(
                     get: { account.isEnabled },
                     set: { model.setAccountEnabled(id: account.id, isEnabled: $0) }
                 )
-            ) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(account.displayName)
-                    Text(accountDetail(account))
+            )
+            .labelsHidden()
+            .toggleStyle(.checkbox)
+            .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(account.displayName)
+                    .font(.body)
+                    .lineLimit(1)
+
+                Text(detail.primary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let secondary = detail.secondary {
+                    Text(secondary)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
+            HStack(spacing: 0) {
+                if model.accounts.count > 1 {
+                    rowActionButton(
+                        systemName: "chevron.up",
+                        help: "Move Up",
+                        isDisabled: index == 0
+                    ) {
+                        model.moveAccount(id: account.id, offset: -1)
+                    }
+                    rowActionButton(
+                        systemName: "chevron.down",
+                        help: "Move Down",
+                        isDisabled: index == model.accounts.count - 1
+                    ) {
+                        model.moveAccount(id: account.id, offset: 1)
+                    }
+                }
 
-            Button {
-                model.moveAccount(id: account.id, offset: -1)
-            } label: {
-                Image(systemName: "chevron.up")
+                rowActionButton(systemName: "pencil", help: "Edit Account") {
+                    editorContext = AccountEditorContext(account: account)
+                }
+
+                rowActionButton(
+                    systemName: "trash",
+                    help: "Delete Account",
+                    tint: .red
+                ) {
+                    accountToDelete = account
+                }
             }
-            .buttonStyle(.borderless)
-            .disabled(index == 0)
-            .help("Move Up")
-
-            Button {
-                model.moveAccount(id: account.id, offset: 1)
-            } label: {
-                Image(systemName: "chevron.down")
-            }
-            .buttonStyle(.borderless)
-            .disabled(index == model.accounts.count - 1)
-            .help("Move Down")
-
-            Button {
-                editorContext = AccountEditorContext(account: account)
-            } label: {
-                Image(systemName: "pencil")
-            }
-            .buttonStyle(.borderless)
-            .help("Edit Account")
-
-            Button(role: .destructive) {
-                accountToDelete = account
-            } label: {
-                Image(systemName: "trash")
-            }
-            .buttonStyle(.borderless)
-            .help("Delete Account")
+            .padding(.top, 1)
         }
+    }
+
+    private func rowActionButton(
+        systemName: String,
+        help: String,
+        tint: Color = .secondary,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(isDisabled ? Color.secondary.opacity(0.35) : tint)
+                .frame(width: 26, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .help(help)
+    }
+
+    private func settingsSection<Content: View>(
+        title: String,
+        footer: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 2)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color(nsColor: .controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(
+                        Color(nsColor: .separatorColor).opacity(0.45),
+                        lineWidth: 1
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            if let footer {
+                Text(footer)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 2)
+            }
+        }
+    }
+
+    private func settingsRow<Content: View>(
+        alignment: VerticalAlignment = .center,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: alignment, spacing: 10) {
+            content()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var settingsDivider: some View {
+        Divider()
+            .padding(.leading, 14)
     }
 
     private func intervalTitle(_ interval: RefreshInterval) -> String {
@@ -165,17 +323,22 @@ struct SettingsView: View {
         }
     }
 
-    private func accountDetail(_ account: Account) -> String {
-        var parts = [
+    private func accountDetail(_ account: Account) -> (primary: String, secondary: String?) {
+        let primary = [
             account.provider.displayName,
             account.provider.profileDescription(for: account.detectedProfile),
-        ]
-        if account.provider.supportsLowBalanceThreshold(
+        ].joined(separator: " · ")
+
+        guard account.provider.supportsLowBalanceThreshold(
             profile: account.detectedProfile
-        ), let threshold = account.lowBalanceThreshold {
-            parts.append("Alert below \(NSDecimalNumber(decimal: threshold).stringValue)")
+        ), let threshold = account.lowBalanceThreshold else {
+            return (primary, nil)
         }
-        return parts.joined(separator: " - ")
+
+        return (
+            primary,
+            "Alert below \(NSDecimalNumber(decimal: threshold).stringValue)"
+        )
     }
 
     private var notificationStatus: String {
@@ -183,6 +346,21 @@ struct SettingsView: View {
         case .notDetermined: "Not Requested"
         case .denied: "Not Allowed"
         case .authorized: "Allowed"
+        }
+    }
+
+    private var notificationSymbol: String {
+        switch model.notificationPermission {
+        case .authorized: "checkmark.circle.fill"
+        case .denied: "bell.slash"
+        case .notDetermined: "bell"
+        }
+    }
+
+    private var notificationSymbolColor: Color {
+        switch model.notificationPermission {
+        case .authorized: .green
+        case .denied, .notDetermined: .secondary
         }
     }
 }

@@ -32,6 +32,32 @@ rg -q 'QuotaGlanceLegacy' "$ROOT_DIR/scripts/build-local.sh" \
 [[ -f "$ROOT_DIR/Tests/ScriptTests/GitHubActionsTests.sh" ]] \
   || fail "GitHub Actions contract test is missing"
 
+rg -q 'compatibleSystemSymbol' "$ROOT_DIR/App/MenuBar/StatusBarController.swift" \
+  || fail "status bar does not use compatible SF Symbol fallback"
+rg -q 'NSApp.activate\(ignoringOtherApps: true\)' \
+  "$ROOT_DIR/App/MenuBar/StatusBarController.swift" \
+  || fail "popover show path does not activate the accessory app"
+rg -q 'ApplicationMenuInstaller.installMainMenuIfNeeded' \
+  "$ROOT_DIR/App/QuotaGlanceApp.swift" \
+  || fail "accessory app does not install Edit menu for paste shortcuts"
+rg -q 'PasteboardCommands' "$ROOT_DIR/App/QuotaGlanceApp.swift" \
+  || fail "Settings scene lacks pasteboard Commands for ⌘V"
+rg -q 'QuotaGlanceApplication' "$ROOT_DIR/App/Info.plist" \
+  || fail "Info.plist does not use QuotaGlanceApplication for edit shortcuts"
+rg -q '@objc\(QuotaGlanceApplication\)' \
+  "$ROOT_DIR/App/Compatibility/QuotaGlanceApplication.swift" \
+  || fail "QuotaGlanceApplication subclass is missing"
+rg -q 'APIKeyPasteShortcutBridge' \
+  "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+  || fail "account editor lacks ⌘V bridge for SecureField"
+rg -q 'func pasteAPIKey' "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+  || fail "account editor lacks explicit Paste API key action"
+rg -q 'onPasteCommand' "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+  || fail "API key SecureField lacks onPasteCommand"
+rg -Fq '"gauge"' \
+  "$ROOT_DIR/Sources/QuotaGlanceCore/Presentation/CompatibleSystemSymbolNames.swift" \
+  || fail "compatible symbol fallback list is missing gauge"
+
 SCHEMES="$(
   DEVELOPER_DIR="$XCODE_DEVELOPER_DIR" /usr/bin/xcodebuild \
     -project "$ROOT_DIR/QuotaGlance.xcodeproj" \
@@ -55,5 +81,16 @@ LEGACY_TARGET_BLOCK="$(/usr/bin/awk '
 if rg -q 'QuotaGlanceWidget|PBXTargetDependency' <<< "$LEGACY_TARGET_BLOCK"; then
   fail "legacy host unexpectedly depends on the Widget"
 fi
+
+for required_source in \
+  ApplicationMenuInstaller.swift \
+  CompatibleSystemSymbol.swift \
+  PasteboardCommands.swift \
+  QuotaGlanceApplication.swift
+do
+  rg -Fq "$required_source in Sources" \
+    "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj" \
+    || fail "Xcode project is missing Compatibility source: $required_source"
+done
 
 echo "Build edition contract tests passed"

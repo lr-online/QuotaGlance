@@ -15,14 +15,12 @@ final class StatusBarController: NSObject {
         super.init()
 
         if let button = statusItem.button {
-            let image = NSImage(
-                systemSymbolName: "gauge.with.dots.needle.50percent",
+            button.image = NSImage.compatibleSystemSymbol(
+                names: CompatibleSystemSymbol.statusBar,
                 accessibilityDescription: "QuotaGlance"
             )
-            image?.isTemplate = true
-            button.image = image
             button.target = self
-            button.action = #selector(togglePopover)
+            button.action = #selector(togglePopover(_:))
             button.toolTip = "QuotaGlance"
         }
 
@@ -37,23 +35,31 @@ final class StatusBarController: NSObject {
             rootView: MenuBarDashboardView(
                 model: model,
                 openSettings: { [weak self] in
-                    self?.popover.performClose(nil)
+                    self?.closePopover()
                     openSettings()
                 }
             )
         )
     }
 
-    @objc private func togglePopover() {
+    @objc private func togglePopover(_ sender: Any?) {
         if popover.isShown {
-            popover.performClose(nil)
+            closePopover()
             return
         }
         guard let button = statusItem.button else { return }
+        // Accessory apps must activate before a transient popover can dismiss
+        // on outside clicks.
+        NSApp.activate(ignoringOtherApps: true)
         popover.show(
             relativeTo: button.bounds,
             of: button,
             preferredEdge: .minY
         )
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    private func closePopover() {
+        popover.performClose(nil)
     }
 }
