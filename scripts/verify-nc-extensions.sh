@@ -61,4 +61,4 @@ done
 /usr/bin/strings "$WIDGET_BINARY" | rg -q 'NCWidgetAccountIntent' \
   || fail "NC widget binary missing NCWidgetAccountIntent"
 
-echo "NC extensions verified in $APP_BUNDLE"
+echo "NC extensions verified in $APP_BUNDLE" >&2
