@@ -14,6 +14,7 @@ final class QuotaGlanceApplication: NSApplication {
     }
 }
 
+@MainActor
 enum EditKeyEquivalentRouter {
     static func perform(_ event: NSEvent) -> Bool {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)

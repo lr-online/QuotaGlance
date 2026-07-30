@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 enum ApplicationMenuInstaller {
     /// Accessory apps still need an Edit menu so key equivalents and SwiftUI
     /// pasteboard commands resolve through the responder chain.
