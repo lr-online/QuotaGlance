@@ -1,3 +1,4 @@
+import AppKit
 import QuotaGlanceCore
 import SwiftUI
 
@@ -57,10 +58,18 @@ struct AccountEditorView: View {
                     }
                 }
                 TextField("Name", text: $draft.displayName)
-                SecureField(
-                    account == nil ? "API Key" : "Replacement API Key (Optional)",
-                    text: $draft.apiKey
-                )
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    SecureField(
+                        account == nil
+                            ? "API Key"
+                            : "Replacement API Key (Optional)",
+                        text: $draft.apiKey
+                    )
+                    Button("Paste") {
+                        pasteAPIKey()
+                    }
+                    .help("Paste API key from clipboard")
+                }
                 if supportsLowBalanceThreshold {
                     TextField(
                         thresholdFieldLabel,
@@ -115,6 +124,13 @@ struct AccountEditorView: View {
                 isSaving = false
             }
         }
+    }
+
+    private func pasteAPIKey() {
+        guard let string = NSPasteboard.general.string(forType: .string) else {
+            return
+        }
+        draft.apiKey = string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var thresholdFieldLabel: String {

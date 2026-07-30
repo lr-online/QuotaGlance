@@ -123,6 +123,7 @@ struct SettingsView: View {
                 model.moveAccount(id: account.id, offset: -1)
             } label: {
                 Image(systemName: "chevron.up")
+                    .foregroundStyle(.primary)
             }
             .buttonStyle(.borderless)
             .disabled(index == 0)
@@ -132,6 +133,7 @@ struct SettingsView: View {
                 model.moveAccount(id: account.id, offset: 1)
             } label: {
                 Image(systemName: "chevron.down")
+                    .foregroundStyle(.primary)
             }
             .buttonStyle(.borderless)
             .disabled(index == model.accounts.count - 1)
@@ -141,6 +143,7 @@ struct SettingsView: View {
                 editorContext = AccountEditorContext(account: account)
             } label: {
                 Image(systemName: "pencil")
+                    .foregroundStyle(.primary)
             }
             .buttonStyle(.borderless)
             .help("Edit Account")
@@ -149,6 +152,7 @@ struct SettingsView: View {
                 accountToDelete = account
             } label: {
                 Image(systemName: "trash")
+                    .foregroundStyle(.red)
             }
             .buttonStyle(.borderless)
             .help("Delete Account")

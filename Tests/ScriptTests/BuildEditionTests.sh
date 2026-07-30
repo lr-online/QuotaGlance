@@ -32,6 +32,20 @@ rg -q 'QuotaGlanceLegacy' "$ROOT_DIR/scripts/build-local.sh" \
 [[ -f "$ROOT_DIR/Tests/ScriptTests/GitHubActionsTests.sh" ]] \
   || fail "GitHub Actions contract test is missing"
 
+rg -q 'compatibleSystemSymbol' "$ROOT_DIR/App/MenuBar/StatusBarController.swift" \
+  || fail "status bar does not use compatible SF Symbol fallback"
+rg -q 'NSApp.activate\(ignoringOtherApps: true\)' \
+  "$ROOT_DIR/App/MenuBar/StatusBarController.swift" \
+  || fail "popover show path does not activate the accessory app"
+rg -q 'ApplicationMenuInstaller.installMainMenuIfNeeded' \
+  "$ROOT_DIR/App/QuotaGlanceApp.swift" \
+  || fail "accessory app does not install Edit menu for paste shortcuts"
+rg -q 'func pasteAPIKey' "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+  || fail "account editor lacks explicit Paste API key action"
+rg -Fq '"gauge"' \
+  "$ROOT_DIR/Sources/QuotaGlanceCore/Presentation/CompatibleSystemSymbolNames.swift" \
+  || fail "compatible symbol fallback list is missing gauge"
+
 SCHEMES="$(
   DEVELOPER_DIR="$XCODE_DEVELOPER_DIR" /usr/bin/xcodebuild \
     -project "$ROOT_DIR/QuotaGlance.xcodeproj" \
