@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEVECO_CONTENTS="${DEVECO_STUDIO_CONTENTS:-/Applications/DevEco-Studio.app/Contents}"
+export DEVECO_SDK_HOME="${DEVECO_SDK_HOME:-${DEVECO_CONTENTS}/sdk/default}"
+
+exec "${DEVECO_CONTENTS}/tools/hvigor/bin/hvigorw" "$@"

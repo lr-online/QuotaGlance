@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "QuotaGlance application module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "QuotaGlance main ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "QuotaGlance"
+    }
+  ]
+}

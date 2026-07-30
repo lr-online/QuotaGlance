@@ -1,0 +1,8 @@
+.hvigor/
+.idea/
+oh_modules/
+build/
+*/build/
+local.properties
+.obfuscated/
+

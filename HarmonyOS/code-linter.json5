@@ -1,0 +1,3 @@
+{
+  "files": ["./entry/src/main/**/*.ets", "./entry/src/ohosTest/**/*.ets"]
+}
