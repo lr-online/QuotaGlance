@@ -116,6 +116,38 @@ struct StorageTests {
         #expect(persisted == loaded)
     }
 
+    @Test("Notification Center default account preference round-trips")
+    func notificationCenterDefaultAccountPreferenceRoundTrips() throws {
+        let suiteName = "QuotaGlanceTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = AccountPreferencesStore(defaults: defaults)
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+
+        let legacyPayload = Data(#"""
+        {
+          "schemaVersion": 2,
+          "accounts": [],
+          "preferences": {
+            "refreshInterval": 300,
+            "launchAtLogin": false
+          }
+        }
+        """#.utf8)
+        defaults.set(legacyPayload, forKey: AccountPreferencesStore.storageKey)
+        let loadedLegacy = try store.load()
+        #expect(loadedLegacy.preferences.notificationCenterDefaultAccountID == nil)
+
+        let preferences = AppPreferences(
+            refreshInterval: .fiveMinutes,
+            launchAtLogin: false,
+            notificationCenterDefaultAccountID: accountID
+        )
+        try store.save(accounts: [], preferences: preferences)
+        let reloaded = try store.load()
+        #expect(reloaded.preferences.notificationCenterDefaultAccountID == accountID)
+    }
+
     @Test("Credential storage identifies same-name accounts by UUID")
     func credentialStorageUsesAccountUUID() async throws {
         let first = Account(displayName: "Personal")
