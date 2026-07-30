@@ -1,3 +1,6 @@
 {
-  "src": ["pages/Index"]
+  "src": [
+    "pages/Index",
+    "pages/SettingsPage"
+  ]
 }
