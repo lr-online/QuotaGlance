@@ -60,6 +60,28 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Notification Center Widget") {
+                Picker(
+                    "Default Account",
+                    selection: Binding(
+                        get: { model.preferences.notificationCenterDefaultAccountID },
+                        set: { model.setNotificationCenterDefaultAccountID($0) }
+                    )
+                ) {
+                    Text("All Accounts").tag(Optional<UUID>.none)
+                    ForEach(model.accounts) { account in
+                        Text(account.displayName).tag(Optional(account.id))
+                    }
+                }
+
+                Text(
+                    "Applies to widgets still set to Use App Default. "
+                        + "Widgets edited in Notification Center keep their own account."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
             if let error = model.lastErrorMessage {
                 Section("Status") {
                     Label(error, systemImage: "exclamationmark.triangle")
