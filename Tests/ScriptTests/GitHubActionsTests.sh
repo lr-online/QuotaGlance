@@ -70,5 +70,10 @@ rg -Fq "HARMONYOS_SKIP_SIGN" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build 
 rg -Fq "properties.ignoreSignHap=true" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing ignoreSignHap"
 rg -Fq "ohpm install --all" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not install ohpm deps"
 rg -Fq "assembleHap" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not assemble HAP"
+rg -Fq 'Huawei Pad Mini' "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing tablet/Pad Mini deviceTypes check"
+HARMONYOS_MODULE_JSON5="$ROOT_DIR/HarmonyOS/entry/src/main/module.json5"
+[[ -f "$HARMONYOS_MODULE_JSON5" ]] || fail "missing HarmonyOS entry module.json5"
+rg -Fq '"tablet"' "$HARMONYOS_MODULE_JSON5" || fail "HarmonyOS entry module missing tablet deviceType"
+rg -Fq '"phone"' "$HARMONYOS_MODULE_JSON5" || fail "HarmonyOS entry module missing phone deviceType"
 
 echo "GitHub Actions contract tests passed"

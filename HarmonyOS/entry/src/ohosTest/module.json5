@@ -2,7 +2,7 @@
   "module": {
     "name": "entry_test",
     "type": "feature",
-    "deviceTypes": ["phone"],
+    "deviceTypes": ["phone", "tablet"],
     "deliveryWithInstall": true,
     "installationFree": false
   }

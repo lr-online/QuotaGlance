@@ -44,6 +44,16 @@ if ! command -v hvigorw >/dev/null 2>&1; then
 fi
 HVIGORW=(hvigorw)
 
+MODULE_JSON5="$HARMONY_DIR/entry/src/main/module.json5"
+if ! grep -Fq '"tablet"' "$MODULE_JSON5"; then
+  echo "error: entry module must declare deviceTypes including tablet (Huawei Pad Mini)" >&2
+  exit 1
+fi
+if ! grep -Fq '"phone"' "$MODULE_JSON5"; then
+  echo "error: entry module must declare deviceTypes including phone" >&2
+  exit 1
+fi
+
 echo "ohpm install --all"
 ohpm install --all --registry https://ohpm.openharmony.cn/ohpm/ || ohpm install --all
 

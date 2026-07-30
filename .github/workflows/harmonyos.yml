@@ -66,6 +66,14 @@ jobs:
       - name: Sync shared contract fixtures
         run: bash scripts/sync-contracts-to-harmonyos.sh
 
+      - name: Verify phone + tablet deviceTypes
+        run: |
+          set -euo pipefail
+          MODULE=HarmonyOS/entry/src/main/module.json5
+          grep -Fq '"phone"' "$MODULE"
+          grep -Fq '"tablet"' "$MODULE"
+          echo "deviceTypes include phone and tablet (Huawei Pad Mini)"
+
       - name: Build entry HAP
         env:
           HARMONYOS_BUILD_MODE: debug
@@ -75,7 +83,7 @@ jobs:
       - name: Upload HAP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: QuotaGlance-HarmonyOS-${{ github.sha }}
+          name: QuotaGlance-HarmonyOS-phone-tablet-${{ github.sha }}
           path: |
             HarmonyOS/entry/build/default/outputs/default/*.hap
             HarmonyOS/**/outputs/**/*.hap
