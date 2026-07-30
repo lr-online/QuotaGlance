@@ -11,6 +11,22 @@
     {
       "name": "EntryAbility_label",
       "value": "QuotaGlance"
+    },
+    {
+      "name": "EntryFormAbility_label",
+      "value": "QuotaGlance 余额"
+    },
+    {
+      "name": "EntryFormAbility_desc",
+      "value": "显示 DeepSeek 账户余额"
+    },
+    {
+      "name": "widget_display_name",
+      "value": "QuotaGlance 余额"
+    },
+    {
+      "name": "widget_description",
+      "value": "显示 DeepSeek 账户余额，每 30 分钟刷新"
     }
   ]
 }
