@@ -1,0 +1,68 @@
+name: HarmonyOS
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "HarmonyOS/**"
+      - "Contracts/Providers/**"
+      - "scripts/build-harmonyos.sh"
+      - "scripts/sync-contracts-to-harmonyos.sh"
+      - ".github/workflows/harmonyos.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "HarmonyOS/**"
+      - "Contracts/Providers/**"
+      - "scripts/build-harmonyos.sh"
+      - "scripts/sync-contracts-to-harmonyos.sh"
+      - ".github/workflows/harmonyos.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev
+
+      - name: Setup HarmonyOS CLI tools
+        uses: ErBWs/setup-ohos@v2
+        with:
+          # Matches HarmonyOS/build-profile.json5 targetSdkVersion 6.1.1(24)
+          # and ErBWs/ohos-sdk release tags (command-line-tools + SDK mirror).
+          version: 6.1.1.280
+          cache: true
+
+      - name: Show toolchain versions
+        run: |
+          echo "HOS_SDK_HOME=${HOS_SDK_HOME}"
+          echo "DEVECO_SDK_HOME will be ${HOS_SDK_HOME}/default"
+          hvigorw -v
+          ohpm -v
+          node -v
+
+      - name: Sync shared contract fixtures
+        run: bash scripts/sync-contracts-to-harmonyos.sh
+
+      - name: Build entry HAP
+        env:
+          HARMONYOS_BUILD_MODE: debug
+          HARMONYOS_SKIP_SIGN: "1"
+        run: bash scripts/build-harmonyos.sh
+
+      - name: Upload HAP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuotaGlance-HarmonyOS-${{ github.sha }}
+          path: HarmonyOS/entry/build/default/outputs/default/*.hap
+          if-no-files-found: error
