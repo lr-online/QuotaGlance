@@ -1,11 +1,10 @@
 import AppKit
 
 enum ApplicationMenuInstaller {
-    /// Accessory / LSUIElement apps do not show a menu bar, but Cmd+C / Cmd+V
-    /// still require an Edit menu in the responder chain.
+    /// Accessory apps still need an Edit menu so key equivalents and SwiftUI
+    /// pasteboard commands resolve through the responder chain.
     static func installMainMenuIfNeeded() {
-        if let existing = NSApp.mainMenu,
-           existing.items.contains(where: { $0.submenu?.title == "Edit" }) {
+        if hasPasteboardEditMenu(NSApp.mainMenu) {
             return
         }
 
@@ -25,6 +24,7 @@ enum ApplicationMenuInstaller {
         mainMenu.addItem(editMenuItem)
         let editMenu = NSMenu(title: "Edit")
         editMenuItem.submenu = editMenu
+
         editMenu.addItem(
             withTitle: "Cut",
             action: #selector(NSText.cut(_:)),
@@ -47,5 +47,18 @@ enum ApplicationMenuInstaller {
         )
 
         NSApp.mainMenu = mainMenu
+    }
+
+    private static func hasPasteboardEditMenu(_ menu: NSMenu?) -> Bool {
+        guard let menu else { return false }
+        return menu.items.contains { item in
+            guard let submenu = item.submenu else { return false }
+            let actions = Set(
+                submenu.items.compactMap { $0.action?.description }
+            )
+            return actions.contains("paste:")
+                && actions.contains("copy:")
+                && actions.contains("cut:")
+        }
     }
 }

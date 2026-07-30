@@ -9,6 +9,9 @@ struct QuotaGlanceApp: App {
         Settings {
             SettingsView(model: appDelegate.model)
         }
+        .commands {
+            PasteboardCommands()
+        }
     }
 }
 

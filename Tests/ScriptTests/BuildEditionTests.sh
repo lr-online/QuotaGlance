@@ -40,8 +40,20 @@ rg -q 'NSApp.activate\(ignoringOtherApps: true\)' \
 rg -q 'ApplicationMenuInstaller.installMainMenuIfNeeded' \
   "$ROOT_DIR/App/QuotaGlanceApp.swift" \
   || fail "accessory app does not install Edit menu for paste shortcuts"
+rg -q 'PasteboardCommands' "$ROOT_DIR/App/QuotaGlanceApp.swift" \
+  || fail "Settings scene lacks pasteboard Commands for ⌘V"
+rg -q 'QuotaGlanceApplication' "$ROOT_DIR/App/Info.plist" \
+  || fail "Info.plist does not use QuotaGlanceApplication for edit shortcuts"
+rg -q '@objc\(QuotaGlanceApplication\)' \
+  "$ROOT_DIR/App/Compatibility/QuotaGlanceApplication.swift" \
+  || fail "QuotaGlanceApplication subclass is missing"
+rg -q 'APIKeyPasteShortcutBridge' \
+  "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+  || fail "account editor lacks ⌘V bridge for SecureField"
 rg -q 'func pasteAPIKey' "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
   || fail "account editor lacks explicit Paste API key action"
+rg -q 'onPasteCommand' "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+  || fail "API key SecureField lacks onPasteCommand"
 rg -Fq '"gauge"' \
   "$ROOT_DIR/Sources/QuotaGlanceCore/Presentation/CompatibleSystemSymbolNames.swift" \
   || fail "compatible symbol fallback list is missing gauge"

@@ -36,6 +36,6 @@
     <key>NSHumanReadableCopyright</key>
     <string>Copyright 2026 Liangrui</string>
     <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
+    <string>QuotaGlanceApplication</string>
 </dict>
 </plist>
