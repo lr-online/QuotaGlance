@@ -1,19 +1,11 @@
 import Foundation
-import Intents
 import QuotaGlanceCore
 
-final class NCWidgetAccountIntentHandler: NSObject, NCWidgetAccountIntentHandling {
-    func provideAccountChoiceOptionsCollection(
-        for intent: NCWidgetAccountIntent,
-        with completion: @escaping (INObjectCollection<NSString>?, Error?) -> Void
-    ) {
-        completion(
-            INObjectCollection(items: ncWidgetAccountChoiceOptions() as [NSString]),
-            nil
-        )
-    }
-}
-
+/// Builds the list of account choices offered when a user configures the
+/// QuotaGlance Notification Center widget. Moved here (from a dead handler
+/// that used to live in the `QuotaGlanceNCWidget` appex) because this Intents
+/// extension is the process the system actually invokes for dynamic intent
+/// parameter options.
 func ncWidgetAccountChoiceOptions(
     envelope: WidgetSnapshotEnvelope? = QuotaGlanceShared.snapshotStore()
         .flatMap { try? $0.read() }

@@ -251,11 +251,12 @@ final class AppModel: ObservableObject {
         }
         normalizeSortOrder()
         let previousPreferences = preferences
-        preferences = NCWidgetDefaultAccountPolicy.clearingDefaultIfNeeded(
+        let updatedPreferences = NCWidgetDefaultAccountPolicy.clearingDefaultIfNeeded(
             preferences: preferences,
             deletedAccountID: id
         )
-        let didClearNCWidgetDefault = preferences != previousPreferences
+        let didClearNCWidgetDefault = updatedPreferences != previousPreferences
+        preferences = updatedPreferences
         do {
             try persist()
             if didClearNCWidgetDefault {
@@ -265,6 +266,7 @@ final class AppModel: ObservableObject {
             publishCachedState()
             await refresh(credentialAccessMode: .nonInteractive)
         } catch {
+            preferences = previousPreferences
             lastErrorMessage = message(for: error)
         }
     }
