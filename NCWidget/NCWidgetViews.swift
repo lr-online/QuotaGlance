@@ -1,0 +1,205 @@
+import AppKit
+import QuotaGlanceCore
+import SwiftUI
+import WidgetKit
+
+struct NCWidgetMediumView: View {
+    let entry: NCWidgetEntry
+
+    var body: some View {
+        Group {
+            switch entry.presentation.state {
+            case .noSnapshot:
+                unavailableView(title: "No Data", icon: "gauge.open.with.lines.needle.33percent")
+            case .deletedAccount:
+                unavailableView(title: "Account Unavailable", icon: "person.crop.circle.badge.xmark")
+            case .available:
+                mediumView
+            }
+        }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .widgetURL(entry.presentation.deepLink)
+    }
+
+    private var mediumView: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                widgetHeader
+                Spacer(minLength: 2)
+                primaryMetricBlock
+                if entry.presentation.todayActualCost != nil
+                    || entry.presentation.todayRequests != nil {
+                    metricLine(
+                        label: "Today",
+                        value: entry.presentation.todayActualCost.map {
+                            MoneyFormatter.widgetString($0)
+                        } ?? "--"
+                    )
+                    metricLine(
+                        label: "Requests",
+                        value: entry.presentation.todayRequests?.formatted() ?? "--"
+                    )
+                }
+                freshness
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            NCWidgetUsageChart(dailyUsage: entry.presentation.dailyUsage)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var widgetHeader: some View {
+        HStack(spacing: 6) {
+            Text(entry.presentation.title)
+                .font(.headline)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Circle()
+                .fill(presentationColor)
+                .frame(width: 7, height: 7)
+        }
+    }
+
+    @ViewBuilder
+    private var primaryMetricBlock: some View {
+        if entry.presentation.balances.count > 1 {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(entry.presentation.balances.prefix(2), id: \.currency) { balance in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(MoneyFormatter.widgetString(balance))
+                            .font(.system(size: 21, weight: .semibold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        Spacer(minLength: 4)
+                        Text("\(balance.currency) balance")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+        } else if let metric = entry.presentation.primaryMetric {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(PrimaryMetricFormatter.string(metric.value))
+                    .font(.system(size: 27, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                Text(primaryMetricLabel(metric))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        } else if let reason = entry.presentation.metricsUnavailableReason {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Connected")
+                    .font(.system(size: 23, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                Text(reason)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("--")
+                    .font(.system(size: 27, weight: .semibold, design: .rounded))
+                Text("No metric")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func primaryMetricLabel(_ metric: PrimaryMetric) -> String {
+        guard entry.presentation.balances.isEmpty,
+              let fallback = entry.presentation.accountRows.first(where: {
+                  $0.primaryMetric == metric
+              }) else {
+            return metric.label
+        }
+        return "\(fallback.displayName) · \(metric.label)"
+    }
+
+    private func metricLine(label: String, value: String) -> some View {
+        HStack(spacing: 5) {
+            Text(label)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Text(value)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .font(.caption)
+    }
+
+    @ViewBuilder
+    private var freshness: some View {
+        if let date = entry.presentation.lastSuccessAt {
+            Text(date, style: .relative)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func unavailableView(title: String, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("QuotaGlance")
+                .font(.headline)
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private var presentationColor: Color {
+        switch entry.presentation.state {
+        case let .available(status):
+            switch status {
+            case .healthy: .green
+            case .belowThreshold, .partial, .stale: .orange
+            case .unavailable: .red
+            case .empty: .secondary
+            }
+        case .noSnapshot, .deletedAccount:
+            .secondary
+        }
+    }
+}
+
+private struct NCWidgetUsageChart: View {
+    let dailyUsage: [DailyUsage]
+
+    private var maximum: Double {
+        max(
+            dailyUsage.map {
+                NSDecimalNumber(decimal: $0.actualCost.amount).doubleValue
+            }.max() ?? 0,
+            0.000_001
+        )
+    }
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 5) {
+            ForEach(Array(dailyUsage.enumerated()), id: \.element.date) { index, day in
+                GeometryReader { proxy in
+                    let value = NSDecimalNumber(decimal: day.actualCost.amount).doubleValue
+                    let height = max(2, proxy.size.height * value / maximum)
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(index == dailyUsage.count - 1
+                            ? Color.accentColor
+                            : Color.secondary.opacity(0.25))
+                        .frame(height: height)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .frame(minHeight: 50)
+        .accessibilityLabel("Seven day usage")
+    }
+}

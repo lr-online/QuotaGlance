@@ -1,43 +1,19 @@
-import SwiftUI
+import Intents
 import WidgetKit
-
-struct NCWidgetEntry: TimelineEntry {
-    let date: Date
-}
-
-struct NCWidgetPlaceholderProvider: TimelineProvider {
-    func placeholder(in context: Context) -> NCWidgetEntry {
-        NCWidgetEntry(date: .now)
-    }
-
-    func getSnapshot(
-        in context: Context,
-        completion: @escaping (NCWidgetEntry) -> Void
-    ) {
-        completion(NCWidgetEntry(date: .now))
-    }
-
-    func getTimeline(
-        in context: Context,
-        completion: @escaping (Timeline<NCWidgetEntry>) -> Void
-    ) {
-        let entry = NCWidgetEntry(date: .now)
-        completion(Timeline(entries: [entry], policy: .never))
-    }
-}
 
 struct QuotaGlanceNCWidget: Widget {
     static let kind = "QuotaGlanceNCWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(
+        IntentConfiguration(
             kind: Self.kind,
-            provider: NCWidgetPlaceholderProvider()
+            intent: NCWidgetAccountIntent.self,
+            provider: NCWidgetTimelineProvider()
         ) { entry in
-            Text(entry.date, style: .time)
+            NCWidgetMediumView(entry: entry)
         }
         .configurationDisplayName("QuotaGlance")
-        .description("Notification Center balance overview.")
+        .description("Choose an account or show all accounts in Notification Center.")
         .supportedFamilies([.systemMedium])
     }
 }

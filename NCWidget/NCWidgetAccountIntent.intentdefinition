@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <INIntentDefinitionModel type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="16000" systemVersion="20A2411" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
     <INIntentDefinitionModel:intents>
-        <INIntent name="NCWidgetAccountIntent" displayName="QuotaGlance Account" description="Choose which account balance to display." category="view" configurable="YES" eligibleForWidgets="YES">
+        <INIntent name="NCWidgetAccountIntent" displayName="QuotaGlance Account" description="Choose which account balance to display." category="configure" configurable="YES" eligibleForWidgets="YES">
             <INIntent:parameters>
                 <INIntentParameter name="accountChoice" displayName="Account" type="string" configurable="YES" supportsDynamicEnumeration="YES"/>
             </INIntent:parameters>
