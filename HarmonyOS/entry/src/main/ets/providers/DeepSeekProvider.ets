@@ -39,7 +39,7 @@ export function parseBalance(responseBody: string, receivedAtMs: number): UsageS
     throw new Error('invalidResponse');
   }
 
-  const balances: MonetaryBalance[] = infos.map((info: BalanceInfoPayload) => {
+  const balances: MonetaryBalance[] = infos.map((info: BalanceInfoPayload): MonetaryBalance => {
     const currency = info.currency.trim().toUpperCase();
     const total = decimalString(info.total_balance);
     if (currency.length === 0 || total === null) {
@@ -49,20 +49,30 @@ export function parseBalance(responseBody: string, receivedAtMs: number): UsageS
     const breakdown: MonetaryValue[] = [];
     const granted = decimalString(info.granted_balance);
     if (granted !== null) {
-      breakdown.push({ label: 'Granted', value: { amount: granted, currency: currency } });
+      const grantedValue: Money = { amount: granted, currency: currency };
+      const grantedItem: MonetaryValue = { label: 'Granted', value: grantedValue };
+      breakdown.push(grantedItem);
     }
     const toppedUp = decimalString(info.topped_up_balance);
     if (toppedUp !== null) {
-      breakdown.push({ label: 'Topped up', value: { amount: toppedUp, currency: currency } });
+      const toppedUpValue: Money = { amount: toppedUp, currency: currency };
+      const toppedUpItem: MonetaryValue = { label: 'Topped up', value: toppedUpValue };
+      breakdown.push(toppedUpItem);
     }
 
     const available: Money = { amount: total, currency: currency };
-    return { label: 'Balance', available: available, breakdown: breakdown };
+    const balance: MonetaryBalance = {
+      label: 'Balance',
+      available: available,
+      breakdown: breakdown
+    };
+    return balance;
   });
 
-  return {
+  const snapshot: UsageSnapshot = {
     balances: balances,
     providerStatus: payload.is_available ? 'active' : 'unavailable',
     receivedAtMs: receivedAtMs
   };
+  return snapshot;
 }

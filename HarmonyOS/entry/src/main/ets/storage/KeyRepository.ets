@@ -13,6 +13,11 @@ function arrayToString(bytes: Uint8Array): string {
   return util.TextDecoder.create('utf-8').decodeToString(bytes);
 }
 
+function rethrowBusinessError(error: Object, action: string): never {
+  const businessError = error as BusinessError;
+  throw new Error(`${action}:${businessError.code}`);
+}
+
 export class KeyRepository {
   static async save(apiKey: string): Promise<void> {
     const query: asset.AssetMap = new Map();
@@ -21,7 +26,7 @@ export class KeyRepository {
       await asset.remove(query);
     } catch (error) {
       if ((error as BusinessError).code !== ERROR_NOT_FOUND) {
-        throw error;
+        rethrowBusinessError(error as Object, 'assetRemoveFailed');
       }
     }
 
@@ -47,7 +52,7 @@ export class KeyRepository {
       if ((error as BusinessError).code === ERROR_NOT_FOUND) {
         return null;
       }
-      throw error;
+      rethrowBusinessError(error as Object, 'assetQueryFailed');
     }
   }
 
@@ -58,7 +63,7 @@ export class KeyRepository {
       await asset.remove(query);
     } catch (error) {
       if ((error as BusinessError).code !== ERROR_NOT_FOUND) {
-        throw error;
+        rethrowBusinessError(error as Object, 'assetClearFailed');
       }
     }
   }
