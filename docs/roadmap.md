@@ -61,3 +61,5 @@ Last updated: 2026-07-27
 - Do not commit to a direct port yet.
 - First decide whether the product should remain client-only or move provider refresh to a shared backend service.
 - Use that decision to choose the cross-platform architecture.
+- HarmonyOS capability findings and the lightest-integration recommendation: `docs/research/harmonyos-integration.md`.
+- HarmonyOS direction is decided (client-only, per-platform UI and core, shared contract fixtures, personal-use minimal loop first); see the Architecture decisions section of the same document. Android/Windows remain open under the bullets above.

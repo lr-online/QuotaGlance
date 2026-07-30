@@ -98,6 +98,7 @@ struct MenuBarDashboardView: View {
                     Task { await model.refresh() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
+                        .foregroundStyle(.primary)
                 }
                 .buttonStyle(.borderless)
                 .frame(width: 28, height: 28)
@@ -498,7 +499,7 @@ struct MenuBarDashboardView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "gauge.open.with.lines.needle.33percent")
+            Image(compatibleSystemName: CompatibleSystemSymbol.emptyState)
                 .font(.system(size: 30))
                 .foregroundStyle(.secondary)
             Text("No Accounts")

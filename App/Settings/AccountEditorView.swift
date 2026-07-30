@@ -1,7 +1,15 @@
+import AppKit
 import QuotaGlanceCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct AccountEditorView: View {
+    private enum Field: Hashable {
+        case name
+        case apiKey
+        case threshold
+    }
+
     @Environment(\.dismiss) private var dismiss
 
     @ObservedObject var model: AppModel
@@ -10,6 +18,7 @@ struct AccountEditorView: View {
     @State private var draft: AccountDraft
     @State private var errorMessage: String?
     @State private var isSaving = false
+    @FocusState private var focusedField: Field?
 
     init(model: AppModel, account: Account?) {
         self.model = model
@@ -57,15 +66,29 @@ struct AccountEditorView: View {
                     }
                 }
                 TextField("Name", text: $draft.displayName)
-                SecureField(
-                    account == nil ? "API Key" : "Replacement API Key (Optional)",
-                    text: $draft.apiKey
-                )
+                    .focused($focusedField, equals: .name)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    SecureField(
+                        account == nil
+                            ? "API Key"
+                            : "Replacement API Key (Optional)",
+                        text: $draft.apiKey
+                    )
+                    .focused($focusedField, equals: .apiKey)
+                    .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
+                        pasteAPIKey()
+                    }
+                    Button("Paste") {
+                        pasteAPIKey()
+                    }
+                    .help("Paste API key from clipboard (⌘V)")
+                }
                 if supportsLowBalanceThreshold {
                     TextField(
                         thresholdFieldLabel,
                         text: $draft.lowBalanceThresholdText
                     )
+                    .focused($focusedField, equals: .threshold)
                 }
                 Toggle("Enabled", isOn: $draft.isEnabled)
 
@@ -101,6 +124,9 @@ struct AccountEditorView: View {
             .padding(16)
         }
         .frame(width: 460, height: 340)
+        .background(APIKeyPasteShortcutBridge(isAPIKeyFocused: focusedField == .apiKey) {
+            pasteAPIKey()
+        })
     }
 
     private func save() {
@@ -115,6 +141,13 @@ struct AccountEditorView: View {
                 isSaving = false
             }
         }
+    }
+
+    private func pasteAPIKey() {
+        guard let string = NSPasteboard.general.string(forType: .string) else {
+            return
+        }
+        draft.apiKey = string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var thresholdFieldLabel: String {
@@ -133,5 +166,71 @@ struct AccountEditorView: View {
             return ""
         }
         return NSDecimalNumber(decimal: threshold).stringValue
+    }
+}
+
+/// SecureField often fails to accept Cmd+V in accessory apps; when the API key
+/// field is focused, consume ⌘V locally and write the pasteboard into the draft.
+private struct APIKeyPasteShortcutBridge: NSViewRepresentable {
+    var isAPIKeyFocused: Bool
+    var onPaste: () -> Void
+
+    func makeNSView(context: Context) -> BridgeView {
+        let view = BridgeView()
+        view.isAPIKeyFocused = isAPIKeyFocused
+        view.onPaste = onPaste
+        return view
+    }
+
+    func updateNSView(_ nsView: BridgeView, context: Context) {
+        nsView.isAPIKeyFocused = isAPIKeyFocused
+        nsView.onPaste = onPaste
+    }
+
+    final class BridgeView: NSView {
+        var isAPIKeyFocused = false
+        var onPaste: (() -> Void)?
+        // NSEvent monitors must be removable from deinit; the token is opaque.
+        nonisolated(unsafe) private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window != nil {
+                startMonitor()
+            } else {
+                stopMonitor()
+            }
+        }
+
+        deinit {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+            }
+        }
+
+        private func startMonitor() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) {
+                [weak self] event in
+                guard let self else { return event }
+                let flags = event.modifierFlags
+                    .intersection(.deviceIndependentFlagsMask)
+                guard self.isAPIKeyFocused,
+                      flags == .command,
+                      event.charactersIgnoringModifiers?.lowercased() == "v"
+                else {
+                    return event
+                }
+                self.onPaste?()
+                return nil
+            }
+        }
+
+        private func stopMonitor() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+                self.monitor = nil
+            }
+        }
     }
 }
