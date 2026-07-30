@@ -9,10 +9,8 @@
 /* Begin PBXBuildFile section */
 		014B069753244683B9A162FC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C45122AC2A088F188D8933A2 /* Assets.xcassets */; };
 		03B361E2A70A94DA068D34E9 /* QuotaGlanceNCWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED37E24E35D7A1BF4BF37366 /* QuotaGlanceNCWidgetBundle.swift */; };
-		11A6D001B7C8000000000001 /* NCWidgetAccountIntent+Options.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A6D001B7C8000000000011 /* NCWidgetAccountIntent+Options.swift */; };
-		11A6D001B7C8000000000002 /* NCWidgetTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A6D001B7C8000000000012 /* NCWidgetTimelineProvider.swift */; };
-		11A6D001B7C8000000000003 /* NCWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A6D001B7C8000000000013 /* NCWidgetViews.swift */; };
 		099C061B9F970D976EE45467 /* SetupWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69694925CA743815D1C0D4F9 /* SetupWindowPresenter.swift */; };
+		0C4E1943904C8FF820A46766 /* NCWidgetAccountIntentChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44E3977E4A5A5885BC2490D1 /* NCWidgetAccountIntentChoice.swift */; };
 		1292B68322AABEFC4BEEE058 /* UsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */; };
 		187535FE3E842869AB4C8E8A /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */; };
 		18B4C2FB24D25DABC0D852A8 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2E65E4350977ACA208C7BA8 /* WidgetViews.swift */; };
@@ -42,12 +40,15 @@
 		C7B55E91F6B31A90EFD9B07F /* QuotaGlanceNCWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1C0E87E249C1FC94CD06DA7C /* QuotaGlanceNCWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CA9515B1F97C364D84BBF4A6 /* AccountSelectionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB360DCE28CCF0F3BE66BDC /* AccountSelectionIntent.swift */; };
 		D0286FD3A5148AA5AFB8D7EF /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */; };
+		D562D096E3854D4C71DF9264 /* NCWidgetTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 801C80418A5E729EF7174F47 /* NCWidgetTimelineProvider.swift */; };
 		D982EB7094658B5F5CFAECDB /* MenuBarDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8117F588F7F89A8ECBEBA1F /* MenuBarDashboardView.swift */; };
 		DB67E8123E5E34045A20EA6B /* QuotaGlanceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */; };
 		DEF0B211D312736165F981CF /* SetupWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69694925CA743815D1C0D4F9 /* SetupWindowPresenter.swift */; };
 		E3F7BE6433D0485CAF8AE672 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56FA82CF2B4BECD91167B38B /* NotificationService.swift */; };
 		E41B2A1F21F429C6D735A2B3 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21BCFCF6B7B3FFA935AB87B0 /* StatusBarController.swift */; };
 		E94051C42D8A5FE8D0747520 /* QuotaGlanceWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45AFA11C2B0136118BBA4CF1 /* QuotaGlanceWidgetBundle.swift */; };
+		F0BFCF3FFBCACEC5768769FD /* NCWidgetAccountIntent+Options.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10679781FB93E999D3285977 /* NCWidgetAccountIntent+Options.swift */; };
+		FF151ADF6117A73C0704E8D5 /* NCWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B18250F3271F07CAEDC5E4 /* NCWidgetViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -102,21 +103,22 @@
 
 /* Begin PBXFileReference section */
 		07DFB7E297E0D88831C554BD /* AccountEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountEditorView.swift; sourceTree = "<group>"; };
+		10679781FB93E999D3285977 /* NCWidgetAccountIntent+Options.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NCWidgetAccountIntent+Options.swift"; sourceTree = "<group>"; };
 		1C0E87E249C1FC94CD06DA7C /* QuotaGlanceNCWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaGlanceNCWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		11A6D001B7C8000000000011 /* NCWidgetAccountIntent+Options.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NCWidgetAccountIntent+Options.swift"; sourceTree = "<group>"; };
-		11A6D001B7C8000000000012 /* NCWidgetTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NCWidgetTimelineProvider.swift; sourceTree = "<group>"; };
-		11A6D001B7C8000000000013 /* NCWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NCWidgetViews.swift; sourceTree = "<group>"; };
 		21BCFCF6B7B3FFA935AB87B0 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		2F79CC47C0AC06E7FA6A7889 /* QuotaGlanceNCWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceNCWidget.swift; sourceTree = "<group>"; };
 		407F8EB1ADDB6434333E1B32 /* QuotaGlanceWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceWidget.swift; sourceTree = "<group>"; };
+		44E3977E4A5A5885BC2490D1 /* NCWidgetAccountIntentChoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NCWidgetAccountIntentChoice.swift; sourceTree = "<group>"; };
 		45AFA11C2B0136118BBA4CF1 /* QuotaGlanceWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceWidgetBundle.swift; sourceTree = "<group>"; };
 		51EAECAE827BCD3048850CBA /* QuotaGlance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaGlance.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		56FA82CF2B4BECD91167B38B /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		5FB360DCE28CCF0F3BE66BDC /* AccountSelectionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSelectionIntent.swift; sourceTree = "<group>"; };
 		64A61B2E56CF6E8B63915050 /* NCWidgetAccountIntent.intentdefinition */ = {isa = PBXFileReference; lastKnownFileType = file.intentdefinition; path = NCWidgetAccountIntent.intentdefinition; sourceTree = "<group>"; };
 		69694925CA743815D1C0D4F9 /* SetupWindowPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupWindowPresenter.swift; sourceTree = "<group>"; };
+		801C80418A5E729EF7174F47 /* NCWidgetTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NCWidgetTimelineProvider.swift; sourceTree = "<group>"; };
 		86DBC6CD62A5FD85CD5983D0 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		96B18250F3271F07CAEDC5E4 /* NCWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NCWidgetViews.swift; sourceTree = "<group>"; };
 		A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaGlanceApp.swift; sourceTree = "<group>"; };
 		A9A030DF83E171017402EB2F /* LaunchAtLoginService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginService.swift; sourceTree = "<group>"; };
 		B47270B3E4DC923E4EA8BB5F /* CompatibleFormStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompatibleFormStyle.swift; sourceTree = "<group>"; };
@@ -180,9 +182,10 @@
 			isa = PBXGroup;
 			children = (
 				64A61B2E56CF6E8B63915050 /* NCWidgetAccountIntent.intentdefinition */,
-				11A6D001B7C8000000000011 /* NCWidgetAccountIntent+Options.swift */,
-				11A6D001B7C8000000000012 /* NCWidgetTimelineProvider.swift */,
-				11A6D001B7C8000000000013 /* NCWidgetViews.swift */,
+				10679781FB93E999D3285977 /* NCWidgetAccountIntent+Options.swift */,
+				44E3977E4A5A5885BC2490D1 /* NCWidgetAccountIntentChoice.swift */,
+				801C80418A5E729EF7174F47 /* NCWidgetTimelineProvider.swift */,
+				96B18250F3271F07CAEDC5E4 /* NCWidgetViews.swift */,
 				2F79CC47C0AC06E7FA6A7889 /* QuotaGlanceNCWidget.swift */,
 				ED37E24E35D7A1BF4BF37366 /* QuotaGlanceNCWidgetBundle.swift */,
 			);
@@ -450,10 +453,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F0BFCF3FFBCACEC5768769FD /* NCWidgetAccountIntent+Options.swift in Sources */,
 				B4BFFED23A9D5EE99706CBB0 /* NCWidgetAccountIntent.intentdefinition in Sources */,
-				11A6D001B7C8000000000001 /* NCWidgetAccountIntent+Options.swift in Sources */,
-				11A6D001B7C8000000000002 /* NCWidgetTimelineProvider.swift in Sources */,
-				11A6D001B7C8000000000003 /* NCWidgetViews.swift in Sources */,
+				0C4E1943904C8FF820A46766 /* NCWidgetAccountIntentChoice.swift in Sources */,
+				D562D096E3854D4C71DF9264 /* NCWidgetTimelineProvider.swift in Sources */,
+				FF151ADF6117A73C0704E8D5 /* NCWidgetViews.swift in Sources */,
 				7F8D780F6AF5DD0D7C2E5AAB /* QuotaGlanceNCWidget.swift in Sources */,
 				03B361E2A70A94DA068D34E9 /* QuotaGlanceNCWidgetBundle.swift in Sources */,
 			);
