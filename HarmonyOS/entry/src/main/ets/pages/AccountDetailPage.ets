@@ -1,6 +1,7 @@
 import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { AccountService } from '../services/AccountService';
+import { notifyOverviewRefresh } from '../services/LaunchRefresh';
 import { Account, AccountStore } from '../storage/AccountStore';
 import { providerDisplayName } from '../providers/UsageProvider';
 import { friendlyErrorText } from '../utils/ErrorMapping';
@@ -68,6 +69,7 @@ struct AccountDetailPage {
     try {
       const service = await AccountService.create(context);
       await service.refreshAccount(account);
+      notifyOverviewRefresh();
     } catch (error) {
       promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
     }

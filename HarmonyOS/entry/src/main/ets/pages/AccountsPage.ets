@@ -71,6 +71,28 @@ struct AccountsPage {
     await this.reload();
   }
 
+  // List editMode drag (long-press) reorder. The in-memory array is spliced
+  // first so the UI settles immediately, then sortOrder is re-sequenced to
+  // match the array indices before saveAll — saveAll re-sorts by sortOrder,
+  // so persisting stale values would silently undo the drop.
+  private moveAccount(from: number, to: number): boolean {
+    if (from === to || from < 0 || from >= this.accounts.length || to < 0 || to >= this.accounts.length) {
+      return false;
+    }
+    const moved = this.accounts.splice(from, 1);
+    this.accounts.splice(to, 0, moved[0]);
+    for (let i = 0; i < this.accounts.length; i++) {
+      this.accounts[i].sortOrder = i;
+    }
+    const context = getContext(this) as common.UIAbilityContext;
+    AccountStore.create(context)
+      .then((store: AccountStore) => store.saveAll(this.accounts))
+      .catch((error: Object) => {
+        promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
+      });
+    return true;
+  }
+
   @Builder
   accountRow(account: Account) {
     Row() {
@@ -104,6 +126,11 @@ struct AccountsPage {
         .onClick(() => {
           this.confirmDelete(account);
         })
+
+      Text('≡')
+        .fontSize(16)
+        .fontColor($r('app.color.textSecondary'))
+        .padding({ left: 8 })
     }
     .width('100%')
     .padding(16)
@@ -160,6 +187,8 @@ struct AccountsPage {
         .layoutWeight(1)
         .padding({ left: 16, right: 16 })
         .scrollBar(BarState.Off)
+        .editMode(true)
+        .onItemMove((from: number, to: number): boolean => this.moveAccount(from, to))
       }
     }
     .width('100%')

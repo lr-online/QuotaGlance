@@ -1,6 +1,8 @@
 import { promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AccountService } from '../services/AccountService';
+import { getLaunchRefresh, notifyOverviewRefresh } from '../services/LaunchRefresh';
 import { Account, AccountStore } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import {
@@ -14,6 +16,9 @@ import {
 } from '../providers/UsageSnapshot';
 import { friendlyErrorText } from '../utils/ErrorMapping';
 import { formatAmount, formatCompactCount, formatQuotaValue, formatTokenCount } from '../utils/NumberFormat';
+
+const DOMAIN = 0x0000;
+const TAG = 'QuotaGlance';
 
 interface StatItem {
   label: string;
@@ -435,10 +440,34 @@ export struct AccountDetailView {
   private async loadAndMaybeRefresh(): Promise<void> {
     await this.reload();
     const account = this.currentAccount;
-    if (account !== null && account.isEnabled && !autoRefreshedAccounts.has(account.id)) {
-      autoRefreshedAccounts.add(account.id);
-      await this.refresh();
+    if (account === null || !account.isEnabled) {
+      hilog.info(DOMAIN, TAG, 'detail auto-refresh skip: %{public}s', this.accountId);
+      return;
     }
+    if (autoRefreshedAccounts.has(account.id)) {
+      hilog.info(DOMAIN, TAG, 'detail auto-refresh already done: %{public}s', account.id);
+      return;
+    }
+    // A cold-launch refresh may already be fetching this account; wait for it
+    // instead of issuing a duplicate request. Fall back to our own refresh if
+    // the launch pass finished without covering this account.
+    const launchRefresh = getLaunchRefresh();
+    if (launchRefresh !== null) {
+      hilog.info(DOMAIN, TAG, 'detail awaiting launch refresh: %{public}s', account.id);
+      try {
+        await launchRefresh;
+      } catch (error) {
+        hilog.warn(DOMAIN, TAG, 'detail launch refresh await failed: %{public}s', (error as Error).message);
+      }
+      await this.reload();
+      if (autoRefreshedAccounts.has(account.id)) {
+        return;
+      }
+      hilog.info(DOMAIN, TAG, 'detail launch refresh missed, fallback: %{public}s', account.id);
+    }
+    autoRefreshedAccounts.add(account.id);
+    hilog.info(DOMAIN, TAG, 'detail auto-refresh fetch: %{public}s', account.id);
+    await this.refresh();
   }
 
   private async reload(): Promise<void> {
@@ -476,6 +505,7 @@ export struct AccountDetailView {
     try {
       const service = await AccountService.create(context);
       await service.refreshAccount(account);
+      notifyOverviewRefresh();
     } catch (error) {
       promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
     }

@@ -1,4 +1,5 @@
 import { common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import { createProviderRegistry } from '../providers/ProviderCatalog';
 import {
   ProviderID,
@@ -9,6 +10,9 @@ import {
 import { Account, AccountStore, generateAccountId } from '../storage/AccountStore';
 import { KeyRepository } from '../storage/KeyRepository';
 import { SnapshotStore } from '../storage/SnapshotStore';
+
+const DOMAIN = 0x0000;
+const TAG = 'QuotaGlance';
 
 export interface CreateAccountInput {
   provider: ProviderID;
@@ -91,7 +95,9 @@ export class AccountService {
       } else {
         await this.snapshotStore.save(account.id, await provider.fetch(apiKey));
       }
+      hilog.info(DOMAIN, TAG, 'refreshAccount ok: %{public}s', account.id);
     } catch (error) {
+      hilog.warn(DOMAIN, TAG, 'refreshAccount failed: %{public}s %{public}s', account.id, (error as Error).message);
       await this.snapshotStore.markStale(account.id);
       throw error as Error;
     }

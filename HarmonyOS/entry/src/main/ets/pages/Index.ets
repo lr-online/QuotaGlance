@@ -1,6 +1,13 @@
 import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AccountService } from '../services/AccountService';
+import {
+  setLaunchRefresh,
+  clearLaunchRefresh,
+  subscribeOverviewRefresh,
+  unsubscribeOverviewRefresh
+} from '../services/LaunchRefresh';
 import { Account } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import { providerDisplayName } from '../providers/UsageProvider';
@@ -109,6 +116,9 @@ interface ProviderWork {
 // must not re-fire on tab switches or page returns within the process.
 let launchAutoRefreshDone: boolean = false;
 
+const DOMAIN = 0x0000;
+const TAG = 'QuotaGlance';
+
 @Entry
 @Component
 struct Index {
@@ -121,47 +131,120 @@ struct Index {
   @State overviewPartial: boolean = false;
   @State providerBlocks: ProviderOverview[] = [];
   private tabsController: TabsController = new TabsController();
+  // Recompute the overview whenever any detail/tab view reports a successful
+  // refresh (see LaunchRefresh). Bound once; the listener re-reads context.
+  private readonly overviewListener: () => void = () => {
+    const context = getContext(this) as common.UIAbilityContext;
+    this.loadOverview(context).catch((error: Object) => {
+      hilog.warn(DOMAIN, TAG, 'overview listener reload failed: %{public}s', (error as Error).message);
+    });
+  };
+
+  aboutToAppear(): void {
+    subscribeOverviewRefresh(this.overviewListener);
+  }
+
+  aboutToDisappear(): void {
+    unsubscribeOverviewRefresh(this.overviewListener);
+  }
 
   onPageShow(): void {
     this.reload();
   }
 
+  // Every step is isolated so one failure no longer silently aborts the rest
+  // of the reload (that was the cold-launch "--" overview: an exception
+  // before loadOverview left the panel empty with no log anywhere).
   private async reload(): Promise<void> {
     const context = getContext(this) as common.UIAbilityContext;
-    const service = await AccountService.create(context);
-    await service.ensureLegacyMigration();
-    this.accounts = await service.loadAccounts();
-    if (this.currentIndex >= this.accounts.length) {
-      this.currentIndex = 0;
+    let service: AccountService | null = null;
+    try {
+      service = await AccountService.create(context);
+      await service.ensureLegacyMigration();
+      const previousId: string | null =
+        this.currentIndex < this.accounts.length ? this.accounts[this.currentIndex].id : null;
+      this.accounts = await service.loadAccounts();
+      hilog.info(DOMAIN, TAG, 'reload: %{public}d accounts', this.accounts.length);
+      let nextIndex = 0;
+      if (previousId !== null) {
+        const found = this.accounts.findIndex((account: Account) => account.id === previousId);
+        if (found >= 0) {
+          nextIndex = found;
+        }
+      }
+      if (nextIndex !== this.currentIndex) {
+        this.currentIndex = nextIndex;
+        try {
+          this.tabsController.changeIndex(nextIndex);
+        } catch (error) {
+          hilog.warn(DOMAIN, TAG, 'changeIndex failed: %{public}s', (error as Error).message);
+        }
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'reload accounts failed: %{public}s', (error as Error).message);
+    }
+
+    // The launch refresh must be visible (setLaunchRefresh) BEFORE
+    // preloadTabs() builds the tab views, or each tab would fire its own
+    // duplicate once-per-launch fetch.
+    let launchPromise: Promise<void> | null = null;
+    if (service !== null) {
+      launchPromise = this.maybeStartLaunchRefresh(service, context);
     }
     this.preloadTabs();
-    const themeStore = await ThemeStore.create(context);
-    this.themeMode = await themeStore.load();
-    await this.loadOverview(context);
-    await this.maybeLaunchRefresh(service, context);
+
+    try {
+      const themeStore = await ThemeStore.create(context);
+      this.themeMode = await themeStore.load();
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'reload theme failed: %{public}s', (error as Error).message);
+    }
+    try {
+      await this.loadOverview(context);
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'reload overview failed: %{public}s', (error as Error).message);
+    }
+    if (launchPromise !== null) {
+      try {
+        await launchPromise;
+      } catch (error) {
+        hilog.warn(DOMAIN, TAG, 'launch refresh await failed: %{public}s', (error as Error).message);
+      }
+    }
   }
 
-  // Once per cold app launch: refresh every enabled account (busy chip
-  // while running), then recompute the overview and bump the tabs' syncTick.
-  // Only accounts whose refresh actually landed (fresh, non-stale snapshot)
-  // are pre-marked in AccountDetailView's launch set — accounts that failed
-  // stay unmarked so each tab's once-per-launch auto-refresh can retry them
-  // as the fallback, instead of both paths ending up empty.
-  private async maybeLaunchRefresh(service: AccountService, context: common.UIAbilityContext): Promise<void> {
+  // Once per cold app launch: kick off refreshAllEnabled in the background
+  // and publish the promise so opening tabs/detail views await it instead of
+  // duplicating the fetches. Returns null when nothing will run.
+  private maybeStartLaunchRefresh(service: AccountService, context: common.UIAbilityContext): Promise<void> | null {
     if (launchAutoRefreshDone) {
-      return;
+      return null;
     }
     launchAutoRefreshDone = true;
     const enabledIds: string[] = this.accounts
       .filter((account: Account) => account.isEnabled)
       .map((account: Account) => account.id);
     if (enabledIds.length === 0) {
-      return;
+      return null;
     }
+    const promise = this.runLaunchRefresh(service, context, enabledIds);
+    setLaunchRefresh(promise);
+    return promise;
+  }
+
+  // Busy chip while running, then recompute the overview and bump the tabs'
+  // syncTick. Only accounts whose refresh actually landed (fresh, non-stale
+  // snapshot) are pre-marked in AccountDetailView's launch set — accounts
+  // that failed stay unmarked so each tab's once-per-launch auto-refresh can
+  // retry them as the fallback, instead of both paths ending up empty.
+  private async runLaunchRefresh(service: AccountService, context: common.UIAbilityContext,
+    enabledIds: string[]): Promise<void> {
+    hilog.info(DOMAIN, TAG, 'launch refresh start: %{public}d accounts', enabledIds.length);
     this.refreshingAll = true;
     try {
       await service.refreshAllEnabled();
     } catch (error) {
+      hilog.error(DOMAIN, TAG, 'launch refresh failed: %{public}s', (error as Error).message);
       promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
     }
     this.refreshingAll = false;
@@ -171,11 +254,16 @@ struct Index {
       const stored: StoredSnapshot | null = await store.load(id);
       if (stored !== null && !stored.isStale) {
         succeeded.push(id);
+        hilog.info(DOMAIN, TAG, 'launch refresh ok: %{public}s', id);
+      } else {
+        hilog.warn(DOMAIN, TAG, 'launch refresh stale/missing: %{public}s', id);
       }
     }
     markAccountsRefreshedThisLaunch(succeeded);
+    clearLaunchRefresh();
     this.syncTick += 1;
     await this.loadOverview(context);
+    hilog.info(DOMAIN, TAG, 'launch refresh done: %{public}d/%{public}d ok', succeeded.length, enabledIds.length);
   }
 
   // Selecting the already-active mode is a no-op (the menu closes on tap).
@@ -314,6 +402,7 @@ struct Index {
       block.pctText = `${Math.round(fraction * 100)}%`;
       return block;
     });
+    hilog.info(DOMAIN, TAG, 'loadOverview: %{public}d/%{public}d snapshots', snapshotsFound, enabledCount);
   }
 
   @Builder
