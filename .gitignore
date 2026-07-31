@@ -14,3 +14,8 @@ xcuserdata/
 
 # Distribution artifacts
 dist/
+
+# Tooling / build output
+.workbuddy/
+outputs/
+.hvigor/
