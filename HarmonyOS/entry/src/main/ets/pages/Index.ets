@@ -2,11 +2,49 @@ import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { AccountService } from '../services/AccountService';
 import { Account } from '../storage/AccountStore';
+import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import { providerDisplayName } from '../providers/UsageProvider';
 import { friendlyErrorText } from '../utils/ErrorMapping';
+import { formatAmount, formatCompactCount } from '../utils/NumberFormat';
 import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 import { AccountDetailView } from '../components/AccountDetailView';
+
+// Aggregate currency ordering: CNY first, then USD, then the rest
+// alphabetically (mirrors the mac app's CNY/USD emphasis).
+function currencyRank(currency: string): number {
+  if (currency === 'CNY') {
+    return 0;
+  }
+  if (currency === 'USD') {
+    return 1;
+  }
+  return 2;
+}
+
+function orderedCurrencies(map: Map<string, number>): string[] {
+  const keys: string[] = [];
+  map.forEach((value: number, key: string) => {
+    keys.push(key);
+  });
+  keys.sort((a: string, b: string) => {
+    const rankDiff = currencyRank(a) - currencyRank(b);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+    return a < b ? -1 : (a > b ? 1 : 0);
+  });
+  return keys;
+}
+
+// Sums a decimal-string amount into the per-currency map; NaN is skipped.
+function sumInto(map: Map<string, number>, currency: string, amountText: string): void {
+  const value = parseFloat(amountText);
+  if (isNaN(value)) {
+    return;
+  }
+  map.set(currency, (map.get(currency) ?? 0) + value);
+}
 
 @Entry
 @Component
@@ -16,6 +54,10 @@ struct Index {
   @State currentIndex: number = 0;
   @State syncTick: number = 0;
   @State themeMode: ThemeMode = 'system';
+  @State overviewBalance: string = '';
+  @State overviewToday: string = '';
+  @State overviewPartial: boolean = false;
+  @State overviewVisible: boolean = false;
   private tabsController: TabsController = new TabsController();
 
   onPageShow(): void {
@@ -33,6 +75,7 @@ struct Index {
     this.preloadTabs();
     const themeStore = await ThemeStore.create(context);
     this.themeMode = await themeStore.load();
+    await this.loadOverview(context);
   }
 
   // Selecting the already-active mode is a no-op (the menu closes on tap).
@@ -54,6 +97,74 @@ struct Index {
       .catch((error: Object) => {
         promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
       });
+  }
+
+  // Aggregates the CACHED snapshots of enabled accounts for the overview
+  // strip — no network. Only real balances enter the balance sum (per the
+  // macOS contract, spendingLimit/quotaWindow values never do); today
+  // counters are summed separately. Partial when any enabled account is
+  // stale, or has no snapshot while others do.
+  private async loadOverview(context: common.UIAbilityContext): Promise<void> {
+    const enabled = this.accounts.filter((account: Account) => account.isEnabled);
+    if (enabled.length === 0) {
+      this.overviewVisible = false;
+      return;
+    }
+    const store = await SnapshotStore.create(context);
+    const balances = new Map<string, number>();
+    const todayCosts = new Map<string, number>();
+    let todayRequests = 0;
+    let hasTodayRequests = false;
+    let snapshotsFound = 0;
+    let partial = false;
+    for (const account of enabled) {
+      const stored: StoredSnapshot | null = await store.load(account.id);
+      if (stored === null) {
+        continue;
+      }
+      snapshotsFound += 1;
+      if (stored.isStale) {
+        partial = true;
+      }
+      const snapshot = stored.snapshot;
+      for (const balance of snapshot.balances) {
+        sumInto(balances, balance.available.currency, balance.available.amount);
+      }
+      if (snapshot.today !== undefined) {
+        if (snapshot.today.actualCost !== undefined) {
+          sumInto(todayCosts, snapshot.today.actualCost.currency, snapshot.today.actualCost.amount);
+        }
+        if (snapshot.today.requests !== undefined) {
+          todayRequests += snapshot.today.requests;
+          hasTodayRequests = true;
+        }
+      }
+    }
+    if (snapshotsFound > 0 && snapshotsFound < enabled.length) {
+      partial = true;
+    }
+
+    const balanceParts: string[] = orderedCurrencies(balances).map((currency: string) => {
+      return `${currency} ${formatAmount(`${balances.get(currency) ?? 0}`)}`;
+    });
+    this.overviewBalance = balanceParts.join(' · ');
+
+    const requestsUnit = context.resourceManager.getStringSync($r('app.string.requests_unit').id);
+    const todayParts: string[] = orderedCurrencies(todayCosts).map((currency: string) => {
+      return `${formatAmount(`${todayCosts.get(currency) ?? 0}`)} ${currency}`;
+    });
+    if (hasTodayRequests) {
+      todayParts.push(`${formatCompactCount(todayRequests)} ${requestsUnit}`);
+    }
+    if (todayParts.length > 0) {
+      const todayLabel = context.resourceManager.getStringSync($r('app.string.overview_today').id);
+      this.overviewToday = `${todayLabel} ${todayParts.join(' · ')}`;
+    } else {
+      this.overviewToday = '';
+    }
+
+    this.overviewPartial = partial;
+    this.overviewVisible = balanceParts.length > 0 || todayParts.length > 0 || partial;
   }
 
   @Builder
@@ -119,6 +230,60 @@ struct Index {
     await this.reload();
     // Tell every embedded detail view to re-read its cached snapshot.
     this.syncTick += 1;
+  }
+
+  // Compact pill chip for the top-bar actions: brand tint fill (accentTealTint
+  // is 16%-alpha of the mode's teal in both palettes) + accentTeal label —
+  // legible in light (#0E9C93 on its tint) and dark (#57E0D6 on its tint).
+  @Styles
+  chipStyle() {
+    .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+    .backgroundColor($r('app.color.accentTealTint'))
+    .borderRadius(18)
+  }
+
+  @Builder
+  overviewStrip() {
+    Row({ space: 10 }) {
+      Text($r('app.string.overview_label'))
+        .fontSize(11)
+        .fontColor($r('app.color.textSecondary'))
+        .margin({ top: 2 })
+      Column({ space: 4 }) {
+        if (this.overviewBalance.length > 0) {
+          Text(this.overviewBalance)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.accentTeal'))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        if (this.overviewToday.length > 0 || this.overviewPartial) {
+          Row({ space: 8 }) {
+            if (this.overviewToday.length > 0) {
+              Text(this.overviewToday)
+                .fontSize(12)
+                .fontColor($r('app.color.textSecondary'))
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+            }
+            if (this.overviewPartial) {
+              Text($r('app.string.overview_partial'))
+                .fontSize(11)
+                .fontColor($r('app.color.warning'))
+                .maxLines(1)
+            }
+          }
+        }
+      }
+      .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
+    }
+    .width('100%')
+    .padding(14)
+    .backgroundColor($r('app.color.cardBackground'))
+    .borderRadius(14)
+    .margin({ left: 16, right: 16, bottom: 10 })
   }
 
   @Builder
@@ -218,30 +383,35 @@ struct Index {
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.textPrimary'))
-        Blank()
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
         if (this.accounts.length > 0) {
-          if (this.refreshingAll) {
-            LoadingProgress()
-              .width(20)
-              .height(20)
-              .color($r('app.color.accentTeal'))
-              .margin({ right: 16 })
-          } else {
-            Text('⟳')
-              .fontSize(20)
-              .fontColor($r('app.color.accentTeal'))
-              .margin({ right: 16 })
-              .padding(4)
-              .onClick(() => {
-                this.refreshAll();
-              })
+          Row() {
+            if (this.refreshingAll) {
+              LoadingProgress()
+                .width(16)
+                .height(16)
+                .color($r('app.color.accentTeal'))
+            } else {
+              Text('⟳')
+                .fontSize(15)
+                .fontColor($r('app.color.accentTeal'))
+            }
           }
+          .justifyContent(FlexAlign.Center)
+          .width(42)
+          .chipStyle()
+          .margin({ right: 8 })
+          .onClick(() => {
+            this.refreshAll();
+          })
         }
         Text($r('app.string.theme'))
-          .fontSize(15)
+          .fontSize(14)
           .fontColor($r('app.color.accentTeal'))
-          .padding(4)
-          .margin({ right: 16 })
+          .chipStyle()
+          .margin({ right: 8 })
           .bindMenu(this.themeMenu(), {
             backgroundColor: $r('app.color.cardBackground'),
             borderRadius: 12,
@@ -249,17 +419,17 @@ struct Index {
             enableArrow: false
           })
         Text($r('app.string.screensaver'))
-          .fontSize(15)
+          .fontSize(14)
           .fontColor($r('app.color.accentTeal'))
-          .padding(4)
-          .margin({ right: 16 })
+          .chipStyle()
+          .margin({ right: 8 })
           .onClick(() => {
             router.pushUrl({ url: 'pages/ScreensaverPage' });
           })
         Text($r('app.string.manage_accounts'))
-          .fontSize(15)
+          .fontSize(14)
           .fontColor($r('app.color.accentTeal'))
-          .padding(4)
+          .chipStyle()
           .onClick(() => {
             router.pushUrl({ url: 'pages/AccountsPage' });
           })
@@ -267,6 +437,10 @@ struct Index {
       .width('100%')
       .height(56)
       .padding({ left: 20, right: 20 })
+
+      if (this.accounts.length > 0 && this.overviewVisible) {
+        this.overviewStrip()
+      }
 
       if (this.accounts.length === 0) {
         this.onboardingBody()
