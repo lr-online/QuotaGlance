@@ -2,109 +2,17 @@ import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { AccountService } from '../services/AccountService';
 import { Account } from '../storage/AccountStore';
-import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import { providerDisplayName } from '../providers/UsageProvider';
 import { friendlyErrorText } from '../utils/ErrorMapping';
-
-type PrimaryKind = 'balance' | 'limit' | 'quota' | 'status' | 'empty';
-
-interface CardModel {
-  accountId: string;
-  displayName: string;
-  providerName: string;
-  isEnabled: boolean;
-  primaryKind: PrimaryKind;
-  primaryText: string;
-  primaryUnit: string;
-  quotaUsed: number;
-  quotaTotal: number;
-  secondaryText: string;
-  secondaryWarning: boolean;
-}
-
-function pad2(value: number): string {
-  return value.toString().padStart(2, '0');
-}
-
-function formatUpdatedAt(context: common.Context, ms: number): string {
-  const prefix = context.resourceManager.getStringSync($r('app.string.updated_prefix').id);
-  const date = new Date(ms);
-  const now = new Date();
-  const hhmm = `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-  const sameDay = date.getFullYear() === now.getFullYear()
-    && date.getMonth() === now.getMonth()
-    && date.getDate() === now.getDate();
-  if (sameDay) {
-    return `${prefix} ${hhmm}`;
-  }
-  return `${prefix} ${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${hhmm}`;
-}
-
-function buildCardModel(context: common.Context, account: Account, stored: StoredSnapshot | null): CardModel {
-  const model: CardModel = {
-    accountId: account.id,
-    displayName: account.displayName,
-    providerName: providerDisplayName(account.provider),
-    isEnabled: account.isEnabled,
-    primaryKind: 'empty',
-    primaryText: context.resourceManager.getStringSync($r('app.string.no_data').id),
-    primaryUnit: '',
-    quotaUsed: 0,
-    quotaTotal: 1,
-    secondaryText: context.resourceManager.getStringSync($r('app.string.not_refreshed').id),
-    secondaryWarning: false
-  };
-  if (stored === null) {
-    return model;
-  }
-  const snapshot = stored.snapshot;
-  if (snapshot.balances.length > 0) {
-    const balance = snapshot.balances[0];
-    model.primaryKind = 'balance';
-    model.primaryText = balance.available.amount;
-    model.primaryUnit = balance.available.currency;
-  } else if (snapshot.spendingLimit !== undefined) {
-    const limit = snapshot.spendingLimit;
-    const remaining = limit.remaining;
-    const used = limit.used;
-    model.primaryKind = 'limit';
-    model.primaryText = remaining !== undefined ? remaining.amount : (used !== undefined ? used.amount : '--');
-    const currency = remaining !== undefined ? remaining.currency
-      : (used !== undefined ? used.currency : (limit.limit !== undefined ? limit.limit.currency : ''));
-    model.primaryUnit = limit.limit !== undefined ? `/ ${limit.limit.amount} ${currency}` : currency;
-  } else if (snapshot.quotaWindows !== undefined && snapshot.quotaWindows.length > 0) {
-    const window = snapshot.quotaWindows[0];
-    model.primaryKind = 'quota';
-    const used = window.used ?? ((window.limit !== undefined && window.remaining !== undefined)
-      ? window.limit - window.remaining : 0);
-    const total = window.limit ?? ((window.used ?? 0) + (window.remaining ?? 0));
-    model.primaryText = window.remaining !== undefined ? `${window.remaining}` : `${used}`;
-    model.primaryUnit = window.limit !== undefined ? `/ ${window.limit} ${window.unit}` : window.unit;
-    model.quotaTotal = total > 0 ? total : 1;
-    model.quotaUsed = Math.min(Math.max(used, 0), model.quotaTotal);
-  } else {
-    model.primaryKind = 'status';
-    model.primaryText = snapshot.metricsUnavailableReason ?? snapshot.providerStatus ??
-      context.resourceManager.getStringSync($r('app.string.no_data').id);
-  }
-  if (stored.isStale) {
-    model.secondaryText = context.resourceManager.getStringSync($r('app.string.stale_text').id);
-    model.secondaryWarning = true;
-  } else if (model.primaryKind === 'status' && snapshot.metricsUnavailableReason !== undefined) {
-    model.secondaryText = snapshot.providerStatus ?? '';
-    model.secondaryWarning = false;
-  } else {
-    model.secondaryText = formatUpdatedAt(context, snapshot.receivedAtMs);
-    model.secondaryWarning = false;
-  }
-  return model;
-}
+import { AccountDetailView } from '../components/AccountDetailView';
 
 @Entry
 @Component
 struct Index {
-  @State cards: CardModel[] = [];
+  @State accounts: Account[] = [];
   @State refreshingAll: boolean = false;
+  @State currentIndex: number = 0;
+  @State syncTick: number = 0;
 
   onPageShow(): void {
     this.reload();
@@ -114,14 +22,10 @@ struct Index {
     const context = getContext(this) as common.UIAbilityContext;
     const service = await AccountService.create(context);
     await service.ensureLegacyMigration();
-    const accounts = await service.loadAccounts();
-    const store = await SnapshotStore.create(context);
-    const models: CardModel[] = [];
-    for (const account of accounts) {
-      const stored = await store.load(account.id);
-      models.push(buildCardModel(context, account, stored));
+    this.accounts = await service.loadAccounts();
+    if (this.currentIndex >= this.accounts.length) {
+      this.currentIndex = 0;
     }
-    this.cards = models;
   }
 
   private async refreshAll(): Promise<void> {
@@ -138,10 +42,26 @@ struct Index {
     }
     this.refreshingAll = false;
     await this.reload();
+    // Tell every embedded detail view to re-read its cached snapshot.
+    this.syncTick += 1;
   }
 
-  private openDetail(item: CardModel): void {
-    router.pushUrl({ url: 'pages/AccountDetailPage', params: { accountId: item.accountId } });
+  @Builder
+  tabBuilder(account: Account, index: number) {
+    Column({ space: 6 }) {
+      Text(account.displayName.length > 0 ? account.displayName : providerDisplayName(account.provider))
+        .fontSize(15)
+        .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
+        .fontColor(this.currentIndex === index ? $r('app.color.accentTeal') : $r('app.color.textSecondary'))
+        .maxLines(1)
+        .opacity(account.isEnabled ? 1 : 0.5)
+      Column()
+        .width('100%')
+        .height(2)
+        .borderRadius(1)
+        .backgroundColor(this.currentIndex === index ? $r('app.color.accentTeal') : Color.Transparent)
+    }
+    .padding({ left: 14, right: 14, top: 10, bottom: 8 })
   }
 
   @Builder
@@ -190,111 +110,28 @@ struct Index {
         })
     }
     .width('100%')
+    .constraintSize({ maxWidth: 480 })
     .layoutWeight(1)
     .justifyContent(FlexAlign.Center)
   }
 
   @Builder
-  accountCard(item: CardModel) {
-    Column({ space: 12 }) {
-      Row() {
-        Text(item.displayName)
-          .fontSize(17)
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.textPrimary'))
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .layoutWeight(1)
-        Text(item.providerName)
-          .fontSize(11)
-          .fontColor($r('app.color.accentTeal'))
-          .backgroundColor($r('app.color.accentTealTint'))
-          .borderRadius(6)
-          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-      }
-      .width('100%')
-
-      if (item.primaryKind === 'balance' || item.primaryKind === 'limit') {
-        Row() {
-          Text(item.primaryText)
-            .fontSize(30)
-            .fontWeight(FontWeight.Bold)
-            .fontColor($r('app.color.textPrimary'))
-            .maxLines(1)
-          if (item.primaryUnit.length > 0) {
-            Text(item.primaryUnit)
-              .fontSize(14)
-              .fontColor($r('app.color.textSecondary'))
-              .margin({ left: 4 })
-          }
+  tabsBody() {
+    Tabs({ barPosition: BarPosition.Start, index: this.currentIndex }) {
+      ForEach(this.accounts, (account: Account, index: number) => {
+        TabContent() {
+          AccountDetailView({ accountId: account.id, dim: false, syncTick: this.syncTick })
         }
-        .alignItems(VerticalAlign.Bottom)
-      } else if (item.primaryKind === 'quota') {
-        Column({ space: 8 }) {
-          Row() {
-            Text(item.primaryText)
-              .fontSize(30)
-              .fontWeight(FontWeight.Bold)
-              .fontColor($r('app.color.accentTeal'))
-              .maxLines(1)
-            if (item.primaryUnit.length > 0) {
-              Text(item.primaryUnit)
-                .fontSize(14)
-                .fontColor($r('app.color.textSecondary'))
-                .margin({ left: 4 })
-            }
-          }
-          .alignItems(VerticalAlign.Bottom)
-
-          Progress({ value: item.quotaUsed, total: item.quotaTotal, type: ProgressType.Linear })
-            .color($r('app.color.accentTeal'))
-            .backgroundColor($r('app.color.slateSecondary'))
-            .height(4)
-            .width('100%')
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Start)
-      } else {
-        Text(item.primaryText)
-          .fontSize(15)
-          .fontColor($r('app.color.textSecondary'))
-          .maxLines(2)
-          .width('100%')
-          .textAlign(TextAlign.Start)
-      }
-
-      if (item.secondaryText.length > 0) {
-        Text(item.secondaryText)
-          .fontSize(12)
-          .fontColor(item.secondaryWarning ? $r('app.color.warning') : $r('app.color.textSecondary'))
-          .maxLines(1)
-          .width('100%')
-          .textAlign(TextAlign.Start)
-      }
+        .tabBar(this.tabBuilder(account, index))
+      }, (account: Account) => account.id)
     }
-    .width('100%')
-    .padding(16)
-    .backgroundColor($r('app.color.cardBackground'))
-    .borderRadius(14)
-    .opacity(item.isEnabled ? 1 : 0.5)
-    .onClick(() => {
-      this.openDetail(item);
-    })
-  }
-
-  @Builder
-  dashboardBody() {
-    List({ space: 12 }) {
-      ForEach(this.cards, (item: CardModel) => {
-        ListItem() {
-          this.accountCard(item)
-        }
-      }, (item: CardModel) => item.accountId)
-    }
+    .barMode(BarMode.Scrollable)
+    .barBackgroundColor($r('app.color.appBackground'))
     .width('100%')
     .layoutWeight(1)
-    .padding({ left: 16, right: 16 })
-    .scrollBar(BarState.Off)
+    .onChange((index: number) => {
+      this.currentIndex = index;
+    })
   }
 
   build() {
@@ -305,7 +142,7 @@ struct Index {
           .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.textPrimary'))
         Blank()
-        if (this.cards.length > 0) {
+        if (this.accounts.length > 0) {
           if (this.refreshingAll) {
             LoadingProgress()
               .width(20)
@@ -343,14 +180,15 @@ struct Index {
       .height(56)
       .padding({ left: 20, right: 20 })
 
-      if (this.cards.length === 0) {
+      if (this.accounts.length === 0) {
         this.onboardingBody()
       } else {
-        this.dashboardBody()
+        this.tabsBody()
       }
     }
     .width('100%')
     .height('100%')
+    .alignItems(HorizontalAlign.Center)
     .backgroundColor($r('app.color.appBackground'))
   }
 }

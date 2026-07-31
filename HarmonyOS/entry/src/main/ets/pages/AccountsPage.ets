@@ -156,6 +156,7 @@ struct AccountsPage {
           }, (account: Account) => account.id)
         }
         .width('100%')
+        .constraintSize({ maxWidth: 560 })
         .layoutWeight(1)
         .padding({ left: 16, right: 16 })
         .scrollBar(BarState.Off)
@@ -163,6 +164,7 @@ struct AccountsPage {
     }
     .width('100%')
     .height('100%')
+    .alignItems(HorizontalAlign.Center)
     .backgroundColor($r('app.color.appBackground'))
   }
 }

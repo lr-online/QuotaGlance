@@ -229,9 +229,12 @@ struct AccountEditorPage {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .align(Alignment.Top)
+      .width('100%')
+      .constraintSize({ maxWidth: 560 })
     }
     .width('100%')
     .height('100%')
+    .alignItems(HorizontalAlign.Center)
     .backgroundColor($r('app.color.appBackground'))
   }
 }

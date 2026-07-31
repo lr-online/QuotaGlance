@@ -1,6 +1,7 @@
 import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 import { UsageSnapshot } from '../providers/UsageSnapshot';
+import { formatAmount } from '../utils/NumberFormat';
 
 // Per-account cached snapshots in the shared 'quotaglance_store' preferences
 // file. Keys:
@@ -73,7 +74,7 @@ export function formatSnapshotTexts(stored: StoredSnapshot | null): Record<strin
   const snapshot = stored.snapshot;
   const primary = snapshot.balances[0];
   const texts: Record<string, string> = {
-    'balanceText': `${primary.available.amount} ${primary.available.currency}`,
+    'balanceText': `${formatAmount(primary.available.amount)} ${primary.available.currency}`,
     'statusText': '正常',
     'updatedAtText': formatTime(snapshot.receivedAtMs)
   };
