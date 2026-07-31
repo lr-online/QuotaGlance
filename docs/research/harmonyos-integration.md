@@ -1,7 +1,56 @@
 # HarmonyOS Integration Research
 
-Status: Evaluated
+Status: Implemented (see "Implementation status" below)
 Date: 2026-07-27
+
+## Implementation status (2026-07-31)
+
+The "full app + ArkTS service widget" recommendation is implemented and
+installed on a Huawei Pad Mini. What shipped beyond the minimal loop:
+
+1. **Provider parity with macOS.** All six providers (API Info, DeepSeek,
+   Kimi, OpenRouter, MiniMax, BioMap Coding) are ported to ArkTS under
+   `HarmonyOS/entry/src/main/ets/providers/`, mirroring the Swift
+   `UsageProvider` protocol (`fetch` / `detect` / `fetchWithProfile`),
+   `ProviderProfile` (region + credentialKind), the `UsageSnapshot` model
+   (decimal-string money), and the shared error taxonomy. Region detection
+   and multi-step flows (OpenRouter management keys, BioMap `/v1/models`
+   fallback) behave as on macOS.
+2. **Drift prevention via shared contract fixtures** (architecture decision
+   3 below, now realized): `Contracts/Providers/<provider>/<case>-{response,expected}.json`
+   is the single source of truth. Swift asserts against them in
+   `Tests/QuotaGlanceCoreTests/ContractTests.swift`; HarmonyOS asserts
+   against the same files synced into ohosTest rawfile by
+   `scripts/sync-contracts-to-harmonyos.sh` (suite:
+   `HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets`). Schema and
+   workflow: `Contracts/README.md`. Adding or changing a provider requires
+   updating fixtures + both test suites, so parsing drift fails CI on both
+   platforms.
+3. **Credential storage (section 6 decision, applied).** API keys live in
+   Asset Store Kit under per-account aliases (`quotaglance_key_<accountId>`)
+   with `DEVICE_FIRST_UNLOCKED` accessibility; the pre-multi-account single
+   alias is migrated once into a DeepSeek account. Asset Store remains the
+   correct store for credential blobs; HUKS is for cryptographic keys the
+   app uses for signing/encryption, which this app does not need. Future
+   hardening option: gate key reads behind user authentication
+   (`AUTH_TYPE` + userAuth) if device-sharing becomes a concern.
+4. **Brand alignment.** The macOS icon design (navy gradient, teal progress
+   ring, usage-chart polyline) is rendered into the HarmonyOS layered icon
+   and start window by `scripts/generate-harmonyos-icon.swift`; the app UI
+   uses the same navy/teal palette (`entry/.../element/color.json`).
+5. **Configuration flow.** Multi-account management (add via provider
+   picker + live key validation through `provider.detect`, enable toggle,
+   delete with cascade) in `pages/AccountsPage.ets` /
+   `pages/AccountEditorPage.ets`; account metadata in preferences
+   (`storage/AccountStore.ets`), snapshots per account
+   (`storage/SnapshotStore.ets`), orchestration in
+   `services/AccountService.ets`.
+
+Still open from the research below: in-app screensaver mode (section 8,
+phase two), standby screensaver card (gated, API 23+ phones), anything
+requiring AppGallery review.
+
+
 
 Scope: HarmonyOS NEXT (HarmonyOS 5.x, ArkTS/ArkUI ecosystem) on phones,
 tablets, and HarmonyOS PCs. All claims are based on Huawei's official
