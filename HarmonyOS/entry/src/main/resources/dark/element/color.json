@@ -2,39 +2,39 @@
   "color": [
     {
       "name": "start_window_background",
-      "value": "#F5F7FA"
+      "value": "#12161F"
     },
     {
       "name": "appBackground",
-      "value": "#F5F7FA"
+      "value": "#12161F"
     },
     {
       "name": "cardBackground",
-      "value": "#FFFFFF"
+      "value": "#1B2233"
     },
     {
       "name": "accentTeal",
-      "value": "#0E9C93"
+      "value": "#57E0D6"
     },
     {
       "name": "accentTealTint",
-      "value": "#2B0E9C93"
+      "value": "#2B57E0D6"
     },
     {
       "name": "highlightCyan",
-      "value": "#2BC4BA"
+      "value": "#87EBF5"
     },
     {
       "name": "slateSecondary",
-      "value": "#C3CAD8"
+      "value": "#54607A"
     },
     {
       "name": "textPrimary",
-      "value": "#1A2333"
+      "value": "#FFFFFFFF"
     },
     {
       "name": "textSecondary",
-      "value": "#5A6478"
+      "value": "#99A1B3"
     },
     {
       "name": "danger",

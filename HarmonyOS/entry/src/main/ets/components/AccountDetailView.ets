@@ -473,14 +473,17 @@ export struct AccountDetailView {
     await this.reload();
   }
 
-  // Two small internal palettes selected by `dim`.
+  // Two small internal palettes selected by `dim`. The dim palette is the
+  // screensaver's: deliberately dark in BOTH system color modes (burn-in
+  // safety on a pure-black window), tuned to stay legible at the
+  // screensaver's charging-aware brightness (0.18–0.30 window override).
   private textPrimaryColor(): ResourceColor {
-    return this.dim ? '#B8BFC9' : $r('app.color.textPrimary');
+    return this.dim ? '#C9D1DC' : $r('app.color.textPrimary');
   }
 
   private accentColor(): ResourceColor {
-    // Teal at ~0.8 opacity in screensaver mode.
-    return this.dim ? '#CC57E0D6' : $r('app.color.accentTeal');
+    // Teal at ~0.9 opacity in screensaver mode.
+    return this.dim ? '#E657E0D6' : $r('app.color.accentTeal');
   }
 
   private accentTintColor(): ResourceColor {
@@ -488,7 +491,7 @@ export struct AccountDetailView {
   }
 
   private cardColor(): ResourceColor {
-    return this.dim ? '#0A0D14' : $r('app.color.cardBackground');
+    return this.dim ? '#0D1119' : $r('app.color.cardBackground');
   }
 
   @Styles

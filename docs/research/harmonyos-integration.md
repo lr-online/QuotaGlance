@@ -50,16 +50,38 @@ installed on a Huawei Pad Mini. What shipped beyond the minimal loop:
    matching the macOS menu-bar `makeDays` semantics, and model usage.
 6. **In-app screensaver mode (section 8, implemented).**
    `pages/ScreensaverPage.ets`: foreground keep-screen-on fullscreen with
-   hidden system bars, pure-black background, brightness dimmed to 0.08,
-   a large clock plus one primary-metric row per enabled account,
-   5-minute polling, and a 60-second pixel drift against OLED burn-in.
-   Tap anywhere to exit; window state (brightness via the `-1`
-   follow-system sentinel, system bars, fullscreen, keep-screen-on) is
-   restored on exit and in `aboutToDisappear`.
+   hidden system bars, pure-black background, a large clock plus one
+   primary-metric row per enabled account, 5-minute polling, and a
+   60-second pixel drift against OLED burn-in. Tap anywhere to exit; window
+   state (brightness via the `-1` follow-system sentinel, system bars,
+   fullscreen, keep-screen-on) is restored on exit and in
+   `aboutToDisappear`. An account detail screen can also be the source, in
+   which case the full per-account detail renders in a dim palette and only
+   that account is polled.
+   **Charging-aware brightness (2026-07-31).** The original fixed 0.08
+   window brightness proved effectively invisible. The policy is now:
+   default visible-dim 0.25, 0.30 while charging, 0.18 on battery. The
+   charging state is read from `batteryInfo.chargingStatus`
+   (`@kit.BasicServicesKit`, ENABLE/FULL = charging; no permission needed)
+   and re-evaluated on every 60-second drift tick; `setWindowBrightness` is
+   only called when the level actually changes, and batteryInfo read
+   failures fall back to 0.25. Content opacities were raised to match
+   (clock at full strength, account rows at 0.85/0.9, dim detail palette
+   brightened to #C9D1DC text / ~0.9-alpha teal / #0D1119 cards).
+   **Standby screensaver card (section 1, evaluated 2026-07-31).** The
+   SDK's modulecheck schema (`toolchains/modulecheck/forms.json`) documents
+   a compile-safe `standby` object in form_config (`isSupported`,
+   `isAdapted`, `isPrivacySensitive`), so the existing 2×2-capable card now
+   declares `isSupported: true` with `isAdapted: false` (no standby-specific
+   UX pass yet) and `isPrivacySensitive: true` (balances on a lock screen).
+   Actually surfacing there still requires the AppGallery capability
+   application, API 23+, and a supported phone model — the declaration is
+   inert until then, and our target Pad Mini (tablet) is outside the
+   supported device set anyway.
 
-Still open from the research below: standby screensaver card (gated,
-API 23+ phones), charging-triggered screensaver entry, and anything
-requiring AppGallery review.
+Still open from the research below: the AppGallery capability application
+for the standby screensaver card (gated, API 23+ phones), charging-triggered
+screensaver entry, and anything requiring AppGallery review.
 
 
 

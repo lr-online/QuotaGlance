@@ -2,6 +2,7 @@ import { router } from '@kit.ArkUI';
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { batteryInfo } from '@kit.BasicServicesKit';
 import { AccountService } from '../services/AccountService';
 import { Account } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
@@ -15,7 +16,17 @@ const MAX_ROWS = 5;
 const CLOCK_INTERVAL_MS = 1000;
 const DRIFT_INTERVAL_MS = 60 * 1000;
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
-const DIM_BRIGHTNESS = 0.08;
+// Brightness policy (window override; -1 on exit hands it back to the
+// system). 0.08 proved invisible in practice, so the floor is a visible-dim
+// 0.25. Charging (ENABLE/FULL — the docked-screensaver scenario) runs
+// brighter at 0.30; on battery it drops to 0.18 to save power. The charging
+// state is re-read on every 60s drift tick (batteryInfo needs no
+// permission); read failures fall back to the 0.25 default.
+// Note: keep-screen-on may still be overridden by the system for
+// non-interactive surfaces — this mode tolerates that by design.
+const BRIGHTNESS_DEFAULT = 0.25;
+const BRIGHTNESS_CHARGING = 0.3;
+const BRIGHTNESS_ON_BATTERY = 0.18;
 
 interface SaverRow {
   accountId: string;
@@ -76,6 +87,7 @@ struct ScreensaverPage {
   private refreshTimer: number = -1;
   private driftCounter: number = 0;
   private exiting: boolean = false;
+  private appliedBrightness: number = -1;
 
   aboutToAppear(): void {
     const params = router.getParams() as ScreensaverParams;
@@ -145,7 +157,37 @@ struct ScreensaverPage {
     win.setWindowSystemBarEnable([]).catch((error: Object) => {
       hilog.warn(DOMAIN, TAG, 'hide system bars failed: %{public}s', (error as Error).message);
     });
-    win.setWindowBrightness(DIM_BRIGHTNESS).catch((error: Object) => {
+    this.applyBrightnessPolicy();
+  }
+
+  // Charging-aware dim level; see the policy comment at the constants.
+  private targetBrightness(): number {
+    try {
+      const status = batteryInfo.chargingStatus;
+      if (status === batteryInfo.BatteryChargeState.ENABLE
+        || status === batteryInfo.BatteryChargeState.FULL) {
+        return BRIGHTNESS_CHARGING;
+      }
+      return BRIGHTNESS_ON_BATTERY;
+    } catch (error) {
+      hilog.warn(DOMAIN, TAG, 'batteryInfo read failed: %{public}s', (error as Error).message);
+      return BRIGHTNESS_DEFAULT;
+    }
+  }
+
+  // Applies the policy level only when it actually changed, so the 60s
+  // re-evaluation tick does not churn the window API.
+  private applyBrightnessPolicy(): void {
+    const target = this.targetBrightness();
+    if (this.appliedBrightness === target) {
+      return;
+    }
+    const win = this.obtainMainWindow();
+    if (win === null) {
+      return;
+    }
+    this.appliedBrightness = target;
+    win.setWindowBrightness(target).catch((error: Object) => {
       hilog.warn(DOMAIN, TAG, 'setWindowBrightness failed: %{public}s', (error as Error).message);
     });
   }
@@ -173,6 +215,7 @@ struct ScreensaverPage {
     // Per the window API docs, setWindowBrightness(-1) hands brightness back
     // to the system setting (valid values are [0.0, 1.0] or -1.0 for "follow
     // system"); the override also drops automatically when the app exits.
+    this.appliedBrightness = -1;
     win.setWindowBrightness(-1).catch((error: Object) => {
       hilog.warn(DOMAIN, TAG, 'restore brightness failed: %{public}s', (error as Error).message);
     });
@@ -201,8 +244,10 @@ struct ScreensaverPage {
   }
 
   // Burn-in mitigation: glide the whole content block a few vp every minute
-  // so no pixel cluster holds the same content for long.
+  // so no pixel cluster holds the same content for long. The same 60s tick
+  // re-evaluates the charging-aware brightness policy.
   private drift(): void {
+    this.applyBrightnessPolicy();
     this.driftCounter = (this.driftCounter + 1) % 997;
     const x = ((this.driftCounter * 37) % 49) - 24;
     const y = ((this.driftCounter * 53) % 33) - 16;
@@ -297,7 +342,6 @@ struct ScreensaverPage {
         .fontSize(96)
         .fontWeight(FontWeight.Medium)
         .fontColor($r('app.color.screensaverClock'))
-        .opacity(0.9)
 
       Text(this.dateText)
         .fontSize(16)
@@ -311,14 +355,14 @@ struct ScreensaverPage {
             Text(row.displayName)
               .fontSize(13)
               .fontColor($r('app.color.textSecondary'))
-              .opacity(0.7)
+              .opacity(0.85)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .layoutWeight(1)
             Text(row.metricText)
               .fontSize(16)
               .fontColor($r('app.color.accentTeal'))
-              .opacity(0.8)
+              .opacity(0.9)
               .maxLines(1)
             if (row.isStale) {
               Text($r('app.string.stale_hint_short'))
