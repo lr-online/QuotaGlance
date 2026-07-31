@@ -178,6 +178,7 @@ struct DomainModelTests {
     @Test("Notification Center widget default account starts unset")
     func notificationCenterDefaultAccountStartsUnset() {
         #expect(AppPreferences.default.notificationCenterDefaultAccountID == nil)
+        #expect(AppPreferences.default.preferredLanguage == .system)
     }
 
     @Test("Widget snapshot envelope preserves schema version")

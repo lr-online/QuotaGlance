@@ -8,13 +8,15 @@ struct QuotaGlanceWidgetView: View {
 
     let entry: QuotaGlanceWidgetEntry
 
+    private var language: AppLanguage { entry.language }
+
     var body: some View {
         Group {
             switch entry.presentation.state {
             case .noSnapshot:
-                unavailableView(title: "No Data", icon: "gauge.open.with.lines.needle.33percent")
+                unavailableView(title: L10n.string(.noData, language: language), icon: "gauge.open.with.lines.needle.33percent")
             case .deletedAccount:
-                unavailableView(title: "Account Unavailable", icon: "person.crop.circle.badge.xmark")
+                unavailableView(title: L10n.string(.accountUnavailable, language: language), icon: "person.crop.circle.badge.xmark")
             case .available:
                 switch family {
                 case .systemSmall:
@@ -26,6 +28,7 @@ struct QuotaGlanceWidgetView: View {
                 }
             }
         }
+        .environment(\.locale, language.locale)
         .containerBackground(for: .widget) {
             Color(nsColor: .windowBackgroundColor)
         }
@@ -50,13 +53,13 @@ struct QuotaGlanceWidgetView: View {
                 if entry.presentation.todayActualCost != nil
                     || entry.presentation.todayRequests != nil {
                     metricLine(
-                        label: "Today",
+                        label: L10n.string(.today, language: language),
                         value: entry.presentation.todayActualCost.map {
                             MoneyFormatter.widgetString($0)
                         } ?? "--"
                     )
                     metricLine(
-                        label: "Requests",
+                        label: L10n.string(.requests, language: language),
                         value: entry.presentation.todayRequests?.formatted() ?? "--"
                     )
                 }
@@ -64,7 +67,10 @@ struct QuotaGlanceWidgetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            WidgetUsageChart(dailyUsage: entry.presentation.dailyUsage)
+            WidgetUsageChart(
+                dailyUsage: entry.presentation.dailyUsage,
+                language: language
+            )
                 .frame(maxWidth: .infinity)
         }
     }
@@ -78,20 +84,23 @@ struct QuotaGlanceWidgetView: View {
                 || entry.presentation.todayRequests != nil {
                 HStack(spacing: 20) {
                     metricLine(
-                        label: "Today",
+                        label: L10n.string(.today, language: language),
                         value: entry.presentation.todayActualCost.map {
                             MoneyFormatter.widgetString($0)
                         } ?? "--"
                     )
                     metricLine(
-                        label: "Requests",
+                        label: L10n.string(.requests, language: language),
                         value: entry.presentation.todayRequests?.formatted() ?? "--"
                     )
                 }
             }
 
             if !entry.presentation.dailyUsage.isEmpty {
-                WidgetUsageChart(dailyUsage: entry.presentation.dailyUsage)
+                WidgetUsageChart(
+                dailyUsage: entry.presentation.dailyUsage,
+                language: language
+            )
                     .frame(height: 74)
             }
 
@@ -116,7 +125,7 @@ struct QuotaGlanceWidgetView: View {
                                         .lineLimit(1)
                                 }
                             } else if account.metricsUnavailableReason != nil {
-                                Text("Connected")
+                                Text(L10n.string(.connected, language: language))
                                     .foregroundStyle(.secondary)
                             } else {
                                 Text("--")
@@ -161,7 +170,7 @@ struct QuotaGlanceWidgetView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.6)
                         Spacer(minLength: 4)
-                        Text("\(balance.currency) balance")
+                        Text(L10n.string(.currencyBalance, language: language, balance.currency))
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -181,7 +190,7 @@ struct QuotaGlanceWidgetView: View {
             }
         } else if let reason = entry.presentation.metricsUnavailableReason {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Connected")
+                Text(L10n.string(.connected, language: language))
                     .font(.system(size: max(size - 4, 18), weight: .semibold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -194,7 +203,7 @@ struct QuotaGlanceWidgetView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("--")
                     .font(.system(size: size, weight: .semibold, design: .rounded))
-                Text("No metric")
+                Text(L10n.string(.noMetric, language: language))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -271,6 +280,7 @@ struct QuotaGlanceWidgetView: View {
 
 private struct WidgetUsageChart: View {
     let dailyUsage: [DailyUsage]
+    var language: AppLanguage = .english
 
     private var maximum: Double {
         max(
@@ -296,6 +306,6 @@ private struct WidgetUsageChart: View {
             }
         }
         .frame(minHeight: 50)
-        .accessibilityLabel("Seven day usage")
+        .accessibilityLabel(L10n.string(.sevenDayUsage, language: language))
     }
 }

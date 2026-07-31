@@ -10,6 +10,8 @@ struct AccountEditorView: View {
         case threshold
     }
 
+    private let labelWidth: CGFloat = 88
+
     @Environment(\.dismiss) private var dismiss
 
     @ObservedObject var model: AppModel
@@ -33,6 +35,8 @@ struct AccountEditorView: View {
             )
         )
     }
+
+    private var language: AppLanguage { model.resolvedLanguage }
 
     private var selectedProfile: ProviderProfile? {
         guard draft.provider == account?.provider else { return nil }
@@ -59,51 +63,76 @@ struct AccountEditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Form {
-                Picker("Provider", selection: providerSelection) {
-                    ForEach(ProviderID.allCases) { provider in
-                        Text(provider.displayName).tag(provider)
+            VStack(alignment: .leading, spacing: 14) {
+                labeledRow(L10n.string(.provider, language: language)) {
+                    Picker("", selection: providerSelection) {
+                        ForEach(ProviderID.allCases) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                labeledRow(L10n.string(.name, language: language)) {
+                    TextField("", text: $draft.displayName)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .name)
+                }
+
+                labeledRow(
+                    account == nil
+                        ? L10n.string(.apiKey, language: language)
+                        : L10n.string(.replacementAPIKey, language: language)
+                ) {
+                    HStack(spacing: 8) {
+                        SecureField("", text: $draft.apiKey)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .apiKey)
+                            .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
+                                pasteAPIKey()
+                            }
+                        Button(L10n.string(.paste, language: language)) {
+                            pasteAPIKey()
+                        }
+                        .help(L10n.string(.pasteAPIKeyHelp, language: language))
+                        .fixedSize()
                     }
                 }
-                TextField("Name", text: $draft.displayName)
-                    .focused($focusedField, equals: .name)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    SecureField(
-                        account == nil
-                            ? "API Key"
-                            : "Replacement API Key (Optional)",
-                        text: $draft.apiKey
-                    )
-                    .focused($focusedField, equals: .apiKey)
-                    .onPasteCommand(of: [.plainText, .utf8PlainText]) { _ in
-                        pasteAPIKey()
-                    }
-                    Button("Paste") {
-                        pasteAPIKey()
-                    }
-                    .help("Paste API key from clipboard (⌘V)")
-                }
+
                 if supportsLowBalanceThreshold {
-                    TextField(
-                        thresholdFieldLabel,
-                        text: $draft.lowBalanceThresholdText
-                    )
-                    .focused($focusedField, equals: .threshold)
+                    labeledRow(L10n.string(.threshold, language: language)) {
+                        TextField("", text: $draft.lowBalanceThresholdText)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .threshold)
+                    }
+                    Text(thresholdCaption)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, labelWidth + 12)
                 }
-                Toggle("Enabled", isOn: $draft.isEnabled)
+
+                Toggle(L10n.string(.enabled, language: language), isOn: $draft.isEnabled)
+                    .toggleStyle(.checkbox)
+                    .padding(.leading, labelWidth + 12)
 
                 if let errorMessage {
                     Text(errorMessage)
                         .foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, labelWidth + 12)
                 }
             }
-            .compatibleGroupedFormStyle()
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            .padding(.bottom, 16)
 
             Divider()
 
             HStack {
-                Button("Cancel", role: .cancel) {
+                Button(L10n.string(.cancel, language: language), role: .cancel) {
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -115,18 +144,34 @@ struct AccountEditorView: View {
                         .controlSize(.small)
                 }
 
-                Button("Save") {
+                Button(L10n.string(.save, language: language)) {
                     save()
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(isSaving)
             }
-            .padding(16)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
         }
-        .frame(width: 460, height: 340)
+        .frame(width: 460)
+        .fixedSize(horizontal: false, vertical: true)
         .background(APIKeyPasteShortcutBridge(isAPIKeyFocused: focusedField == .apiKey) {
             pasteAPIKey()
         })
+    }
+
+    private func labeledRow<Content: View>(
+        _ title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title)
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.trailing)
+                .frame(width: labelWidth, alignment: .trailing)
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private func save() {
@@ -150,11 +195,11 @@ struct AccountEditorView: View {
         draft.apiKey = string.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var thresholdFieldLabel: String {
+    private var thresholdCaption: String {
         if draft.provider == .openRouter {
-            return "Management Key Low Balance Threshold (Optional)"
+            return L10n.string(.openRouterThresholdCaption, language: language)
         }
-        return "Low Balance Threshold (Optional)"
+        return L10n.string(.thresholdCaption, language: language)
     }
 
     private static func thresholdText(for account: Account?) -> String {

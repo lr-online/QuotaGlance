@@ -60,7 +60,8 @@ public struct WidgetPresentation: Equatable, Sendable {
 public enum WidgetPresenter {
     public static func make(
         selection: WidgetSelection,
-        envelope: WidgetSnapshotEnvelope?
+        envelope: WidgetSnapshotEnvelope?,
+        language: AppLanguage = .english
     ) -> WidgetPresentation {
         guard let envelope else {
             return WidgetPresentation(
@@ -83,10 +84,11 @@ public enum WidgetPresenter {
 
         guard let dashboard = DashboardPresenter.make(
             selection: dashboardSelection,
-            envelope: envelope
+            envelope: envelope,
+            language: language
         ) else {
             return WidgetPresentation(
-                title: "Account Unavailable",
+                title: L10n.string(.accountUnavailable, language: language),
                 state: .deletedAccount,
                 capturedAt: envelope.capturedAt,
                 deepLink: deepLink
@@ -94,7 +96,7 @@ public enum WidgetPresenter {
         }
 
         let accountRows = dashboard.accountRows.map {
-            CompactAccountPresentation(account: $0)
+            CompactAccountPresentation(account: $0, language: language)
         }
         let primaryMetric: PrimaryMetric?
         switch selection {

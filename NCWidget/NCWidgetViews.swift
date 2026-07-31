@@ -6,19 +6,22 @@ import WidgetKit
 struct NCWidgetMediumView: View {
     let entry: NCWidgetEntry
 
+    private var language: AppLanguage { entry.language }
+
     private let contentInset: CGFloat = 14
 
     var body: some View {
         Group {
             switch entry.presentation.state {
             case .noSnapshot:
-                unavailableView(title: "No Data", icon: "gauge.open.with.lines.needle.33percent")
+                unavailableView(title: L10n.string(.noData, language: language), icon: "gauge.open.with.lines.needle.33percent")
             case .deletedAccount:
-                unavailableView(title: "Account Unavailable", icon: "person.crop.circle.badge.xmark")
+                unavailableView(title: L10n.string(.accountUnavailable, language: language), icon: "person.crop.circle.badge.xmark")
             case .available:
                 mediumView
             }
         }
+        .environment(\.locale, language.locale)
         .padding(contentInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -35,13 +38,13 @@ struct NCWidgetMediumView: View {
                     if entry.presentation.todayActualCost != nil
                         || entry.presentation.todayRequests != nil {
                         metricLine(
-                            label: "Today",
+                            label: L10n.string(.today, language: language),
                             value: entry.presentation.todayActualCost.map {
                                 MoneyFormatter.widgetString($0)
                             } ?? "--"
                         )
                         metricLine(
-                            label: "Requests",
+                            label: L10n.string(.requests, language: language),
                             value: entry.presentation.todayRequests?.formatted() ?? "--"
                         )
                     }
@@ -51,7 +54,10 @@ struct NCWidgetMediumView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 
                 if !entry.presentation.dailyUsage.isEmpty {
-                    NCWidgetUsageChart(dailyUsage: Array(entry.presentation.dailyUsage.suffix(7)))
+                    NCWidgetUsageChart(
+                        dailyUsage: Array(entry.presentation.dailyUsage.suffix(7)),
+                        language: language
+                    )
                         .frame(width: chartWidth, height: proxy.size.height)
                 }
             }
@@ -103,7 +109,7 @@ struct NCWidgetMediumView: View {
             }
         } else if let reason = entry.presentation.metricsUnavailableReason {
             VStack(alignment: .leading, spacing: 1) {
-                Text("Connected")
+                Text(L10n.string(.connected, language: language))
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -116,7 +122,7 @@ struct NCWidgetMediumView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text("--")
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
-                Text("No metric")
+                Text(L10n.string(.noMetric, language: language))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -187,6 +193,7 @@ struct NCWidgetMediumView: View {
 
 private struct NCWidgetUsageChart: View {
     let dailyUsage: [DailyUsage]
+    var language: AppLanguage = .english
 
     private var maximum: Double {
         max(
@@ -216,6 +223,6 @@ private struct NCWidgetUsageChart: View {
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)
         }
-        .accessibilityLabel("Seven day usage")
+        .accessibilityLabel(L10n.string(.sevenDayUsage, language: language))
     }
 }

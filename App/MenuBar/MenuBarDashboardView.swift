@@ -14,13 +14,19 @@ struct MenuBarDashboardView: View {
         self.openSettings = openSettings
     }
 
+    private var language: AppLanguage { model.resolvedLanguage }
+
     private var selection: DashboardSelection {
         model.selectedAccountID.map(DashboardSelection.account) ?? .allAccounts
     }
 
     private var presentation: MenuBarPresentation? {
         guard let envelope = model.latestEnvelope else { return nil }
-        return MenuBarPresenter.make(selection: selection, envelope: envelope)
+        return MenuBarPresenter.make(
+            selection: selection,
+            envelope: envelope,
+            language: language
+        )
     }
 
     private var panelSize: MenuBarPanelSize {
@@ -65,6 +71,8 @@ struct MenuBarDashboardView: View {
             height: CGFloat(panelSize.height),
             alignment: .topLeading
         )
+        .environment(\.locale, language.locale)
+        .id(language)
         .onOpenURL { url in
             model.handle(url: url)
         }
@@ -73,13 +81,13 @@ struct MenuBarDashboardView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Picker(
-                "Account",
+                L10n.string(.account, language: language),
                 selection: Binding(
                     get: { model.selectedAccountID },
                     set: { model.selectedAccountID = $0 }
                 )
             ) {
-                Text("All Accounts").tag(nil as UUID?)
+                Text(L10n.string(.allAccounts, language: language)).tag(nil as UUID?)
                 ForEach(model.accounts) { account in
                     Text(account.displayName)
                         .lineLimit(1)
@@ -103,7 +111,7 @@ struct MenuBarDashboardView: View {
                 .buttonStyle(.borderless)
                 .frame(width: 28, height: 28)
                 .disabled(model.accounts.isEmpty)
-                .help("Refresh")
+                .help(L10n.string(.refresh, language: language))
             }
         }
     }
@@ -128,14 +136,14 @@ struct MenuBarDashboardView: View {
                 quotaWindowSection(presentation.quotaWindows)
 
                 if let requests = presentation.todayRequests {
-                    metric(title: "Requests today", value: requests.formatted())
+                    metric(title: L10n.string(.requestsToday, language: language), value: requests.formatted())
                 }
             }
 
             if !presentation.days.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    sectionHeader("Last 7 Days")
-                    UsageChartView(days: presentation.days)
+                    sectionHeader(L10n.string(.last7Days, language: language))
+                    UsageChartView(days: presentation.days, language: language)
                 }
             }
 
@@ -158,7 +166,7 @@ struct MenuBarDashboardView: View {
     private func primarySection(_ presentation: MenuBarPresentation) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             if case .allAccounts = selection {
-                sectionHeader("Balances")
+                sectionHeader(L10n.string(.balances, language: language))
                 if presentation.balances.isEmpty {
                     if let reason = presentation.metricsUnavailableReason {
                         connectionOnlyMetric(reason)
@@ -198,7 +206,7 @@ struct MenuBarDashboardView: View {
             } else if let reason = presentation.metricsUnavailableReason {
                 connectionOnlyMetric(reason)
             } else {
-                Text("No metric")
+                Text(L10n.string(.noMetric, language: language))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text("--")
@@ -211,7 +219,7 @@ struct MenuBarDashboardView: View {
 
     private func connectionOnlyMetric(_ reason: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("Connected")
+            Text(L10n.string(.connected, language: language))
                 .font(.system(size: 24, weight: .semibold, design: .rounded))
             Text(reason)
                 .font(.caption)
@@ -225,7 +233,7 @@ struct MenuBarDashboardView: View {
         if presentation.todayActualCost != nil || presentation.todayRequests != nil {
             HStack(spacing: 0) {
                 metric(
-                    title: "Spent today",
+                    title: L10n.string(.spentToday, language: language),
                     value: presentation.todayActualCost.map {
                         MoneyFormatter.dashboardString($0)
                     } ?? "--"
@@ -234,7 +242,7 @@ struct MenuBarDashboardView: View {
                     .frame(height: 34)
                     .padding(.horizontal, 12)
                 metric(
-                    title: "Requests",
+                    title: L10n.string(.requests, language: language),
                     value: presentation.todayRequests?.formatted() ?? "--"
                 )
             }
@@ -258,7 +266,7 @@ struct MenuBarDashboardView: View {
     private func balanceSection(_ balances: [MonetaryBalance]) -> some View {
         if !balances.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                sectionHeader("Balances")
+                sectionHeader(L10n.string(.balances, language: language))
                 ForEach(balances) { balance in
                     VStack(alignment: .leading, spacing: 5) {
                         valueRow(
@@ -293,15 +301,15 @@ struct MenuBarDashboardView: View {
             HStack(spacing: 12) {
                 if let remaining = limit.remaining {
                     metric(
-                        title: "Remaining",
+                        title: L10n.string(.remaining, language: language),
                         value: MoneyFormatter.dashboardString(remaining)
                     )
                 }
                 if let used = limit.used {
-                    metric(title: "Used", value: MoneyFormatter.dashboardString(used))
+                    metric(title: L10n.string(.used, language: language), value: MoneyFormatter.dashboardString(used))
                 }
                 if let total = limit.limit {
-                    metric(title: "Limit", value: MoneyFormatter.dashboardString(total))
+                    metric(title: L10n.string(.limit, language: language), value: MoneyFormatter.dashboardString(total))
                 }
             }
             if let resetDescription = limit.resetDescription {
@@ -314,18 +322,18 @@ struct MenuBarDashboardView: View {
 
     private func spendSection(_ spend: SpendSummary) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            sectionHeader("Spend")
+            sectionHeader(L10n.string(.spend, language: language))
             if let today = spend.today {
-                valueRow("Today", value: MoneyFormatter.dashboardString(today))
+                valueRow(L10n.string(.today, language: language), value: MoneyFormatter.dashboardString(today))
             }
             if let week = spend.week {
-                valueRow("This week", value: MoneyFormatter.dashboardString(week))
+                valueRow(L10n.string(.thisWeek, language: language), value: MoneyFormatter.dashboardString(week))
             }
             if let month = spend.month {
-                valueRow("This month", value: MoneyFormatter.dashboardString(month))
+                valueRow(L10n.string(.thisMonth, language: language), value: MoneyFormatter.dashboardString(month))
             }
             if let total = spend.total {
-                valueRow("Total", value: MoneyFormatter.dashboardString(total))
+                valueRow(L10n.string(.total, language: language), value: MoneyFormatter.dashboardString(total))
             }
         }
     }
@@ -334,7 +342,7 @@ struct MenuBarDashboardView: View {
     private func quotaWindowSection(_ windows: [QuotaWindow]) -> some View {
         if !windows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("Quota Windows")
+                sectionHeader(L10n.string(.quotaWindows, language: language))
                 ForEach(windows) { window in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(window.label)
@@ -356,25 +364,25 @@ struct MenuBarDashboardView: View {
                         HStack(spacing: 12) {
                             if let remaining = window.remaining {
                                 metric(
-                                    title: "Remaining",
+                                    title: L10n.string(.remaining, language: language),
                                     value: quantity(remaining, unit: window.unit)
                                 )
                             }
                             if let used = window.used {
                                 metric(
-                                    title: "Used",
+                                    title: L10n.string(.used, language: language),
                                     value: quantity(used, unit: window.unit)
                                 )
                             }
                             if let limit = window.limit {
                                 metric(
-                                    title: "Limit",
+                                    title: L10n.string(.limit, language: language),
                                     value: quantity(limit, unit: window.unit)
                                 )
                             }
                         }
                         if let resetsAt = window.resetsAt {
-                            Text("Resets \(resetsAt, style: .relative)")
+                            Text(resetsDescription(resetsAt))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
@@ -434,7 +442,7 @@ struct MenuBarDashboardView: View {
     private func accountSection(_ accounts: [CompactAccountPresentation]) -> some View {
         if !accounts.isEmpty {
             VStack(alignment: .leading, spacing: 7) {
-                sectionHeader("Accounts")
+                sectionHeader(L10n.string(.accounts, language: language))
                 ForEach(accounts) { account in
                     HStack(spacing: 7) {
                         Circle()
@@ -460,7 +468,7 @@ struct MenuBarDashboardView: View {
                                     .lineLimit(1)
                             }
                         } else if account.metricsUnavailableReason != nil {
-                            Text("Connected")
+                            Text(L10n.string(.connected, language: language))
                                 .foregroundStyle(.secondary)
                         } else {
                             Text("--")
@@ -477,7 +485,7 @@ struct MenuBarDashboardView: View {
     private func modelSection(_ models: [ModelUsage]) -> some View {
         if !models.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                sectionHeader("Top Models")
+                sectionHeader(L10n.string(.topModels, language: language))
                 ForEach(models) { model in
                     HStack {
                         Text(model.model)
@@ -502,10 +510,10 @@ struct MenuBarDashboardView: View {
             Image(compatibleSystemName: CompatibleSystemSymbol.emptyState)
                 .font(.system(size: 30))
                 .foregroundStyle(.secondary)
-            Text("No Accounts")
+            Text(L10n.string(.noAccounts, language: language))
                 .font(.headline)
             Button(action: openSettings) {
-                Label("Add Account", systemImage: "plus")
+                Label(L10n.string(.addAccount, language: language), systemImage: "plus")
             }
         }
         .frame(maxWidth: .infinity, minHeight: 180)
@@ -519,12 +527,12 @@ struct MenuBarDashboardView: View {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.system(size: 28))
                     .foregroundStyle(.secondary)
-                Text(model.lastErrorMessage ?? "No Data")
+                Text(model.lastErrorMessage ?? L10n.string(.noData, language: language))
                     .multilineTextAlignment(.center)
                 Button {
                     Task { await model.refresh() }
                 } label: {
-                    Label("Retry", systemImage: "arrow.clockwise")
+                    Label(L10n.string(.retry, language: language), systemImage: "arrow.clockwise")
                 }
             }
         }
@@ -534,7 +542,7 @@ struct MenuBarDashboardView: View {
     private var footer: some View {
         HStack(spacing: 10) {
             Button(action: openSettings) {
-                Label("Settings", systemImage: "gearshape")
+                Label(L10n.string(.settings, language: language), systemImage: "gearshape")
             }
             Spacer(minLength: 6)
             if let lastSuccessAt = presentation?.lastSuccessAt {
@@ -547,7 +555,7 @@ struct MenuBarDashboardView: View {
                 .lineLimit(1)
             }
             Spacer(minLength: 6)
-            Button("Quit") {
+            Button(L10n.string(.quit, language: language)) {
                 NSApplication.shared.terminate(nil)
             }
             .buttonStyle(.borderless)
@@ -555,14 +563,22 @@ struct MenuBarDashboardView: View {
     }
 
     private func statusLabel(_ status: DashboardStatus) -> some View {
-        let detail = DashboardPresenterStatus.detail(status)
+        let detail = DashboardPresenterStatus.detail(status, language: language)
         return Label(detail.text, systemImage: detail.icon)
             .font(.caption)
             .foregroundStyle(detail.color)
     }
 
     private func color(for status: DashboardStatus) -> Color {
-        DashboardPresenterStatus.detail(status).color
+        DashboardPresenterStatus.detail(status, language: language).color
+    }
+
+    private func resetsDescription(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = language.locale
+        formatter.unitsStyle = .full
+        let relative = formatter.localizedString(for: date, relativeTo: Date())
+        return L10n.string(.resetsRelative, language: language, relative)
     }
 }
 
@@ -582,22 +598,53 @@ private enum DashboardPresenterStatus {
         }
     }
 
-    static func detail(_ status: DashboardStatus) -> Detail {
+    static func detail(
+        _ status: DashboardStatus,
+        language: AppLanguage
+    ) -> Detail {
         switch status {
         case .healthy:
-            Detail(text: "Up to Date", icon: "checkmark.circle.fill", color: .green)
+            Detail(
+                text: L10n.string(.upToDate, language: language),
+                icon: "checkmark.circle.fill",
+                color: .green
+            )
         case .belowThreshold:
-            Detail(text: "Low Balance", icon: "exclamationmark.circle.fill", color: .orange)
+            Detail(
+                text: L10n.string(.lowBalance, language: language),
+                icon: "exclamationmark.circle.fill",
+                color: .orange
+            )
         case .partial:
-            Detail(text: "Partial Data", icon: "exclamationmark.triangle.fill", color: .orange)
+            Detail(
+                text: L10n.string(.partialData, language: language),
+                icon: "exclamationmark.triangle.fill",
+                color: .orange
+            )
         case .stale(.keychainAccessRequired), .unavailable(.keychainAccessRequired):
-            Detail(text: "Keychain Locked", icon: "lock.fill", color: .orange)
+            Detail(
+                text: L10n.string(.keychainLocked, language: language),
+                icon: "lock.fill",
+                color: .orange
+            )
         case .stale:
-            Detail(text: "Saved Data", icon: "clock.badge.exclamationmark", color: .orange)
+            Detail(
+                text: L10n.string(.savedData, language: language),
+                icon: "clock.badge.exclamationmark",
+                color: .orange
+            )
         case .unavailable:
-            Detail(text: "Unavailable", icon: "xmark.circle.fill", color: .red)
+            Detail(
+                text: L10n.string(.unavailable, language: language),
+                icon: "xmark.circle.fill",
+                color: .red
+            )
         case .empty:
-            Detail(text: "No Data", icon: "minus.circle", color: .secondary)
+            Detail(
+                text: L10n.string(.noData, language: language),
+                icon: "minus.circle",
+                color: .secondary
+            )
         }
     }
 }

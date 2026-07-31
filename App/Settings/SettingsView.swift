@@ -8,9 +8,12 @@ struct SettingsView: View {
     @State private var editorContext: AccountEditorContext?
     @State private var accountToDelete: Account?
 
+    private var language: AppLanguage { model.resolvedLanguage }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
+                languageSection
                 accountsSection
                 refreshSection
                 notificationCenterWidgetSection
@@ -26,28 +29,59 @@ struct SettingsView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: 560, minHeight: 460)
+        .environment(\.locale, language.locale)
+        .id(language)
+        .background(WindowTitleUpdater(title: L10n.string(.settingsWindowTitle, language: language)))
         .sheet(item: $editorContext) { context in
             AccountEditorView(model: model, account: context.account)
         }
         .alert(
-            "Delete Account?",
+            L10n.string(.deleteAccountTitle, language: language),
             isPresented: Binding(
                 get: { accountToDelete != nil },
                 set: { if !$0 { accountToDelete = nil } }
             ),
             presenting: accountToDelete
         ) { account in
-            Button("Delete", role: .destructive) {
+            Button(L10n.string(.delete, language: language), role: .destructive) {
                 Task { await model.deleteAccount(id: account.id) }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(L10n.string(.cancel, language: language), role: .cancel) {}
         } message: { account in
             Text(account.displayName)
         }
     }
 
+    private var languageSection: some View {
+        settingsSection(
+            title: L10n.string(.languageSection, language: language),
+            footer: L10n.string(.languageFooter, language: language)
+        ) {
+            settingsRow {
+                Text(L10n.string(.language, language: language))
+                Spacer(minLength: 12)
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { model.preferences.preferredLanguage },
+                        set: { model.setPreferredLanguage($0) }
+                    )
+                ) {
+                    ForEach(AppLanguagePreference.allCases) { preference in
+                        Text(
+                            L10n.preferenceTitle(preference, language: language)
+                        ).tag(preference)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(minWidth: 128, alignment: .trailing)
+            }
+        }
+    }
+
     private var accountsSection: some View {
-        settingsSection(title: "Accounts") {
+        settingsSection(title: L10n.string(.accounts, language: language)) {
             if model.accounts.isEmpty {
                 emptyAccountsPlaceholder
                     .padding(.vertical, 8)
@@ -66,7 +100,7 @@ struct SettingsView: View {
             Button {
                 editorContext = AccountEditorContext(account: nil)
             } label: {
-                Label("Add Account", systemImage: "plus")
+                Label(L10n.string(.addAccount, language: language), systemImage: "plus")
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }
@@ -81,9 +115,9 @@ struct SettingsView: View {
     }
 
     private var refreshSection: some View {
-        settingsSection(title: "Refresh") {
+        settingsSection(title: L10n.string(.refresh, language: language)) {
             settingsRow {
-                Text("Interval")
+                Text(L10n.string(.interval, language: language))
                 Spacer(minLength: 12)
                 Picker(
                     "",
@@ -105,7 +139,7 @@ struct SettingsView: View {
                 settingsDivider
                 settingsRow {
                     Toggle(
-                        "Launch at Login",
+                        L10n.string(.launchAtLogin, language: language),
                         isOn: Binding(
                             get: { model.preferences.launchAtLogin },
                             set: { model.setLaunchAtLogin($0) }
@@ -119,11 +153,11 @@ struct SettingsView: View {
 
     private var notificationCenterWidgetSection: some View {
         settingsSection(
-            title: "Notification Center Widget",
-            footer: "Chooses which account the Notification Center medium widget displays."
+            title: L10n.string(.notificationCenterWidget, language: language),
+            footer: L10n.string(.notificationCenterWidgetFooter, language: language)
         ) {
             settingsRow {
-                Text("Default Account")
+                Text(L10n.string(.defaultAccount, language: language))
                 Spacer(minLength: 12)
                 Picker(
                     "",
@@ -132,7 +166,8 @@ struct SettingsView: View {
                         set: { model.setNotificationCenterDefaultAccountID($0) }
                     )
                 ) {
-                    Text("All Accounts").tag(Optional<UUID>.none)
+                    Text(L10n.string(.allAccounts, language: language))
+                        .tag(Optional<UUID>.none)
                     ForEach(model.accounts) { account in
                         Text(account.displayName).tag(Optional(account.id))
                     }
@@ -146,12 +181,12 @@ struct SettingsView: View {
 
     private var notificationsSection: some View {
         settingsSection(
-            title: "Notifications",
-            footer: "QuotaGlance notifies you when an account balance drops below its alert threshold."
+            title: L10n.string(.notifications, language: language),
+            footer: L10n.string(.notificationsFooter, language: language)
         ) {
             settingsRow {
                 Label {
-                    Text("Low Balance Alerts")
+                    Text(L10n.string(.lowBalanceAlerts, language: language))
                 } icon: {
                     Image(systemName: notificationSymbol)
                         .foregroundStyle(notificationSymbolColor)
@@ -165,7 +200,7 @@ struct SettingsView: View {
     }
 
     private func statusSection(_ error: String) -> some View {
-        settingsSection(title: "Status") {
+        settingsSection(title: L10n.string(.status, language: language)) {
             settingsRow(alignment: .top) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.yellow)
@@ -183,9 +218,9 @@ struct SettingsView: View {
             Image(systemName: "key.horizontal")
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            Text("No Accounts")
+            Text(L10n.string(.noAccounts, language: language))
                 .font(.headline)
-            Text("Add a provider account to begin.")
+            Text(L10n.string(.addProviderAccountHint, language: language))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -236,27 +271,30 @@ struct SettingsView: View {
                 if model.accounts.count > 1 {
                     rowActionButton(
                         systemName: "chevron.up",
-                        help: "Move Up",
+                        help: L10n.string(.moveUp, language: language),
                         isDisabled: index == 0
                     ) {
                         model.moveAccount(id: account.id, offset: -1)
                     }
                     rowActionButton(
                         systemName: "chevron.down",
-                        help: "Move Down",
+                        help: L10n.string(.moveDown, language: language),
                         isDisabled: index == model.accounts.count - 1
                     ) {
                         model.moveAccount(id: account.id, offset: 1)
                     }
                 }
 
-                rowActionButton(systemName: "pencil", help: "Edit Account") {
+                rowActionButton(
+                    systemName: "pencil",
+                    help: L10n.string(.editAccount, language: language)
+                ) {
                     editorContext = AccountEditorContext(account: account)
                 }
 
                 rowActionButton(
                     systemName: "trash",
-                    help: "Delete Account",
+                    help: L10n.string(.delete, language: language),
                     tint: .red
                 ) {
                     accountToDelete = account
@@ -343,18 +381,21 @@ struct SettingsView: View {
 
     private func intervalTitle(_ interval: RefreshInterval) -> String {
         switch interval {
-        case .oneMinute: "1 minute"
-        case .fiveMinutes: "5 minutes"
-        case .fifteenMinutes: "15 minutes"
-        case .thirtyMinutes: "30 minutes"
-        case .sixtyMinutes: "60 minutes"
+        case .oneMinute: L10n.string(.minute1, language: language)
+        case .fiveMinutes: L10n.string(.minutes5, language: language)
+        case .fifteenMinutes: L10n.string(.minutes15, language: language)
+        case .thirtyMinutes: L10n.string(.minutes30, language: language)
+        case .sixtyMinutes: L10n.string(.minutes60, language: language)
         }
     }
 
     private func accountDetail(_ account: Account) -> (primary: String, secondary: String?) {
         let primary = [
             account.provider.displayName,
-            account.provider.profileDescription(for: account.detectedProfile),
+            account.provider.profileDescription(
+                for: account.detectedProfile,
+                language: language
+            ),
         ].joined(separator: " · ")
 
         guard account.provider.supportsLowBalanceThreshold(
@@ -365,15 +406,19 @@ struct SettingsView: View {
 
         return (
             primary,
-            "Alert below \(NSDecimalNumber(decimal: threshold).stringValue)"
+            L10n.string(
+                .alertBelow,
+                language: language,
+                NSDecimalNumber(decimal: threshold).stringValue
+            )
         )
     }
 
     private var notificationStatus: String {
         switch model.notificationPermission {
-        case .notDetermined: "Not Requested"
-        case .denied: "Not Allowed"
-        case .authorized: "Allowed"
+        case .notDetermined: L10n.string(.notRequested, language: language)
+        case .denied: L10n.string(.notAllowed, language: language)
+        case .authorized: L10n.string(.allowed, language: language)
         }
     }
 
@@ -396,4 +441,22 @@ struct SettingsView: View {
 private struct AccountEditorContext: Identifiable {
     let id = UUID()
     let account: Account?
+}
+
+private struct WindowTitleUpdater: NSViewRepresentable {
+    let title: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            view.window?.title = title
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            nsView.window?.title = title
+        }
+    }
 }

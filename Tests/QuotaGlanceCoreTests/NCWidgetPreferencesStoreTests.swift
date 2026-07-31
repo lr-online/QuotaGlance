@@ -33,5 +33,26 @@ struct NCWidgetPreferencesStoreTests {
             fileURL: directory.appendingPathComponent(NCWidgetPreferencesStore.fileName)
         )
         #expect(try store.read().defaultAccountID == nil)
+        #expect(try store.read().preferredLanguage == .system)
+    }
+
+    @Test("Sidecar preserves preferred language")
+    func sidecarPreservesPreferredLanguage() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let store = NCWidgetPreferencesStore(
+            fileURL: directory.appendingPathComponent(NCWidgetPreferencesStore.fileName)
+        )
+        try store.write(
+            NCWidgetPreferences(
+                schemaVersion: 1,
+                defaultAccountID: nil,
+                preferredLanguage: .chinese
+            )
+        )
+        #expect(try store.read().preferredLanguage == .chinese)
     }
 }

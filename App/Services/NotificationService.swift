@@ -23,12 +23,21 @@ final class NotificationService {
 
     func sendLowBalance(
         account: Account,
-        remaining: Money
+        remaining: Money,
+        language: AppLanguage = .english
     ) async throws {
         try await Self.sendNotification(
             identifier: "low-balance-\(account.id.uuidString)",
-            title: "Low Balance: \(account.displayName)",
-            body: "Remaining balance is \(MoneyFormatter.string(remaining))."
+            title: L10n.string(
+                .lowBalanceTitle,
+                language: language,
+                account.displayName
+            ),
+            body: L10n.string(
+                .lowBalanceBody,
+                language: language,
+                MoneyFormatter.string(remaining)
+            )
         )
     }
 

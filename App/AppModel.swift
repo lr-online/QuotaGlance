@@ -35,7 +35,10 @@ final class AppModel: ObservableObject {
             loadError = nil
         } catch {
             stored = StoredAccountPreferences(accounts: [], preferences: .default)
-            loadError = "Saved account settings could not be read."
+            loadError = L10n.string(
+                .savedSettingsUnreadable,
+                language: AppLanguage.resolve(preference: .system)
+            )
         }
 
         let credentialStore = KeychainStore()
@@ -82,12 +85,17 @@ final class AppModel: ObservableObject {
         launchAtLoginService.isSupported
     }
 
+    var resolvedLanguage: AppLanguage {
+        AppLanguage.resolve(preference: preferences.preferredLanguage)
+    }
+
     func start() async {
         guard !hasStarted else { return }
         hasStarted = true
         notificationPermission = await notificationService.permissionState()
         preferences.launchAtLogin = launchAtLoginService.isEnabled
         persistReportingErrors()
+        mirrorNCWidgetPreferences()
         restartSchedule()
         if accounts.contains(where: \.isEnabled) {
             await refresh(credentialAccessMode: .nonInteractive)
@@ -133,18 +141,32 @@ final class AppModel: ObservableObject {
                 }
             }.count
             if lockedCredentialCount > 0 {
-                let noun = lockedCredentialCount == 1 ? "key" : "keys"
-                lastErrorMessage = "Keychain approval is required for "
-                    + "\(lockedCredentialCount) saved \(noun). "
-                    + "Click Refresh to unlock."
+                if lockedCredentialCount == 1 {
+                    lastErrorMessage = L10n.string(
+                        .keychainApprovalRequiredSingular,
+                        language: resolvedLanguage
+                    )
+                } else {
+                    lastErrorMessage = L10n.string(
+                        .keychainApprovalRequired,
+                        language: resolvedLanguage,
+                        lockedCredentialCount
+                    )
+                }
             } else {
                 switch result.outcome {
                 case .fresh:
                     lastErrorMessage = nil
                 case .partial:
-                    lastErrorMessage = "Some accounts could not be refreshed."
+                    lastErrorMessage = L10n.string(
+                        .someAccountsRefreshFailed,
+                        language: resolvedLanguage
+                    )
                 case .allFailed:
-                    lastErrorMessage = "No account could be refreshed."
+                    lastErrorMessage = L10n.string(
+                        .allAccountsRefreshFailed,
+                        language: resolvedLanguage
+                    )
                 }
             }
         } catch RefreshCoordinatorError.superseded {
@@ -327,6 +349,21 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func setPreferredLanguage(_ preference: AppLanguagePreference) {
+        preferences.preferredLanguage = preference
+        do {
+            try persist()
+            mirrorNCWidgetPreferences()
+            ApplicationMenuInstaller.installMainMenuIfNeeded(
+                language: resolvedLanguage,
+                force: true
+            )
+            WidgetCenter.shared.reloadAllTimelines()
+        } catch {
+            lastErrorMessage = message(for: error)
+        }
+    }
+
     func handle(url: URL) {
         let destination = DeepLinkRouter.destination(
             for: url,
@@ -344,7 +381,7 @@ final class AppModel: ObservableObject {
     }
 
     func message(for error: any Error) -> String {
-        ErrorPresenter.message(for: error)
+        ErrorPresenter.message(for: error, language: resolvedLanguage)
     }
 }
 
@@ -425,7 +462,8 @@ private extension AppModel {
         try? store.write(
             NCWidgetPreferences(
                 schemaVersion: NCWidgetPreferences.currentSchemaVersion,
-                defaultAccountID: preferences.notificationCenterDefaultAccountID
+                defaultAccountID: preferences.notificationCenterDefaultAccountID,
+                preferredLanguage: preferences.preferredLanguage
             )
         )
     }
@@ -465,7 +503,8 @@ private extension AppModel {
             do {
                 try await notificationService.sendLowBalance(
                     account: notification.account,
-                    remaining: notification.remaining
+                    remaining: notification.remaining,
+                    language: resolvedLanguage
                 )
             } catch {
                 lastErrorMessage = message(for: error)

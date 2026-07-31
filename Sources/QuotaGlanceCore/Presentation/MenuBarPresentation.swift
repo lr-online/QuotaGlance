@@ -53,11 +53,13 @@ public enum MenuBarPanelLayout {
 public enum MenuBarPresenter {
     public static func make(
         selection: DashboardSelection,
-        envelope: WidgetSnapshotEnvelope
+        envelope: WidgetSnapshotEnvelope,
+        language: AppLanguage = .english
     ) -> MenuBarPresentation? {
         guard let dashboard = DashboardPresenter.make(
             selection: selection,
-            envelope: envelope
+            envelope: envelope,
+            language: language
         ) else {
             return nil
         }
@@ -71,7 +73,7 @@ public enum MenuBarPresenter {
             todayRequests: dashboard.todayRequests,
             days: makeDays(dashboard.dailyUsage),
             accountRows: dashboard.accountRows.prefix(5).map {
-                CompactAccountPresentation(account: $0)
+                CompactAccountPresentation(account: $0, language: language)
             },
             balanceRows: dashboard.usage?.balances ?? [],
             spendingLimit: dashboard.usage?.spendingLimit,
