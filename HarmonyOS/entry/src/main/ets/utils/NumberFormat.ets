@@ -28,3 +28,21 @@ export function formatQuotaValue(n: number): string {
   }
   return n.toFixed(2);
 }
+
+const TOKEN_SUFFIXES: string[] = ['K', 'M', 'G', 'T', 'P'];
+
+// Token quantities: below 1000 render as the plain integer; at or above
+// 1000, scale by powers of 1000 with a K/M/G/T/P suffix and exactly 2
+// decimals (1234 → "1.23K", 6655443322 → "6.66G").
+export function formatTokenCount(n: number): string {
+  if (Math.abs(n) < 1000) {
+    return n % 1 === 0 ? `${n}` : n.toFixed(2);
+  }
+  let scaled = n;
+  let tier = -1;
+  while (Math.abs(scaled) >= 1000 && tier < TOKEN_SUFFIXES.length - 1) {
+    scaled /= 1000;
+    tier += 1;
+  }
+  return `${scaled.toFixed(2)}${TOKEN_SUFFIXES[tier]}`;
+}

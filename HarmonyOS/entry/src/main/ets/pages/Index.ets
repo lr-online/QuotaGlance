@@ -13,6 +13,7 @@ struct Index {
   @State refreshingAll: boolean = false;
   @State currentIndex: number = 0;
   @State syncTick: number = 0;
+  private tabsController: TabsController = new TabsController();
 
   onPageShow(): void {
     this.reload();
@@ -26,6 +27,24 @@ struct Index {
     if (this.currentIndex >= this.accounts.length) {
       this.currentIndex = 0;
     }
+    this.preloadTabs();
+  }
+
+  // Pre-warm every TabContent so first switches don't pay the lazy-build
+  // cost. Each view's once-per-launch auto-refresh still fires exactly once
+  // (guarded inside AccountDetailView) — preloading only moves it earlier.
+  private preloadTabs(): void {
+    const count = this.accounts.length;
+    if (count < 2) {
+      return;
+    }
+    const indices: number[] = [];
+    for (let i = 0; i < count; i++) {
+      indices.push(i);
+    }
+    this.tabsController.preloadItems(indices).catch((error: Object) => {
+      // Preload is a best-effort latency mitigation; failures are harmless.
+    });
   }
 
   private async refreshAll(): Promise<void> {
@@ -54,6 +73,7 @@ struct Index {
         .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
         .fontColor(this.currentIndex === index ? $r('app.color.accentTeal') : $r('app.color.textSecondary'))
         .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
         .opacity(account.isEnabled ? 1 : 0.5)
       Column()
         .width('100%')
@@ -61,7 +81,7 @@ struct Index {
         .borderRadius(1)
         .backgroundColor(this.currentIndex === index ? $r('app.color.accentTeal') : Color.Transparent)
     }
-    .padding({ left: 14, right: 14, top: 10, bottom: 8 })
+    .padding({ left: 8, right: 8, top: 10, bottom: 8 })
   }
 
   @Builder
@@ -117,7 +137,7 @@ struct Index {
 
   @Builder
   tabsBody() {
-    Tabs({ barPosition: BarPosition.Start, index: this.currentIndex }) {
+    Tabs({ barPosition: BarPosition.Start, index: this.currentIndex, controller: this.tabsController }) {
       ForEach(this.accounts, (account: Account, index: number) => {
         TabContent() {
           AccountDetailView({ accountId: account.id, dim: false, syncTick: this.syncTick })
@@ -125,7 +145,8 @@ struct Index {
         .tabBar(this.tabBuilder(account, index))
       }, (account: Account) => account.id)
     }
-    .barMode(BarMode.Scrollable)
+    .barMode(BarMode.Fixed)
+    .animationDuration(0)
     .barBackgroundColor($r('app.color.appBackground'))
     .width('100%')
     .layoutWeight(1)

@@ -13,7 +13,7 @@ import {
   UsageSnapshot
 } from '../providers/UsageSnapshot';
 import { friendlyErrorText } from '../utils/ErrorMapping';
-import { formatAmount, formatCompactCount, formatQuotaValue } from '../utils/NumberFormat';
+import { formatAmount, formatCompactCount, formatQuotaValue, formatTokenCount } from '../utils/NumberFormat';
 
 interface StatItem {
   label: string;
@@ -187,15 +187,15 @@ function counterStats(context: common.Context, counters: UsageCounters): StatIte
   if (counters.totalTokens !== undefined) {
     items.push({
       label: getString(context, $r('app.string.stat_tokens')),
-      value: formatCompactCount(counters.totalTokens)
+      value: formatTokenCount(counters.totalTokens)
     });
   } else {
     const parts: string[] = [];
     if (counters.inputTokens !== undefined) {
-      parts.push(`入 ${formatCompactCount(counters.inputTokens)}`);
+      parts.push(`入 ${formatTokenCount(counters.inputTokens)}`);
     }
     if (counters.outputTokens !== undefined) {
-      parts.push(`出 ${formatCompactCount(counters.outputTokens)}`);
+      parts.push(`出 ${formatTokenCount(counters.outputTokens)}`);
     }
     if (parts.length > 0) {
       items.push({
