@@ -9,7 +9,7 @@ import { friendlyErrorText } from '../utils/ErrorMapping';
 import { formatAmount, formatCompactCount, formatQuotaValue } from '../utils/NumberFormat';
 import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
-import { AccountDetailView } from '../components/AccountDetailView';
+import { AccountDetailView, markAccountsRefreshedThisLaunch } from '../components/AccountDetailView';
 
 // Aggregate currency ordering: CNY first, then USD, then the rest
 // alphabetically (mirrors the mac app's CNY/USD emphasis).
@@ -55,8 +55,8 @@ function balanceLine(map: Map<string, number>): string {
   return parts.join(' · ');
 }
 
-// '今日 12.34 CNY · 45 次' (amount first), '' when nothing is exposed.
-function todayLine(context: common.Context, costs: Map<string, number>, requests: number,
+// '12.34 CNY · 45 次' (amount first), '' when nothing is exposed.
+function todayBody(context: common.Context, costs: Map<string, number>, requests: number,
   hasRequests: boolean): string {
   const parts: string[] = orderedCurrencies(costs).map((currency: string) => {
     return `${formatAmount(`${costs.get(currency) ?? 0}`)} ${currency}`;
@@ -65,11 +65,7 @@ function todayLine(context: common.Context, costs: Map<string, number>, requests
     const unit = context.resourceManager.getStringSync($r('app.string.requests_unit').id);
     parts.push(`${formatCompactCount(requests)} ${unit}`);
   }
-  if (parts.length === 0) {
-    return '';
-  }
-  const label = context.resourceManager.getStringSync($r('app.string.overview_today').id);
-  return `${label} ${parts.join(' · ')}`;
+  return parts.join(' · ');
 }
 
 // '配额 300/500 次' from the first quota window, per the MiniMax-style
@@ -91,6 +87,10 @@ interface ProviderOverview {
   quotaText: string;
   stale: boolean;
   hasData: boolean;
+  // Comparison-bar fill fraction (0–1, score ÷ max score) and its rounded
+  // percentage label ('' when the provider has no consumption score).
+  fraction: number;
+  pctText: string;
 }
 
 interface ProviderWork {
@@ -101,22 +101,50 @@ interface ProviderWork {
   todayRequests: number;
   hasTodayRequests: boolean;
   quotaText: string;
+  quotaScore: number | null;
   stale: boolean;
 }
 
+// Consumption score for the cross-provider comparison bars. Priority:
+// (a) today.actualCost — CNY if present, else USD, else the first currency.
+//     Cross-currency amounts are NOT converted (project rule), so picking
+//     one currency per provider keeps the comparison approximate by design.
+// (b) today.requests.
+// (c) first quota window's used percentage (used/limit, clamped 0–100).
+// (d) otherwise no score (null) → empty fill, no % label.
+function providerScore(work: ProviderWork): number | null {
+  if (work.todayCosts.size > 0) {
+    const cny = work.todayCosts.get('CNY');
+    if (cny !== undefined) {
+      return cny;
+    }
+    const usd = work.todayCosts.get('USD');
+    if (usd !== undefined) {
+      return usd;
+    }
+    const first = orderedCurrencies(work.todayCosts)[0];
+    return work.todayCosts.get(first) ?? null;
+  }
+  if (work.hasTodayRequests) {
+    return work.todayRequests;
+  }
+  return work.quotaScore;
+}
+
+// Cold-launch guard (module scope): the once-per-app-open auto refreshAll
+// must not re-fire on tab switches or page returns within the process.
+let launchAutoRefreshDone: boolean = false;
+
 @Entry
 @Component
-struct Index {
-  @State accounts: Account[] = [];
+struct Index {  @State accounts: Account[] = [];
   @State refreshingAll: boolean = false;
   @State currentIndex: number = 0;
   @State syncTick: number = 0;
   @State themeMode: ThemeMode = 'system';
-  @State overviewBalance: string = '';
   @State overviewToday: string = '';
   @State overviewPartial: boolean = false;
   @State providerBlocks: ProviderOverview[] = [];
-  @State providerWide: boolean = false;
   private tabsController: TabsController = new TabsController();
 
   onPageShow(): void {
@@ -134,6 +162,34 @@ struct Index {
     this.preloadTabs();
     const themeStore = await ThemeStore.create(context);
     this.themeMode = await themeStore.load();
+    await this.loadOverview(context);
+    await this.maybeLaunchRefresh(service, context);
+  }
+
+  // Once per cold app launch: refresh every enabled account (busy chip
+  // while running), then recompute the overview and bump the tabs' syncTick.
+  // The enabled ids are pre-marked in AccountDetailView's launch set so its
+  // per-tab once-per-launch auto-refresh does not duplicate these fetches.
+  private async maybeLaunchRefresh(service: AccountService, context: common.UIAbilityContext): Promise<void> {
+    if (launchAutoRefreshDone) {
+      return;
+    }
+    launchAutoRefreshDone = true;
+    const enabledIds: string[] = this.accounts
+      .filter((account: Account) => account.isEnabled)
+      .map((account: Account) => account.id);
+    if (enabledIds.length === 0) {
+      return;
+    }
+    this.refreshingAll = true;
+    try {
+      await service.refreshAllEnabled();
+    } catch (error) {
+      promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
+    }
+    this.refreshingAll = false;
+    markAccountsRefreshedThisLaunch(enabledIds);
+    this.syncTick += 1;
     await this.loadOverview(context);
   }
 
@@ -159,13 +215,12 @@ struct Index {
   }
 
   // Aggregates the CACHED snapshots for the overview panel — no network.
-  // Overall totals run over enabled accounts; only real balances enter the
-  // balance sum (per the macOS contract, spendingLimit/quotaWindow values
-  // never do). Every provider with ≥1 account gets a block, even with no
-  // cached data or only disabled accounts, so the panel is 常驻.
+  // Header keeps only today's totals (per-provider balances live in the
+  // provider blocks; per the macOS contract, spendingLimit/quotaWindow
+  // values never enter balance sums). Every provider with ≥1 account gets a
+  // block, even with no cached data or only disabled accounts (常驻).
   private async loadOverview(context: common.UIAbilityContext): Promise<void> {
     const store = await SnapshotStore.create(context);
-    const balances = new Map<string, number>();
     const todayCosts = new Map<string, number>();
     let todayRequests = 0;
     let hasTodayRequests = false;
@@ -187,6 +242,7 @@ struct Index {
           todayRequests: 0,
           hasTodayRequests: false,
           quotaText: '',
+          quotaScore: null,
           stale: false
         };
         workByProvider.set(key, work);
@@ -208,7 +264,6 @@ struct Index {
       }
       const snapshot = stored.snapshot;
       for (const balance of snapshot.balances) {
-        sumInto(balances, balance.available.currency, balance.available.amount);
         sumInto(work.balances, balance.available.currency, balance.available.amount);
       }
       if (snapshot.today !== undefined) {
@@ -225,20 +280,27 @@ struct Index {
       }
       if (work.quotaText.length === 0
         && snapshot.quotaWindows !== undefined && snapshot.quotaWindows.length > 0) {
-        work.quotaText = quotaSummary(context, snapshot.quotaWindows[0]);
+        const window = snapshot.quotaWindows[0];
+        work.quotaText = quotaSummary(context, window);
+        if (window.limit !== undefined && window.limit > 0) {
+          const used = window.used ?? ((window.remaining !== undefined) ? window.limit - window.remaining : 0);
+          work.quotaScore = Math.min(Math.max((used / window.limit) * 100, 0), 100);
+        }
       }
     }
     if (snapshotsFound > 0 && snapshotsFound < enabledCount) {
       partial = true;
     }
 
-    this.overviewBalance = balanceLine(balances);
-    this.overviewToday = todayLine(context, todayCosts, todayRequests, hasTodayRequests);
+    this.overviewToday = todayBody(context, todayCosts, todayRequests, hasTodayRequests);
     this.overviewPartial = partial;
-    this.providerBlocks = providerOrder.map((key: string): ProviderOverview => {
+
+    const todayLabel = context.resourceManager.getStringSync($r('app.string.overview_today').id);
+    const blocks: ProviderOverview[] = providerOrder.map((key: string): ProviderOverview => {
       const work = workByProvider.get(key) as ProviderWork;
       const balanceText = balanceLine(work.balances);
-      const todayText = todayLine(context, work.todayCosts, work.todayRequests, work.hasTodayRequests);
+      const body = todayBody(context, work.todayCosts, work.todayRequests, work.hasTodayRequests);
+      const todayText = body.length > 0 ? `${todayLabel} ${body}` : '';
       return {
         key: key,
         name: work.name,
@@ -247,8 +309,31 @@ struct Index {
         todayText: todayText,
         quotaText: work.quotaText,
         stale: work.stale,
-        hasData: balanceText.length > 0 || todayText.length > 0 || work.quotaText.length > 0
+        hasData: balanceText.length > 0 || todayText.length > 0 || work.quotaText.length > 0,
+        fraction: 0,
+        pctText: ''
       };
+    });
+    // Normalize comparison-bar fractions against the max score; a zero/absent
+    // max leaves every fill at 0 with no % labels.
+    let maxScore = 0;
+    const scores: Array<number | null> = blocks.map((block: ProviderOverview): number | null => {
+      const work = workByProvider.get(block.key) as ProviderWork;
+      const score = providerScore(work);
+      if (score !== null && score > maxScore) {
+        maxScore = score;
+      }
+      return score;
+    });
+    this.providerBlocks = blocks.map((block: ProviderOverview, index: number): ProviderOverview => {
+      const score = scores[index];
+      if (score === null || maxScore <= 0 || !block.hasEnabled) {
+        return block;
+      }
+      const fraction = Math.min(Math.max(score / maxScore, 0), 1);
+      block.fraction = fraction;
+      block.pctText = `${Math.round(fraction * 100)}%`;
+      return block;
     });
   }
 
@@ -329,77 +414,98 @@ struct Index {
 
   @Builder
   providerBlock(block: ProviderOverview) {
-    Column({ space: 6 }) {
-      Row({ space: 6 }) {
+    Stack({ alignContent: Alignment.Start }) {
+      // Comparison-fill track behind the content: width = score ÷ max score.
+      // accentTealTint (16%-alpha of the mode's teal) stays legible under
+      // textPrimary/accentTeal text in both palettes.
+      Row() {
         Column()
-          .width(3)
-          .height(12)
-          .borderRadius(2)
-          .backgroundColor($r('app.color.accentTeal'))
-        Text(block.name)
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.textPrimary'))
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .layoutWeight(1)
-        if (block.stale) {
-          Text($r('app.string.stale_hint_short'))
-            .fontSize(10)
-            .fontColor($r('app.color.warning'))
+          .width(`${Math.round(block.fraction * 100)}%`)
+          .height('100%')
+          .backgroundColor($r('app.color.accentTealTint'))
+      }
+      .width('100%')
+      .height('100%')
+
+      Column({ space: 6 }) {
+        Row({ space: 6 }) {
+          Column()
+            .width(3)
+            .height(12)
+            .borderRadius(2)
+            .backgroundColor($r('app.color.accentTeal'))
+          Text(block.name)
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.textPrimary'))
             .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+          if (block.stale) {
+            Text($r('app.string.stale_hint_short'))
+              .fontSize(10)
+              .fontColor($r('app.color.warning'))
+              .maxLines(1)
+          }
+          if (block.pctText.length > 0) {
+            Text(block.pctText)
+              .fontSize(10)
+              .fontColor($r('app.color.textSecondary'))
+              .maxLines(1)
+          }
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Center)
+
+        if (!block.hasEnabled) {
+          Text($r('app.string.overview_disabled'))
+            .fontSize(12)
+            .fontColor($r('app.color.textSecondary'))
+        } else if (!block.hasData) {
+          Text($r('app.string.no_data'))
+            .fontSize(12)
+            .fontColor($r('app.color.textSecondary'))
+        } else {
+          if (block.balanceText.length > 0) {
+            Text(block.balanceText)
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .fontColor($r('app.color.accentTeal'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+          if (block.todayText.length > 0) {
+            Text(block.todayText)
+              .fontSize(11)
+              .fontColor($r('app.color.textSecondary'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+          if (block.quotaText.length > 0) {
+            Text(block.quotaText)
+              .fontSize(11)
+              .fontColor($r('app.color.textSecondary'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
         }
       }
       .width('100%')
-      .alignItems(VerticalAlign.Center)
-
-      if (!block.hasEnabled) {
-        Text($r('app.string.overview_disabled'))
-          .fontSize(12)
-          .fontColor($r('app.color.textSecondary'))
-      } else if (!block.hasData) {
-        Text($r('app.string.no_data'))
-          .fontSize(12)
-          .fontColor($r('app.color.textSecondary'))
-      } else {
-        if (block.balanceText.length > 0) {
-          Text(block.balanceText)
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-            .fontColor($r('app.color.accentTeal'))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        if (block.todayText.length > 0) {
-          Text(block.todayText)
-            .fontSize(11)
-            .fontColor($r('app.color.textSecondary'))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-        if (block.quotaText.length > 0) {
-          Text(block.quotaText)
-            .fontSize(11)
-            .fontColor($r('app.color.textSecondary'))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-        }
-      }
+      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+      .alignItems(HorizontalAlign.Start)
     }
-    .width(this.providerWide ? '100%' : 160)
-    .padding(10)
+    .width('100%')
     .backgroundColor($r('app.color.appBackground'))
     .borderRadius(10)
+    .clip(true)
     .opacity(block.hasEnabled ? 1 : 0.5)
-    .alignItems(HorizontalAlign.Start)
   }
 
   // 常驻 overview panel: always rendered when ≥1 account exists, even with
   // zero cached snapshots — missing data shows '--' / 暂无数据 placeholders
-  // inside the panel instead of hiding it. Provider section: horizontally
-  // scrollable row of fixed-width blocks below 600vp (caps panel height);
-  // GridRow 2/3-column flow at ≥600/≥1000vp, matching AccountDetailView's
-  // breakpoint strategy.
+  // inside the panel instead of hiding it. Header keeps only today's totals
+  // (prominent); providers are a vertical multi-row list of full-width
+  // consumption-comparison rows at every screen width.
   @Builder
   overviewPanel() {
     Column({ space: 12 }) {
@@ -407,62 +513,38 @@ struct Index {
         Text($r('app.string.overview_label'))
           .fontSize(11)
           .fontColor($r('app.color.textSecondary'))
-          .margin({ top: 3 })
-        Column({ space: 4 }) {
-          Text(this.overviewBalance.length > 0 ? this.overviewBalance : '--')
-            .fontSize(17)
+          .margin({ top: 6 })
+        Row({ space: 8 }) {
+          Text($r('app.string.overview_today'))
+            .fontSize(12)
+            .fontColor($r('app.color.textSecondary'))
+          Text(this.overviewToday.length > 0 ? this.overviewToday : '--')
+            .fontSize(21)
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.accentTeal'))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-          if (this.overviewToday.length > 0 || this.overviewPartial) {
-            Row({ space: 8 }) {
-              if (this.overviewToday.length > 0) {
-                Text(this.overviewToday)
-                  .fontSize(12)
-                  .fontColor($r('app.color.textSecondary'))
-                  .maxLines(1)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-              }
-              if (this.overviewPartial) {
-                Text($r('app.string.overview_partial'))
-                  .fontSize(11)
-                  .fontColor($r('app.color.warning'))
-                  .maxLines(1)
-              }
-            }
+            .layoutWeight(1)
+          if (this.overviewPartial) {
+            Text($r('app.string.overview_partial'))
+              .fontSize(11)
+              .fontColor($r('app.color.warning'))
+              .maxLines(1)
           }
         }
         .layoutWeight(1)
-        .alignItems(HorizontalAlign.Start)
+        .alignItems(VerticalAlign.Bottom)
       }
       .width('100%')
+      .alignItems(VerticalAlign.Top)
 
       if (this.providerBlocks.length > 0) {
-        if (this.providerWide) {
-          GridRow({
-            gutter: { x: 8, y: 8 },
-            breakpoints: { value: ['600vp', '1000vp'], reference: BreakpointsReference.ComponentSize }
-          }) {
-            ForEach(this.providerBlocks, (block: ProviderOverview) => {
-              GridCol({ span: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4, xxl: 4 } }) {
-                this.providerBlock(block)
-              }
-            }, (block: ProviderOverview) => block.key)
-          }
-          .width('100%')
-        } else {
-          Scroll() {
-            Row({ space: 8 }) {
-              ForEach(this.providerBlocks, (block: ProviderOverview) => {
-                this.providerBlock(block)
-              }, (block: ProviderOverview) => block.key)
-            }
-          }
-          .scrollable(ScrollDirection.Horizontal)
-          .scrollBar(BarState.Off)
-          .width('100%')
+        Column({ space: 8 }) {
+          ForEach(this.providerBlocks, (block: ProviderOverview) => {
+            this.providerBlock(block)
+          }, (block: ProviderOverview) => block.key)
         }
+        .width('100%')
       }
     }
     .width('100%')
@@ -470,9 +552,6 @@ struct Index {
     .backgroundColor($r('app.color.cardBackground'))
     .borderRadius(14)
     .margin({ left: 16, right: 16, bottom: 10 })
-    .onAreaChange((oldArea: Area, newArea: Area) => {
-      this.providerWide = newArea.width >= 600;
-    })
   }
 
   @Builder

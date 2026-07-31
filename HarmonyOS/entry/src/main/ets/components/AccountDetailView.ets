@@ -70,6 +70,15 @@ const MIN_BAR_HEIGHT: number = 4;
 // re-created views do not re-fire the open-refresh within one app launch.
 const autoRefreshedAccounts: Set<string> = new Set();
 
+// Pre-marks accounts as refreshed for this launch. Index uses this after
+// its cold-launch refreshAllEnabled so the per-tab auto-refresh does not
+// immediately duplicate the same fetches.
+export function markAccountsRefreshedThisLaunch(accountIds: string[]): void {
+  for (const id of accountIds) {
+    autoRefreshedAccounts.add(id);
+  }
+}
+
 function pad2(value: number): string {
   return value.toString().padStart(2, '0');
 }
