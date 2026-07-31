@@ -1,0 +1,37 @@
+{
+  "quotaWindows": [
+    {
+      "label": "MiniMax-M2 5-hour quota",
+      "used": 450,
+      "limit": 3000,
+      "remaining": 2550,
+      "unit": "requests",
+      "resetsAtMs": 1753239600000
+    },
+    {
+      "label": "MiniMax-M2 weekly quota",
+      "used": 2250,
+      "limit": 15000,
+      "remaining": 12750,
+      "unit": "requests",
+      "resetsAtMs": 1753714800000
+    },
+    {
+      "label": "MiniMax-Text-01 5-hour quota",
+      "used": 57.5,
+      "limit": 100,
+      "remaining": 42.5,
+      "unit": "%",
+      "resetsAtMs": 1753239600000
+    },
+    {
+      "label": "Speech quota",
+      "used": 70,
+      "limit": 100,
+      "remaining": 30,
+      "unit": "calls",
+      "resetsAtMs": 1753227600000
+    }
+  ],
+  "providerStatus": "active"
+}

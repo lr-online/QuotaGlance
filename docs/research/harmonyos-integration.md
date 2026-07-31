@@ -1,7 +1,89 @@
 # HarmonyOS Integration Research
 
-Status: Evaluated
+Status: Implemented (see "Implementation status" below)
 Date: 2026-07-27
+
+## Implementation status (2026-07-31)
+
+The "full app + ArkTS service widget" recommendation is implemented and
+installed on a Huawei Pad Mini. What shipped beyond the minimal loop:
+
+1. **Provider parity with macOS.** All six providers (API Info, DeepSeek,
+   Kimi, OpenRouter, MiniMax, BioMap Coding) are ported to ArkTS under
+   `HarmonyOS/entry/src/main/ets/providers/`, mirroring the Swift
+   `UsageProvider` protocol (`fetch` / `detect` / `fetchWithProfile`),
+   `ProviderProfile` (region + credentialKind), the `UsageSnapshot` model
+   (decimal-string money), and the shared error taxonomy. Region detection
+   and multi-step flows (OpenRouter management keys, BioMap `/v1/models`
+   fallback) behave as on macOS.
+2. **Drift prevention via shared contract fixtures** (architecture decision
+   3 below, now realized): `Contracts/Providers/<provider>/<case>-{response,expected}.json`
+   is the single source of truth. Swift asserts against them in
+   `Tests/QuotaGlanceCoreTests/ContractTests.swift`; HarmonyOS asserts
+   against the same files synced into ohosTest rawfile by
+   `scripts/sync-contracts-to-harmonyos.sh` (suite:
+   `HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets`). Schema and
+   workflow: `Contracts/README.md`. Adding or changing a provider requires
+   updating fixtures + both test suites, so parsing drift fails CI on both
+   platforms.
+3. **Credential storage (section 6 decision, applied).** API keys live in
+   Asset Store Kit under per-account aliases (`quotaglance_key_<accountId>`)
+   with `DEVICE_FIRST_UNLOCKED` accessibility; the pre-multi-account single
+   alias is migrated once into a DeepSeek account. Asset Store remains the
+   correct store for credential blobs; HUKS is for cryptographic keys the
+   app uses for signing/encryption, which this app does not need. Future
+   hardening option: gate key reads behind user authentication
+   (`AUTH_TYPE` + userAuth) if device-sharing becomes a concern.
+4. **Brand alignment.** The macOS icon design (navy gradient, teal progress
+   ring, usage-chart polyline) is rendered into the HarmonyOS layered icon
+   and start window by `scripts/generate-harmonyos-icon.swift`; the app UI
+   uses the same navy/teal palette (`entry/.../element/color.json`).
+5. **Configuration flow.** Multi-account management (add via provider
+   picker + live key validation through `provider.detect`, enable toggle,
+   delete with cascade) in `pages/AccountsPage.ets` /
+   `pages/AccountEditorPage.ets`; account metadata in preferences
+   (`storage/AccountStore.ets`), snapshots per account
+   (`storage/SnapshotStore.ets`), orchestration in
+   `services/AccountService.ets`. Account detail page
+   (`pages/AccountDetailPage.ets`) surfaces the full snapshot — balances,
+   spending limit, quota windows, today counters, a last-7-days chart
+   matching the macOS menu-bar `makeDays` semantics, and model usage.
+6. **In-app screensaver mode (section 8, implemented).**
+   `pages/ScreensaverPage.ets`: foreground keep-screen-on fullscreen with
+   hidden system bars, pure-black background, a large clock plus one
+   primary-metric row per enabled account, 5-minute polling, and a
+   60-second pixel drift against OLED burn-in. Tap anywhere to exit; window
+   state (brightness via the `-1` follow-system sentinel, system bars,
+   fullscreen, keep-screen-on) is restored on exit and in
+   `aboutToDisappear`. An account detail screen can also be the source, in
+   which case the full per-account detail renders in a dim palette and only
+   that account is polled.
+   **Charging-aware brightness (2026-07-31).** The original fixed 0.08
+   window brightness proved effectively invisible. The policy is now:
+   default visible-dim 0.25, 0.30 while charging, 0.18 on battery. The
+   charging state is read from `batteryInfo.chargingStatus`
+   (`@kit.BasicServicesKit`, ENABLE/FULL = charging; no permission needed)
+   and re-evaluated on every 60-second drift tick; `setWindowBrightness` is
+   only called when the level actually changes, and batteryInfo read
+   failures fall back to 0.25. Content opacities were raised to match
+   (clock at full strength, account rows at 0.85/0.9, dim detail palette
+   brightened to #C9D1DC text / ~0.9-alpha teal / #0D1119 cards).
+   **Standby screensaver card (section 1, evaluated 2026-07-31).** The
+   SDK's modulecheck schema (`toolchains/modulecheck/forms.json`) documents
+   a compile-safe `standby` object in form_config (`isSupported`,
+   `isAdapted`, `isPrivacySensitive`), so the existing 2×2-capable card now
+   declares `isSupported: true` with `isAdapted: false` (no standby-specific
+   UX pass yet) and `isPrivacySensitive: true` (balances on a lock screen).
+   Actually surfacing there still requires the AppGallery capability
+   application, API 23+, and a supported phone model — the declaration is
+   inert until then, and our target Pad Mini (tablet) is outside the
+   supported device set anyway.
+
+Still open from the research below: the AppGallery capability application
+for the standby screensaver card (gated, API 23+ phones), charging-triggered
+screensaver entry, and anything requiring AppGallery review.
+
+
 
 Scope: HarmonyOS NEXT (HarmonyOS 5.x, ArkTS/ArkUI ecosystem) on phones,
 tablets, and HarmonyOS PCs. All claims are based on Huawei's official

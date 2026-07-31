@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Prefer ErBWs/setup-ohos (HOS_SDK_HOME points at .../sdk containing default/),
+# then an existing DEVECO_SDK_HOME, then DevEco.app.
+if [[ -z "${DEVECO_SDK_HOME:-}" ]]; then
+  if [[ -n "${HOS_SDK_HOME:-}" && -d "${HOS_SDK_HOME}" ]]; then
+    export DEVECO_SDK_HOME="${HOS_SDK_HOME}"
+  elif [[ -d "/Applications/DevEco-Studio.app/Contents/sdk" ]]; then
+    export DEVECO_SDK_HOME="/Applications/DevEco-Studio.app/Contents/sdk"
+  fi
+fi
+
+resolve_hvigorw() {
+  if [[ -n "${HVIGORW_BIN:-}" && -x "${HVIGORW_BIN}" ]]; then
+    printf '%s\n' "${HVIGORW_BIN}"
+    return 0
+  fi
+
+  local candidate
+  while IFS= read -r candidate; do
+    case "$candidate" in
+      "$SCRIPT_DIR/hvigorw") continue ;;
+    esac
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(type -a -p hvigorw 2>/dev/null || true)
+
+  local deveo_hvigor="${DEVECO_STUDIO_CONTENTS:-/Applications/DevEco-Studio.app/Contents}/tools/hvigor/bin/hvigorw"
+  if [[ -x "$deveo_hvigor" ]]; then
+    printf '%s\n' "$deveo_hvigor"
+    return 0
+  fi
+
+  return 1
+}
+
+if ! HVIGORW_PATH="$(resolve_hvigorw)"; then
+  echo "error: hvigorw not found (install DevEco Studio or use ErBWs/setup-ohos)" >&2
+  exit 1
+fi
+
+exec "$HVIGORW_PATH" "$@"

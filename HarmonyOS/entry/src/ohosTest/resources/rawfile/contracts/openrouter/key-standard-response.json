@@ -1,0 +1,12 @@
+{
+  "data": {
+    "is_management_key": false,
+    "usage": 3.75,
+    "limit": 10,
+    "limit_remaining": 6.25,
+    "usage_daily": 0.5,
+    "usage_weekly": 1.25,
+    "usage_monthly": 2.5,
+    "label": "contract-test-key"
+  }
+}

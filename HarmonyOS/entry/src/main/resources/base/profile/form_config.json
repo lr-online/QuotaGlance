@@ -1,0 +1,24 @@
+{
+  "forms": [
+    {
+      "name": "QuotaBalanceWidget",
+      "displayName": "$string:widget_display_name",
+      "description": "$string:widget_description",
+      "src": "./ets/widget/pages/WidgetCard.ets",
+      "uiSyntax": "arkts",
+      "isDefault": true,
+      "updateEnabled": true,
+      "updateDuration": 1,
+      "defaultDimension": "2*2",
+      "supportDimensions": [
+        "2*2",
+        "2*4"
+      ],
+      "standby": {
+        "isSupported": true,
+        "isAdapted": false,
+        "isPrivacySensitive": true
+      }
+    }
+  ]
+}

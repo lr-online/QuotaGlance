@@ -1,0 +1,14 @@
+{
+  "balances": [
+    {
+      "label": "Credits",
+      "available": { "amount": "12.25", "currency": "USD" },
+      "breakdown": []
+    }
+  ],
+  "spend": {
+    "today": { "amount": "0.75", "currency": "USD" },
+    "total": { "amount": "8.25", "currency": "USD" }
+  },
+  "providerStatus": "active"
+}

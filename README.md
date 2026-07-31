@@ -77,6 +77,15 @@ flowchart LR
 - 🚫 **零遥测**：无网络分析、无第三方崩溃上报，数据完全留在你的设备。
 - 🏠 **本地优先**：失败时保留上次成功数据并标记过期，绝不上传任何使用行为。
 
+## HarmonyOS 版本
+
+`HarmonyOS/` 目录是鸿蒙（HarmonyOS NEXT，手机/平板）版本，与 macOS 版能力对齐：同一套六家 provider、同样的快照数据模型、同样的品牌图标与配色。账户 key 保存在系统 Asset Store（按账户独立 alias，首次解锁后可读），不会以明文落盘，也不会进入快照或日志。
+
+- 双端解析逻辑通过共享契约 fixtures 防止漂移：`Contracts/Providers/` 是唯一事实来源，Swift 与 ArkTS 的契约测试各自跑同一份文件（鸿蒙侧由 `scripts/sync-contracts-to-harmonyos.sh` 同步进 ohosTest rawfile）。新增或修改 provider 时必须同时更新 fixtures 与两端测试，详见 [`Contracts/README.md`](Contracts/README.md)。
+- 构建：`scripts/build-harmonyos.sh`（本机需 DevEco Studio，CI 用 `ErBWs/setup-ohos`）；图标由 `scripts/generate-harmonyos-icon.swift` 生成，与 macOS 图标同一设计。
+- 平台调研、密钥方案选型与实现状态：[`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md)。
+
+
 ## 功能
 
 - 管理最多 20 个具名 provider 账户，key 只保存在 macOS Keychain。

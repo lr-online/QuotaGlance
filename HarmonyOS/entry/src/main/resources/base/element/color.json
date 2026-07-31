@@ -1,0 +1,52 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#F5F7FA"
+    },
+    {
+      "name": "appBackground",
+      "value": "#F5F7FA"
+    },
+    {
+      "name": "cardBackground",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "accentTeal",
+      "value": "#0E9C93"
+    },
+    {
+      "name": "accentTealTint",
+      "value": "#2B0E9C93"
+    },
+    {
+      "name": "highlightCyan",
+      "value": "#2BC4BA"
+    },
+    {
+      "name": "slateSecondary",
+      "value": "#C3CAD8"
+    },
+    {
+      "name": "textPrimary",
+      "value": "#1A2333"
+    },
+    {
+      "name": "textSecondary",
+      "value": "#5A6478"
+    },
+    {
+      "name": "danger",
+      "value": "#F26D6D"
+    },
+    {
+      "name": "warning",
+      "value": "#E5A84B"
+    },
+    {
+      "name": "screensaverClock",
+      "value": "#B8BFC9"
+    }
+  ]
+}
