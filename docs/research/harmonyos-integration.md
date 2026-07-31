@@ -44,10 +44,21 @@ installed on a Huawei Pad Mini. What shipped beyond the minimal loop:
    `pages/AccountEditorPage.ets`; account metadata in preferences
    (`storage/AccountStore.ets`), snapshots per account
    (`storage/SnapshotStore.ets`), orchestration in
-   `services/AccountService.ets`.
+   `services/AccountService.ets`. Account detail page
+   (`pages/AccountDetailPage.ets`) surfaces the full snapshot — balances,
+   spending limit, quota windows, today counters, a last-7-days chart
+   matching the macOS menu-bar `makeDays` semantics, and model usage.
+6. **In-app screensaver mode (section 8, implemented).**
+   `pages/ScreensaverPage.ets`: foreground keep-screen-on fullscreen with
+   hidden system bars, pure-black background, brightness dimmed to 0.08,
+   a large clock plus one primary-metric row per enabled account,
+   5-minute polling, and a 60-second pixel drift against OLED burn-in.
+   Tap anywhere to exit; window state (brightness via the `-1`
+   follow-system sentinel, system bars, fullscreen, keep-screen-on) is
+   restored on exit and in `aboutToDisappear`.
 
-Still open from the research below: in-app screensaver mode (section 8,
-phase two), standby screensaver card (gated, API 23+ phones), anything
+Still open from the research below: standby screensaver card (gated,
+API 23+ phones), charging-triggered screensaver entry, and anything
 requiring AppGallery review.
 
 
