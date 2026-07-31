@@ -2,9 +2,80 @@
 
 <img src="docs/images/poster.png" width="960" alt="QuotaGlance 海报" />
 
+<p align="center">
+  <strong>一眼看清所有 AI API 余额与配额</strong><br/>
+  <em>macOS 菜单栏 + 桌面小组件 · 本地优先 · 零遥测</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-v0.1.3-blue" alt="version" />
+  <img src="https://img.shields.io/badge/platforms-macOS%2012%2B%20%7C%2014%2B%20%7C%20HarmonyOS-success" alt="platforms" />
+  <img src="https://img.shields.io/badge/Swift-6%20%7C%20SwiftUI%20%7C%20WidgetKit-orange" alt="stack" />
+  <img src="https://img.shields.io/badge/AI%20providers-6%2B-brightgreen" alt="providers" />
+  <img src="https://img.shields.io/badge/privacy-local--first%20%7C%20zero--telemetry-red" alt="privacy" />
+</p>
+
 QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小组件，用于集中查看多个 AI API provider 的余额、消费上限、支出或订阅配额。
 
-当前支持 API Info、DeepSeek、Kimi、OpenRouter、MiniMax 和 BioMap Coding。不同 provider 暴露的官方能力并不相同，QuotaGlance 只显示真实可查询的数据，不会把消费上限、请求配额或连接状态伪装成现金余额。详细边界记录在 [`docs/research/provider-capabilities.md`](docs/research/provider-capabilities.md)。
+## ✨ 为什么选 QuotaGlance
+
+- 🔐 **本地优先，零遥测** — 所有 API key 只存系统 Keychain，永不上传；没有任何第三方分析或崩溃上报。
+- 📊 **一个菜单栏，看遍所有额度** — 最多 20 个具名账户，余额、消费上限、周期支出、配额窗口与趋势一屏汇总。
+- 💱 **真实余额，不做假** — 只显示 provider 官方可查询的数据，按 CNY / USD 等币种分别呈现，绝不把配额伪装成现金。
+- 🖥️ **菜单栏 + 桌面 Widget** — macOS 14 支持小 / 中 / 大三档桌面组件；失败重试、过期标记、低余额提醒一应俱全。
+- 🌏 **跨平台在路上** — 在 macOS 之外，鸿蒙（HarmonyOS NEXT）适配已在评估中。
+
+## 🔌 支持的 AI 平台
+
+| Provider | 余额币种 | 说明 |
+| --- | --- | --- |
+| **API Info** | – | 自有额度查询 |
+| **DeepSeek** | USD / CNY | 账户或组织余额 |
+| **Kimi** | CNY / USD | 中国站 / 国际站自动识别 |
+| **OpenRouter** | USD | 标准 key 支出 + Management Key credits |
+| **MiniMax** | 配额窗口 | Token / Coding Plan，非现金余额 |
+| **BioMap Coding** | USD | 公司 LiteLLM `/key/info` 累计支出 |
+
+> 不同 provider 暴露的官方能力并不相同，QuotaGlance 只显示真实可查询的数据，不会把消费上限、请求配额或连接状态伪装成现金余额。详细边界记录在 [`docs/research/provider-capabilities.md`](docs/research/provider-capabilities.md)。
+
+## 🖥️ 支持平台
+
+| 版本 | 系统要求 | 能力 |
+| --- | --- | --- |
+| **macOS 14 完整版** | macOS 14+ · Apple Silicon | 菜单栏 + 桌面 Widget（小 / 中 / 大）+ 开机启动 + 通知中心 |
+| **macOS 12 兼容版** | macOS 12+ · Apple Silicon | 菜单栏核心功能 + 通知中心中号 Widget |
+| **鸿蒙** | HarmonyOS NEXT（评估中） | ArkTS 卡片化适配，参考 [`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md) |
+
+## 🏗️ 架构
+
+```mermaid
+flowchart LR
+    subgraph Host["宿主环境"]
+        MB["菜单栏 App<br/>(SwiftUI)"]
+        W["桌面 Widget<br/>(WidgetKit)"]
+    end
+    Core["QuotaGlanceCore"]
+    KC[("Keychain<br/>本地加密存储")]
+    subgraph Providers["AI Provider Adapters"]
+        P1[API Info] & P2[DeepSeek] & P3[Kimi] & P4[OpenRouter] & P5[MiniMax] & P6[BioMap]
+    end
+    MB --> Core
+    W --> Core
+    Core --> KC
+    Core --> Providers
+```
+
+## 🚀 快速开始
+
+1. **获取应用** — 下载 Release 中的 DMG（`dist/QuotaGlance-<version>-macOS14-arm64.dmg`），或本地打包：`./scripts/package-dmg.sh`。
+2. **安装** — 拖入 `Applications`，首次启动时按住 Control 点击应用选择「打开」。
+3. **添加账户** — 点击菜单栏图标 → Settings → 选择 provider、填写 key 保存，菜单栏即刻显示余额。
+
+## 🔒 隐私承诺
+
+- 🔐 所有 API key 仅存于系统 **Keychain**，应用不会从 `.env` 导入，也不会写入源码或提交记录。
+- 🚫 **零遥测**：无网络分析、无第三方崩溃上报，数据完全留在你的设备。
+- 🏠 **本地优先**：失败时保留上次成功数据并标记过期，绝不上传任何使用行为。
 
 ## 功能
 
