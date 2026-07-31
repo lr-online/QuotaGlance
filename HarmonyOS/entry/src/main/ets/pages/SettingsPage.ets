@@ -1,11 +1,23 @@
 import { router } from '@kit.ArkUI';
-import { KeyRepository } from '../storage/KeyRepository';
+import { common } from '@kit.AbilityKit';
+import { AccountService } from '../services/AccountService';
+import { Account } from '../storage/AccountStore';
 
 @Entry
 @Component
 struct SettingsPage {
   @State apiKey: string = '';
   @State message: string = '';
+
+  private async findDeepSeekAccount(service: AccountService): Promise<Account | null> {
+    const accounts = await service.loadAccounts();
+    for (const account of accounts) {
+      if (account.provider === 'deepSeek') {
+        return account;
+      }
+    }
+    return null;
+  }
 
   build() {
     Column({ space: 16 }) {
@@ -23,14 +35,33 @@ struct SettingsPage {
       Button('保存')
         .enabled(this.apiKey.trim().length > 0)
         .onClick(async () => {
-          await KeyRepository.save(this.apiKey.trim());
-          router.back();
+          const context = getContext(this) as common.UIAbilityContext;
+          const service = await AccountService.create(context);
+          const existing = await this.findDeepSeekAccount(service);
+          if (existing) {
+            await service.saveAccountKey(existing.id, this.apiKey);
+            router.back();
+            return;
+          }
+          try {
+            await service.createAccount({ provider: 'deepSeek', displayName: '', apiKey: this.apiKey });
+            router.back();
+          } catch (error) {
+            this.message = `保存失败:${(error as Error).message}`;
+          }
         })
 
       Button('清除已保存的 Key')
         .onClick(async () => {
-          await KeyRepository.clear();
-          this.message = '已清除';
+          const context = getContext(this) as common.UIAbilityContext;
+          const service = await AccountService.create(context);
+          const existing = await this.findDeepSeekAccount(service);
+          if (existing) {
+            await service.deleteAccount(existing.id);
+            this.message = '已清除';
+          } else {
+            this.message = '无已保存的 Key';
+          }
         })
 
       Text(this.message)

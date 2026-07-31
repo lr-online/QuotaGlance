@@ -1,8 +1,7 @@
 import { router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { createProviderRegistry } from '../providers/ProviderCatalog';
-import { KeyRepository } from '../storage/KeyRepository';
-import { SnapshotStore, formatSnapshotTexts } from '../storage/SnapshotStore';
+import { AccountService } from '../services/AccountService';
+import { SnapshotStore, StoredSnapshot, formatSnapshotTexts } from '../storage/SnapshotStore';
 
 @Entry
 @Component
@@ -14,8 +13,15 @@ struct Index {
 
   private async reloadFromStore(): Promise<void> {
     const context = getContext(this) as common.UIAbilityContext;
-    const store = await SnapshotStore.create(context);
-    const texts = formatSnapshotTexts(await store.load());
+    const service = await AccountService.create(context);
+    await service.ensureLegacyMigration();
+    const accounts = await service.loadAccounts();
+    let stored: StoredSnapshot | null = null;
+    if (accounts.length > 0) {
+      const store = await SnapshotStore.create(context);
+      stored = await store.load(accounts[0].id);
+    }
+    const texts = formatSnapshotTexts(stored);
     this.balanceText = texts['balanceText'];
     this.statusText = texts['statusText'];
     this.updatedAtText = texts['updatedAtText'];
@@ -23,20 +29,18 @@ struct Index {
 
   private async refresh(): Promise<void> {
     this.isRefreshing = true;
-    const apiKey = await KeyRepository.load();
-    if (!apiKey) {
+    const context = getContext(this) as common.UIAbilityContext;
+    const service = await AccountService.create(context);
+    const accounts = await service.loadAccounts();
+    if (accounts.length === 0) {
       this.isRefreshing = false;
       this.statusText = '请先在设置中录入 API Key';
       return;
     }
-    const context = getContext(this) as common.UIAbilityContext;
-    const store = await SnapshotStore.create(context);
     try {
-      const provider = createProviderRegistry().provider('deepSeek');
-      const snapshot = await provider.fetch(apiKey);
-      await store.save(snapshot);
+      await service.refreshAccount(accounts[0]);
     } catch (error) {
-      await store.markStale();
+      // refreshAccount already marked the snapshot stale.
     }
     this.isRefreshing = false;
     await this.reloadFromStore();

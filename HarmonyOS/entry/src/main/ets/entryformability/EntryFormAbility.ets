@@ -1,9 +1,9 @@
 import { formBindingData, FormExtensionAbility, formProvider } from '@kit.FormKit';
 import { Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { createProviderRegistry } from '../providers/ProviderCatalog';
-import { KeyRepository } from '../storage/KeyRepository';
-import { SnapshotStore, formatSnapshotTexts } from '../storage/SnapshotStore';
+import { AccountService } from '../services/AccountService';
+import { Account } from '../storage/AccountStore';
+import { SnapshotStore, StoredSnapshot, formatSnapshotTexts } from '../storage/SnapshotStore';
 
 const TAG = 'EntryFormAbility';
 const DOMAIN_NUMBER = 0xFF00;
@@ -33,18 +33,27 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
   private async refreshForm(formId: string): Promise<void> {
     try {
-      const store = await SnapshotStore.create(this.context);
-      const apiKey = await KeyRepository.load();
-      if (apiKey) {
-        try {
-          const provider = createProviderRegistry().provider('deepSeek');
-          const snapshot = await provider.fetch(apiKey);
-          await store.save(snapshot);
-        } catch (error) {
-          await store.markStale();
+      const service = await AccountService.create(this.context);
+      await service.ensureLegacyMigration();
+      const accounts = await service.loadAccounts();
+      let firstEnabled: Account | null = null;
+      for (const account of accounts) {
+        if (account.isEnabled) {
+          firstEnabled = account;
+          break;
         }
       }
-      const texts = formatSnapshotTexts(await store.load());
+      let stored: StoredSnapshot | null = null;
+      if (firstEnabled) {
+        try {
+          await service.refreshAccount(firstEnabled);
+        } catch (error) {
+          // refreshAccount already marked the snapshot stale.
+        }
+        const store = await SnapshotStore.create(this.context);
+        stored = await store.load(firstEnabled.id);
+      }
+      const texts = formatSnapshotTexts(stored);
       const data = formBindingData.createFormBindingData(texts);
       await formProvider.updateForm(formId, data);
     } catch (error) {
