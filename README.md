@@ -1,6 +1,8 @@
 # QuotaGlance
 
-QuotaGlance 是一个个人使用的 macOS 菜单栏应用和桌面小组件，用于集中查看多个 AI API provider 的余额、消费上限、支出或订阅配额。
+<img src="docs/images/poster.png" width="960" alt="QuotaGlance 海报" />
+
+QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小组件，用于集中查看多个 AI API provider 的余额、消费上限、支出或订阅配额。
 
 当前支持 API Info、DeepSeek、Kimi、OpenRouter、MiniMax 和 BioMap Coding。不同 provider 暴露的官方能力并不相同，QuotaGlance 只显示真实可查询的数据，不会把消费上限、请求配额或连接状态伪装成现金余额。详细边界记录在 [`docs/research/provider-capabilities.md`](docs/research/provider-capabilities.md)。
 
