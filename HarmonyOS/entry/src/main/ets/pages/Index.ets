@@ -1,7 +1,6 @@
 import { router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { fetchBalance } from '../network/HttpClient';
-import { parseBalance } from '../providers/DeepSeekProvider';
+import { createProviderRegistry } from '../providers/ProviderCatalog';
 import { KeyRepository } from '../storage/KeyRepository';
 import { SnapshotStore, formatSnapshotTexts } from '../storage/SnapshotStore';
 
@@ -33,8 +32,8 @@ struct Index {
     const context = getContext(this) as common.UIAbilityContext;
     const store = await SnapshotStore.create(context);
     try {
-      const body = await fetchBalance(apiKey);
-      const snapshot = parseBalance(body, Date.now());
+      const provider = createProviderRegistry().provider('deepSeek');
+      const snapshot = await provider.fetch(apiKey);
       await store.save(snapshot);
     } catch (error) {
       await store.markStale();

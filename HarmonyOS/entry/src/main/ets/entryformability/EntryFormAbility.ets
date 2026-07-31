@@ -1,8 +1,7 @@
 import { formBindingData, FormExtensionAbility, formProvider } from '@kit.FormKit';
 import { Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { fetchBalance } from '../network/HttpClient';
-import { parseBalance } from '../providers/DeepSeekProvider';
+import { createProviderRegistry } from '../providers/ProviderCatalog';
 import { KeyRepository } from '../storage/KeyRepository';
 import { SnapshotStore, formatSnapshotTexts } from '../storage/SnapshotStore';
 
@@ -38,8 +37,8 @@ export default class EntryFormAbility extends FormExtensionAbility {
       const apiKey = await KeyRepository.load();
       if (apiKey) {
         try {
-          const body = await fetchBalance(apiKey);
-          const snapshot = parseBalance(body, Date.now());
+          const provider = createProviderRegistry().provider('deepSeek');
+          const snapshot = await provider.fetch(apiKey);
           await store.save(snapshot);
         } catch (error) {
           await store.markStale();
