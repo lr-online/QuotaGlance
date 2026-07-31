@@ -119,12 +119,21 @@ let launchAutoRefreshDone: boolean = false;
 const DOMAIN = 0x0000;
 const TAG = 'QuotaGlance';
 
+// Layout constants for the whole-page scroll (see build()).
+const APP_BAR_HEIGHT: number = 56;
+// Floor for the tabs/detail area so short pages never collapse it; anything
+// taller than the viewport is reached via the page scroll.
+const MIN_TABS_HEIGHT: number = 480;
+
 @Entry
 @Component
 struct Index {
   @State accounts: Account[] = [];
   @State refreshingAll: boolean = false;
   @State currentIndex: number = 0;
+  @State tabsHeight: number = MIN_TABS_HEIGHT;
+  private overviewHeight: number = 0;
+  private totalHeight: number = 0;
   @State syncTick: number = 0;
   @State themeMode: ThemeMode = 'system';
   @State overviewToday: string = '';
@@ -150,6 +159,16 @@ struct Index {
 
   onPageShow(): void {
     this.reload();
+  }
+
+  // Tabs/detail height = whatever is visible below the app bar and overview
+  // panel, floored at MIN_TABS_HEIGHT. Short content → no page scroll; tall
+  // content → the floor kicks in and the whole page scrolls together.
+  private recalcTabsHeight(): void {
+    const next = Math.max(this.totalHeight - APP_BAR_HEIGHT - this.overviewHeight, MIN_TABS_HEIGHT);
+    if (Math.abs(next - this.tabsHeight) > 1) {
+      this.tabsHeight = next;
+    }
   }
 
   // Every step is isolated so one failure no longer silently aborts the rest
@@ -495,52 +514,48 @@ struct Index {
       .width('100%')
       .height('100%')
 
-      Column({ space: 4 }) {
-        Row({ space: 6 }) {
-          Column()
-            .width(3)
-            .height(12)
-            .borderRadius(2)
-            .backgroundColor($r('app.color.accentTeal'))
-          Text(block.name)
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor($r('app.color.textPrimary'))
+      // Single-line row (~34vp): color bar + name take the left, everything
+      // informational collapses to one right-aligned ellipsized string, pct
+      // last. Balance keeps a quiet accentTeal Medium at 11sp — same size as
+      // the rest so the line stays even at this density.
+      Row({ space: 6 }) {
+        Column()
+          .width(3)
+          .height(12)
+          .borderRadius(2)
+          .backgroundColor($r('app.color.accentTeal'))
+        Text(block.name)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.textPrimary'))
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+        if (block.stale) {
+          Text($r('app.string.stale_hint_short'))
+            .fontSize(10)
+            .fontColor($r('app.color.warning'))
             .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .layoutWeight(1)
-          if (block.stale) {
-            Text($r('app.string.stale_hint_short'))
-              .fontSize(10)
-              .fontColor($r('app.color.warning'))
-              .maxLines(1)
-          }
-          if (block.pctText.length > 0) {
-            Text(block.pctText)
-              .fontSize(10)
-              .fontColor($r('app.color.textSecondary'))
-              .maxLines(1)
-          }
         }
-        .width('100%')
-        .alignItems(VerticalAlign.Center)
-
         if (!block.hasEnabled) {
           Text($r('app.string.overview_disabled'))
-            .fontSize(12)
+            .fontSize(11)
             .fontColor($r('app.color.textSecondary'))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .constraintSize({ maxWidth: '55%' })
         } else if (!block.hasData) {
           Text($r('app.string.no_data'))
-            .fontSize(12)
+            .fontSize(11)
             .fontColor($r('app.color.textSecondary'))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .constraintSize({ maxWidth: '55%' })
         } else {
-          // Second (and last) row: balance + today + quota merged into one
-          // ellipsized line, segments separated by ' · '. Balance keeps its
-          // accentTeal Medium emphasis; today/quota stay secondary 11sp.
           Text() {
             if (block.balanceText.length > 0) {
               Span(block.balanceText)
-                .fontSize(14)
+                .fontSize(11)
                 .fontWeight(FontWeight.Medium)
                 .fontColor($r('app.color.accentTeal'))
             }
@@ -565,14 +580,20 @@ struct Index {
                 .fontColor($r('app.color.textSecondary'))
             }
           }
-          .width('100%')
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .constraintSize({ maxWidth: '55%' })
+        }
+        if (block.pctText.length > 0) {
+          Text(block.pctText)
+            .fontSize(10)
+            .fontColor($r('app.color.textSecondary'))
+            .maxLines(1)
         }
       }
       .width('100%')
-      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
-      .alignItems(HorizontalAlign.Start)
+      .padding({ left: 12, right: 12, top: 7, bottom: 7 })
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
     .backgroundColor($r('app.color.appBackground'))
@@ -590,8 +611,8 @@ struct Index {
   // 对齐,视觉基线一致。
   @Builder
   overviewPanel() {
-    Column({ space: 12 }) {
-      Column({ space: 6 }) {
+    Column({ space: 10 }) {
+      Column({ space: 4 }) {
         Row() {
           Text($r('app.string.overview_label'))
             .fontSize(11)
@@ -626,29 +647,28 @@ struct Index {
       .alignItems(HorizontalAlign.Start)
 
       if (this.providerBlocks.length > 0) {
-        // Cap the provider list at ~3 compact rows (block ≈ 56vp incl. its
-        // 8vp gap → 3 rows + a peek at the next ≈ 210vp) and scroll the
-        // overflow, so a long provider list can no longer push the tab area
-        // off screen. Fixed vp (not %) keeps landscape sane; the panel
-        // header stays pinned outside the Scroll.
-        Scroll() {
-          Column({ space: 8 }) {
-            ForEach(this.providerBlocks, (block: ProviderOverview) => {
-              this.providerBlock(block)
-            }, (block: ProviderOverview) => block.key)
-          }
-          .width('100%')
+        // Single-line rows, no inner Scroll: the panel sizes to its content
+        // and the whole page scrolls instead (see build()).
+        Column({ space: 6 }) {
+          ForEach(this.providerBlocks, (block: ProviderOverview) => {
+            this.providerBlock(block)
+          }, (block: ProviderOverview) => block.key)
         }
         .width('100%')
-        .constraintSize({ maxHeight: 210 })
-        .scrollBar(BarState.Auto)
       }
     }
     .width('100%')
-    .padding(16)
+    .padding({ left: 16, right: 16, top: 14, bottom: 14 })
     .backgroundColor($r('app.color.cardBackground'))
     .borderRadius(14)
     .margin({ left: 16, right: 16, bottom: 10 })
+    .onAreaChange((oldArea: Area, newArea: Area) => {
+      const height = newArea.height as number;
+      if (Math.abs(height - this.overviewHeight) > 1) {
+        this.overviewHeight = height;
+        this.recalcTabsHeight();
+      }
+    })
   }
 
   @Builder
@@ -735,7 +755,9 @@ struct Index {
     .animationDuration(0)
     .barBackgroundColor($r('app.color.appBackground'))
     .width('100%')
-    .layoutWeight(1)
+    // Explicit height (not layoutWeight): the Tabs now lives inside the
+    // whole-page Scroll where weights don't apply.
+    .height(this.tabsHeight)
     .onChange((index: number) => {
       this.currentIndex = index;
     })
@@ -800,22 +822,48 @@ struct Index {
           })
       }
       .width('100%')
-      .height(56)
+      .height(APP_BAR_HEIGHT)
       .padding({ left: 20, right: 20 })
 
-      if (this.accounts.length > 0) {
-        this.overviewPanel()
-      }
+      // Everything below the app bar scrolls as ONE page: overview panel,
+      // tab bar and tab detail fling together; the app bar stays pinned so
+      // its buttons are always reachable. The detail area keeps its own
+      // inner Scroll (AccountDetailView) — ArkUI's default nested scrolling
+      // lets the inner scroller consume the drag first and hands off to the
+      // page at its edge, so no nestedScroll config is needed.
+      Scroll() {
+        Column() {
+          if (this.accounts.length > 0) {
+            this.overviewPanel()
+          }
 
-      if (this.accounts.length === 0) {
-        this.onboardingBody()
-      } else {
-        this.tabsBody()
+          if (this.accounts.length === 0) {
+            Column() {
+              this.onboardingBody()
+            }
+            .width('100%')
+            .height(this.tabsHeight)
+          } else {
+            this.tabsBody()
+          }
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Center)
       }
+      .width('100%')
+      .layoutWeight(1)
+      .scrollBar(BarState.Auto)
     }
     .width('100%')
     .height('100%')
     .alignItems(HorizontalAlign.Center)
     .backgroundColor($r('app.color.appBackground'))
+    .onAreaChange((oldArea: Area, newArea: Area) => {
+      const height = newArea.height as number;
+      if (Math.abs(height - this.totalHeight) > 1) {
+        this.totalHeight = height;
+        this.recalcTabsHeight();
+      }
+    })
   }
 }
