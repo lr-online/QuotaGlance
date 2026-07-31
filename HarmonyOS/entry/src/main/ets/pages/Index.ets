@@ -495,7 +495,7 @@ struct Index {
       .width('100%')
       .height('100%')
 
-      Column({ space: 6 }) {
+      Column({ space: 4 }) {
         Row({ space: 6 }) {
           Column()
             .width(3)
@@ -534,32 +534,44 @@ struct Index {
             .fontSize(12)
             .fontColor($r('app.color.textSecondary'))
         } else {
-          if (block.balanceText.length > 0) {
-            Text(block.balanceText)
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor($r('app.color.accentTeal'))
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          // Second (and last) row: balance + today + quota merged into one
+          // ellipsized line, segments separated by ' · '. Balance keeps its
+          // accentTeal Medium emphasis; today/quota stay secondary 11sp.
+          Text() {
+            if (block.balanceText.length > 0) {
+              Span(block.balanceText)
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor($r('app.color.accentTeal'))
+            }
+            if (block.todayText.length > 0) {
+              if (block.balanceText.length > 0) {
+                Span(' · ')
+                  .fontSize(11)
+                  .fontColor($r('app.color.textSecondary'))
+              }
+              Span(block.todayText)
+                .fontSize(11)
+                .fontColor($r('app.color.textSecondary'))
+            }
+            if (block.quotaText.length > 0) {
+              if (block.balanceText.length > 0 || block.todayText.length > 0) {
+                Span(' · ')
+                  .fontSize(11)
+                  .fontColor($r('app.color.textSecondary'))
+              }
+              Span(block.quotaText)
+                .fontSize(11)
+                .fontColor($r('app.color.textSecondary'))
+            }
           }
-          if (block.todayText.length > 0) {
-            Text(block.todayText)
-              .fontSize(11)
-              .fontColor($r('app.color.textSecondary'))
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-          if (block.quotaText.length > 0) {
-            Text(block.quotaText)
-              .fontSize(11)
-              .fontColor($r('app.color.textSecondary'))
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
+          .width('100%')
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
       }
       .width('100%')
-      .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+      .padding({ left: 12, right: 12, top: 8, bottom: 8 })
       .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
@@ -614,12 +626,22 @@ struct Index {
       .alignItems(HorizontalAlign.Start)
 
       if (this.providerBlocks.length > 0) {
-        Column({ space: 8 }) {
-          ForEach(this.providerBlocks, (block: ProviderOverview) => {
-            this.providerBlock(block)
-          }, (block: ProviderOverview) => block.key)
+        // Cap the provider list at ~3 compact rows (block ≈ 56vp incl. its
+        // 8vp gap → 3 rows + a peek at the next ≈ 210vp) and scroll the
+        // overflow, so a long provider list can no longer push the tab area
+        // off screen. Fixed vp (not %) keeps landscape sane; the panel
+        // header stays pinned outside the Scroll.
+        Scroll() {
+          Column({ space: 8 }) {
+            ForEach(this.providerBlocks, (block: ProviderOverview) => {
+              this.providerBlock(block)
+            }, (block: ProviderOverview) => block.key)
+          }
+          .width('100%')
         }
         .width('100%')
+        .constraintSize({ maxHeight: 210 })
+        .scrollBar(BarState.Auto)
       }
     }
     .width('100%')
