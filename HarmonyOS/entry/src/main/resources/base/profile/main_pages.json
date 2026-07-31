@@ -2,6 +2,7 @@
   "src": [
     "pages/Index",
     "pages/AccountsPage",
-    "pages/AccountEditorPage"
+    "pages/AccountEditorPage",
+    "pages/AccountDetailPage"
   ]
 }

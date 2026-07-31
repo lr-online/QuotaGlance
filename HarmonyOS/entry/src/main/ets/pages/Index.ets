@@ -105,7 +105,6 @@ function buildCardModel(context: common.Context, account: Account, stored: Store
 struct Index {
   @State cards: CardModel[] = [];
   @State refreshingAll: boolean = false;
-  @State refreshingIds: string[] = [];
 
   onPageShow(): void {
     this.reload();
@@ -141,26 +140,8 @@ struct Index {
     await this.reload();
   }
 
-  private async refreshOne(item: CardModel): Promise<void> {
-    if (!item.isEnabled || this.refreshingIds.indexOf(item.accountId) >= 0) {
-      return;
-    }
-    this.refreshingIds = this.refreshingIds.concat(item.accountId);
-    const context = getContext(this) as common.UIAbilityContext;
-    try {
-      const service = await AccountService.create(context);
-      const accounts = await service.loadAccounts();
-      for (const account of accounts) {
-        if (account.id === item.accountId) {
-          await service.refreshAccount(account);
-          break;
-        }
-      }
-    } catch (error) {
-      promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
-    }
-    this.refreshingIds = this.refreshingIds.filter((id: string) => id !== item.accountId);
-    await this.reload();
+  private openDetail(item: CardModel): void {
+    router.pushUrl({ url: 'pages/AccountDetailPage', params: { accountId: item.accountId } });
   }
 
   @Builder
@@ -224,13 +205,6 @@ struct Index {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
-        if (this.refreshingIds.indexOf(item.accountId) >= 0) {
-          LoadingProgress()
-            .width(16)
-            .height(16)
-            .color($r('app.color.accentTeal'))
-            .margin({ right: 8 })
-        }
         Text(item.providerName)
           .fontSize(11)
           .fontColor($r('app.color.accentTeal'))
@@ -304,7 +278,7 @@ struct Index {
     .borderRadius(14)
     .opacity(item.isEnabled ? 1 : 0.5)
     .onClick(() => {
-      this.refreshOne(item);
+      this.openDetail(item);
     })
   }
 

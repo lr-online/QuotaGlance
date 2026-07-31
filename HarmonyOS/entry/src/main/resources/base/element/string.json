@@ -118,7 +118,91 @@
     },
     {
       "name": "not_refreshed",
-      "value": "尚未刷新 · 点击卡片更新"
+      "value": "尚未刷新"
+    },
+    {
+      "name": "detail_balance",
+      "value": "余额"
+    },
+    {
+      "name": "detail_spending_limit",
+      "value": "消费上限"
+    },
+    {
+      "name": "detail_quota",
+      "value": "配额窗口"
+    },
+    {
+      "name": "detail_today",
+      "value": "当天调用"
+    },
+    {
+      "name": "detail_recent_7d",
+      "value": "最近7天"
+    },
+    {
+      "name": "detail_models",
+      "value": "模型用量"
+    },
+    {
+      "name": "detail_spend",
+      "value": "周期支出"
+    },
+    {
+      "name": "detail_total",
+      "value": "总计"
+    },
+    {
+      "name": "detail_status",
+      "value": "状态"
+    },
+    {
+      "name": "stat_cost",
+      "value": "花费"
+    },
+    {
+      "name": "stat_requests",
+      "value": "请求"
+    },
+    {
+      "name": "stat_tokens",
+      "value": "Tokens"
+    },
+    {
+      "name": "used_label",
+      "value": "已用"
+    },
+    {
+      "name": "limit_label",
+      "value": "上限"
+    },
+    {
+      "name": "reset_prefix",
+      "value": "重置于"
+    },
+    {
+      "name": "below_threshold",
+      "value": "低于设定阈值"
+    },
+    {
+      "name": "spend_today",
+      "value": "今日"
+    },
+    {
+      "name": "spend_week",
+      "value": "本周"
+    },
+    {
+      "name": "spend_month",
+      "value": "本月"
+    },
+    {
+      "name": "spend_total",
+      "value": "累计"
+    },
+    {
+      "name": "requests_unit",
+      "value": "次"
     },
     {
       "name": "no_data",
