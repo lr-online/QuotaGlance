@@ -323,6 +323,14 @@ struct Index {
               })
           }
         }
+        Text($r('app.string.screensaver'))
+          .fontSize(15)
+          .fontColor($r('app.color.accentTeal'))
+          .padding(4)
+          .margin({ right: 16 })
+          .onClick(() => {
+            router.pushUrl({ url: 'pages/ScreensaverPage' });
+          })
         Text($r('app.string.manage_accounts'))
           .fontSize(15)
           .fontColor($r('app.color.accentTeal'))

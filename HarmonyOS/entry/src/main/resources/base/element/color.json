@@ -43,6 +43,10 @@
     {
       "name": "warning",
       "value": "#E5A84B"
+    },
+    {
+      "name": "screensaverClock",
+      "value": "#B8BFC9"
     }
   ]
 }

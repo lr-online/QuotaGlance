@@ -243,6 +243,18 @@
     {
       "name": "err_generic",
       "value": "验证失败，请稍后重试"
+    },
+    {
+      "name": "screensaver",
+      "value": "屏保"
+    },
+    {
+      "name": "screensaver_exit_hint",
+      "value": "点击屏幕任意处退出"
+    },
+    {
+      "name": "stale_hint_short",
+      "value": "过期"
     }
   ]
 }

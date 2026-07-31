@@ -3,6 +3,7 @@
     "pages/Index",
     "pages/AccountsPage",
     "pages/AccountEditorPage",
-    "pages/AccountDetailPage"
+    "pages/AccountDetailPage",
+    "pages/ScreensaverPage"
   ]
 }
