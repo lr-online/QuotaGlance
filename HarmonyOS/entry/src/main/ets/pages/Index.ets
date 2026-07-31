@@ -4,8 +4,9 @@ import { AccountService } from '../services/AccountService';
 import { Account } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import { providerDisplayName } from '../providers/UsageProvider';
+import { QuotaWindow } from '../providers/UsageSnapshot';
 import { friendlyErrorText } from '../utils/ErrorMapping';
-import { formatAmount, formatCompactCount } from '../utils/NumberFormat';
+import { formatAmount, formatCompactCount, formatQuotaValue } from '../utils/NumberFormat';
 import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 import { AccountDetailView } from '../components/AccountDetailView';
@@ -46,6 +47,63 @@ function sumInto(map: Map<string, number>, currency: string, amountText: string)
   map.set(currency, (map.get(currency) ?? 0) + value);
 }
 
+// 'CNY 123.45 · USD 67.89' (currency first), '' when empty.
+function balanceLine(map: Map<string, number>): string {
+  const parts: string[] = orderedCurrencies(map).map((currency: string) => {
+    return `${currency} ${formatAmount(`${map.get(currency) ?? 0}`)}`;
+  });
+  return parts.join(' · ');
+}
+
+// '今日 12.34 CNY · 45 次' (amount first), '' when nothing is exposed.
+function todayLine(context: common.Context, costs: Map<string, number>, requests: number,
+  hasRequests: boolean): string {
+  const parts: string[] = orderedCurrencies(costs).map((currency: string) => {
+    return `${formatAmount(`${costs.get(currency) ?? 0}`)} ${currency}`;
+  });
+  if (hasRequests) {
+    const unit = context.resourceManager.getStringSync($r('app.string.requests_unit').id);
+    parts.push(`${formatCompactCount(requests)} ${unit}`);
+  }
+  if (parts.length === 0) {
+    return '';
+  }
+  const label = context.resourceManager.getStringSync($r('app.string.overview_today').id);
+  return `${label} ${parts.join(' · ')}`;
+}
+
+// '配额 300/500 次' from the first quota window, per the MiniMax-style
+// providers that expose quotas instead of balances.
+function quotaSummary(context: common.Context, window: QuotaWindow): string {
+  const label = context.resourceManager.getStringSync($r('app.string.overview_quota').id);
+  const mainText = window.remaining !== undefined ? formatQuotaValue(window.remaining)
+    : (window.used !== undefined ? formatQuotaValue(window.used) : '--');
+  const limitText = window.limit !== undefined ? `/${formatQuotaValue(window.limit)}` : '';
+  return `${label} ${mainText}${limitText} ${window.unit}`.trim();
+}
+
+interface ProviderOverview {
+  key: string;
+  name: string;
+  hasEnabled: boolean;
+  balanceText: string;
+  todayText: string;
+  quotaText: string;
+  stale: boolean;
+  hasData: boolean;
+}
+
+interface ProviderWork {
+  name: string;
+  hasEnabled: boolean;
+  balances: Map<string, number>;
+  todayCosts: Map<string, number>;
+  todayRequests: number;
+  hasTodayRequests: boolean;
+  quotaText: string;
+  stale: boolean;
+}
+
 @Entry
 @Component
 struct Index {
@@ -57,7 +115,8 @@ struct Index {
   @State overviewBalance: string = '';
   @State overviewToday: string = '';
   @State overviewPartial: boolean = false;
-  @State overviewVisible: boolean = false;
+  @State providerBlocks: ProviderOverview[] = [];
+  @State providerWide: boolean = false;
   private tabsController: TabsController = new TabsController();
 
   onPageShow(): void {
@@ -99,25 +158,45 @@ struct Index {
       });
   }
 
-  // Aggregates the CACHED snapshots of enabled accounts for the overview
-  // strip — no network. Only real balances enter the balance sum (per the
-  // macOS contract, spendingLimit/quotaWindow values never do); today
-  // counters are summed separately. Partial when any enabled account is
-  // stale, or has no snapshot while others do.
+  // Aggregates the CACHED snapshots for the overview panel — no network.
+  // Overall totals run over enabled accounts; only real balances enter the
+  // balance sum (per the macOS contract, spendingLimit/quotaWindow values
+  // never do). Every provider with ≥1 account gets a block, even with no
+  // cached data or only disabled accounts, so the panel is 常驻.
   private async loadOverview(context: common.UIAbilityContext): Promise<void> {
-    const enabled = this.accounts.filter((account: Account) => account.isEnabled);
-    if (enabled.length === 0) {
-      this.overviewVisible = false;
-      return;
-    }
     const store = await SnapshotStore.create(context);
     const balances = new Map<string, number>();
     const todayCosts = new Map<string, number>();
     let todayRequests = 0;
     let hasTodayRequests = false;
     let snapshotsFound = 0;
+    let enabledCount = 0;
     let partial = false;
-    for (const account of enabled) {
+    const workByProvider = new Map<string, ProviderWork>();
+    const providerOrder: string[] = [];
+
+    for (const account of this.accounts) {
+      const key = account.provider as string;
+      let work = workByProvider.get(key);
+      if (work === undefined) {
+        work = {
+          name: providerDisplayName(account.provider),
+          hasEnabled: false,
+          balances: new Map<string, number>(),
+          todayCosts: new Map<string, number>(),
+          todayRequests: 0,
+          hasTodayRequests: false,
+          quotaText: '',
+          stale: false
+        };
+        workByProvider.set(key, work);
+        providerOrder.push(key);
+      }
+      if (!account.isEnabled) {
+        continue;
+      }
+      work.hasEnabled = true;
+      enabledCount += 1;
       const stored: StoredSnapshot | null = await store.load(account.id);
       if (stored === null) {
         continue;
@@ -125,46 +204,52 @@ struct Index {
       snapshotsFound += 1;
       if (stored.isStale) {
         partial = true;
+        work.stale = true;
       }
       const snapshot = stored.snapshot;
       for (const balance of snapshot.balances) {
         sumInto(balances, balance.available.currency, balance.available.amount);
+        sumInto(work.balances, balance.available.currency, balance.available.amount);
       }
       if (snapshot.today !== undefined) {
         if (snapshot.today.actualCost !== undefined) {
           sumInto(todayCosts, snapshot.today.actualCost.currency, snapshot.today.actualCost.amount);
+          sumInto(work.todayCosts, snapshot.today.actualCost.currency, snapshot.today.actualCost.amount);
         }
         if (snapshot.today.requests !== undefined) {
           todayRequests += snapshot.today.requests;
           hasTodayRequests = true;
+          work.todayRequests += snapshot.today.requests;
+          work.hasTodayRequests = true;
         }
       }
+      if (work.quotaText.length === 0
+        && snapshot.quotaWindows !== undefined && snapshot.quotaWindows.length > 0) {
+        work.quotaText = quotaSummary(context, snapshot.quotaWindows[0]);
+      }
     }
-    if (snapshotsFound > 0 && snapshotsFound < enabled.length) {
+    if (snapshotsFound > 0 && snapshotsFound < enabledCount) {
       partial = true;
     }
 
-    const balanceParts: string[] = orderedCurrencies(balances).map((currency: string) => {
-      return `${currency} ${formatAmount(`${balances.get(currency) ?? 0}`)}`;
-    });
-    this.overviewBalance = balanceParts.join(' · ');
-
-    const requestsUnit = context.resourceManager.getStringSync($r('app.string.requests_unit').id);
-    const todayParts: string[] = orderedCurrencies(todayCosts).map((currency: string) => {
-      return `${formatAmount(`${todayCosts.get(currency) ?? 0}`)} ${currency}`;
-    });
-    if (hasTodayRequests) {
-      todayParts.push(`${formatCompactCount(todayRequests)} ${requestsUnit}`);
-    }
-    if (todayParts.length > 0) {
-      const todayLabel = context.resourceManager.getStringSync($r('app.string.overview_today').id);
-      this.overviewToday = `${todayLabel} ${todayParts.join(' · ')}`;
-    } else {
-      this.overviewToday = '';
-    }
-
+    this.overviewBalance = balanceLine(balances);
+    this.overviewToday = todayLine(context, todayCosts, todayRequests, hasTodayRequests);
     this.overviewPartial = partial;
-    this.overviewVisible = balanceParts.length > 0 || todayParts.length > 0 || partial;
+    this.providerBlocks = providerOrder.map((key: string): ProviderOverview => {
+      const work = workByProvider.get(key) as ProviderWork;
+      const balanceText = balanceLine(work.balances);
+      const todayText = todayLine(context, work.todayCosts, work.todayRequests, work.hasTodayRequests);
+      return {
+        key: key,
+        name: work.name,
+        hasEnabled: work.hasEnabled,
+        balanceText: balanceText,
+        todayText: todayText,
+        quotaText: work.quotaText,
+        stale: work.stale,
+        hasData: balanceText.length > 0 || todayText.length > 0 || work.quotaText.length > 0
+      };
+    });
   }
 
   @Builder
@@ -243,47 +328,151 @@ struct Index {
   }
 
   @Builder
-  overviewStrip() {
-    Row({ space: 10 }) {
-      Text($r('app.string.overview_label'))
-        .fontSize(11)
-        .fontColor($r('app.color.textSecondary'))
-        .margin({ top: 2 })
-      Column({ space: 4 }) {
-        if (this.overviewBalance.length > 0) {
-          Text(this.overviewBalance)
-            .fontSize(15)
+  providerBlock(block: ProviderOverview) {
+    Column({ space: 6 }) {
+      Row({ space: 6 }) {
+        Column()
+          .width(3)
+          .height(12)
+          .borderRadius(2)
+          .backgroundColor($r('app.color.accentTeal'))
+        Text(block.name)
+          .fontSize(13)
+          .fontWeight(FontWeight.Medium)
+          .fontColor($r('app.color.textPrimary'))
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+        if (block.stale) {
+          Text($r('app.string.stale_hint_short'))
+            .fontSize(10)
+            .fontColor($r('app.color.warning'))
+            .maxLines(1)
+        }
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+
+      if (!block.hasEnabled) {
+        Text($r('app.string.overview_disabled'))
+          .fontSize(12)
+          .fontColor($r('app.color.textSecondary'))
+      } else if (!block.hasData) {
+        Text($r('app.string.no_data'))
+          .fontSize(12)
+          .fontColor($r('app.color.textSecondary'))
+      } else {
+        if (block.balanceText.length > 0) {
+          Text(block.balanceText)
+            .fontSize(14)
             .fontWeight(FontWeight.Medium)
             .fontColor($r('app.color.accentTeal'))
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
-        if (this.overviewToday.length > 0 || this.overviewPartial) {
-          Row({ space: 8 }) {
-            if (this.overviewToday.length > 0) {
-              Text(this.overviewToday)
-                .fontSize(12)
-                .fontColor($r('app.color.textSecondary'))
-                .maxLines(1)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-            }
-            if (this.overviewPartial) {
-              Text($r('app.string.overview_partial'))
-                .fontSize(11)
-                .fontColor($r('app.color.warning'))
-                .maxLines(1)
+        if (block.todayText.length > 0) {
+          Text(block.todayText)
+            .fontSize(11)
+            .fontColor($r('app.color.textSecondary'))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        if (block.quotaText.length > 0) {
+          Text(block.quotaText)
+            .fontSize(11)
+            .fontColor($r('app.color.textSecondary'))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+      }
+    }
+    .width(this.providerWide ? '100%' : 160)
+    .padding(10)
+    .backgroundColor($r('app.color.appBackground'))
+    .borderRadius(10)
+    .opacity(block.hasEnabled ? 1 : 0.5)
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  // 常驻 overview panel: always rendered when ≥1 account exists, even with
+  // zero cached snapshots — missing data shows '--' / 暂无数据 placeholders
+  // inside the panel instead of hiding it. Provider section: horizontally
+  // scrollable row of fixed-width blocks below 600vp (caps panel height);
+  // GridRow 2/3-column flow at ≥600/≥1000vp, matching AccountDetailView's
+  // breakpoint strategy.
+  @Builder
+  overviewPanel() {
+    Column({ space: 12 }) {
+      Row({ space: 10 }) {
+        Text($r('app.string.overview_label'))
+          .fontSize(11)
+          .fontColor($r('app.color.textSecondary'))
+          .margin({ top: 3 })
+        Column({ space: 4 }) {
+          Text(this.overviewBalance.length > 0 ? this.overviewBalance : '--')
+            .fontSize(17)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.accentTeal'))
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          if (this.overviewToday.length > 0 || this.overviewPartial) {
+            Row({ space: 8 }) {
+              if (this.overviewToday.length > 0) {
+                Text(this.overviewToday)
+                  .fontSize(12)
+                  .fontColor($r('app.color.textSecondary'))
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              if (this.overviewPartial) {
+                Text($r('app.string.overview_partial'))
+                  .fontSize(11)
+                  .fontColor($r('app.color.warning'))
+                  .maxLines(1)
+              }
             }
           }
         }
+        .layoutWeight(1)
+        .alignItems(HorizontalAlign.Start)
       }
-      .layoutWeight(1)
-      .alignItems(HorizontalAlign.Start)
+      .width('100%')
+
+      if (this.providerBlocks.length > 0) {
+        if (this.providerWide) {
+          GridRow({
+            gutter: { x: 8, y: 8 },
+            breakpoints: { value: ['600vp', '1000vp'], reference: BreakpointsReference.ComponentSize }
+          }) {
+            ForEach(this.providerBlocks, (block: ProviderOverview) => {
+              GridCol({ span: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4, xxl: 4 } }) {
+                this.providerBlock(block)
+              }
+            }, (block: ProviderOverview) => block.key)
+          }
+          .width('100%')
+        } else {
+          Scroll() {
+            Row({ space: 8 }) {
+              ForEach(this.providerBlocks, (block: ProviderOverview) => {
+                this.providerBlock(block)
+              }, (block: ProviderOverview) => block.key)
+            }
+          }
+          .scrollable(ScrollDirection.Horizontal)
+          .scrollBar(BarState.Off)
+          .width('100%')
+        }
+      }
     }
     .width('100%')
-    .padding(14)
+    .padding(16)
     .backgroundColor($r('app.color.cardBackground'))
     .borderRadius(14)
     .margin({ left: 16, right: 16, bottom: 10 })
+    .onAreaChange((oldArea: Area, newArea: Area) => {
+      this.providerWide = newArea.width >= 600;
+    })
   }
 
   @Builder
@@ -438,8 +627,8 @@ struct Index {
       .height(56)
       .padding({ left: 20, right: 20 })
 
-      if (this.accounts.length > 0 && this.overviewVisible) {
-        this.overviewStrip()
+      if (this.accounts.length > 0) {
+        this.overviewPanel()
       }
 
       if (this.accounts.length === 0) {

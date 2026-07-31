@@ -283,6 +283,14 @@
     {
       "name": "overview_partial",
       "value": "部分数据过期"
+    },
+    {
+      "name": "overview_quota",
+      "value": "配额"
+    },
+    {
+      "name": "overview_disabled",
+      "value": "已停用"
     }
   ]
 }
