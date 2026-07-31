@@ -87,8 +87,9 @@ interface ProviderOverview {
   quotaText: string;
   stale: boolean;
   hasData: boolean;
-  // Comparison-bar fill fraction (0–1, score ÷ max score) and its rounded
-  // percentage label ('' when the provider has no consumption score).
+  // 今日用量占比对比条:fill fraction = 该 provider 今日调用次数 ÷ 所有
+  // provider 今日调用次数总和(各行合计 = 100%);pctText 为四舍五入后的
+  // 占比标签。所有 provider 都无调用数据时 pctText 为 ''(不显示,避免全 0%)。
   fraction: number;
   pctText: string;
 }
@@ -101,34 +102,7 @@ interface ProviderWork {
   todayRequests: number;
   hasTodayRequests: boolean;
   quotaText: string;
-  quotaScore: number | null;
   stale: boolean;
-}
-
-// Consumption score for the cross-provider comparison bars. Priority:
-// (a) today.actualCost — CNY if present, else USD, else the first currency.
-//     Cross-currency amounts are NOT converted (project rule), so picking
-//     one currency per provider keeps the comparison approximate by design.
-// (b) today.requests.
-// (c) first quota window's used percentage (used/limit, clamped 0–100).
-// (d) otherwise no score (null) → empty fill, no % label.
-function providerScore(work: ProviderWork): number | null {
-  if (work.todayCosts.size > 0) {
-    const cny = work.todayCosts.get('CNY');
-    if (cny !== undefined) {
-      return cny;
-    }
-    const usd = work.todayCosts.get('USD');
-    if (usd !== undefined) {
-      return usd;
-    }
-    const first = orderedCurrencies(work.todayCosts)[0];
-    return work.todayCosts.get(first) ?? null;
-  }
-  if (work.hasTodayRequests) {
-    return work.todayRequests;
-  }
-  return work.quotaScore;
 }
 
 // Cold-launch guard (module scope): the once-per-app-open auto refreshAll
@@ -137,7 +111,8 @@ let launchAutoRefreshDone: boolean = false;
 
 @Entry
 @Component
-struct Index {  @State accounts: Account[] = [];
+struct Index {
+  @State accounts: Account[] = [];
   @State refreshingAll: boolean = false;
   @State currentIndex: number = 0;
   @State syncTick: number = 0;
@@ -168,8 +143,10 @@ struct Index {  @State accounts: Account[] = [];
 
   // Once per cold app launch: refresh every enabled account (busy chip
   // while running), then recompute the overview and bump the tabs' syncTick.
-  // The enabled ids are pre-marked in AccountDetailView's launch set so its
-  // per-tab once-per-launch auto-refresh does not duplicate these fetches.
+  // Only accounts whose refresh actually landed (fresh, non-stale snapshot)
+  // are pre-marked in AccountDetailView's launch set — accounts that failed
+  // stay unmarked so each tab's once-per-launch auto-refresh can retry them
+  // as the fallback, instead of both paths ending up empty.
   private async maybeLaunchRefresh(service: AccountService, context: common.UIAbilityContext): Promise<void> {
     if (launchAutoRefreshDone) {
       return;
@@ -188,7 +165,15 @@ struct Index {  @State accounts: Account[] = [];
       promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
     }
     this.refreshingAll = false;
-    markAccountsRefreshedThisLaunch(enabledIds);
+    const store = await SnapshotStore.create(context);
+    const succeeded: string[] = [];
+    for (const id of enabledIds) {
+      const stored: StoredSnapshot | null = await store.load(id);
+      if (stored !== null && !stored.isStale) {
+        succeeded.push(id);
+      }
+    }
+    markAccountsRefreshedThisLaunch(succeeded);
     this.syncTick += 1;
     await this.loadOverview(context);
   }
@@ -242,7 +227,6 @@ struct Index {  @State accounts: Account[] = [];
           todayRequests: 0,
           hasTodayRequests: false,
           quotaText: '',
-          quotaScore: null,
           stale: false
         };
         workByProvider.set(key, work);
@@ -280,12 +264,7 @@ struct Index {  @State accounts: Account[] = [];
       }
       if (work.quotaText.length === 0
         && snapshot.quotaWindows !== undefined && snapshot.quotaWindows.length > 0) {
-        const window = snapshot.quotaWindows[0];
-        work.quotaText = quotaSummary(context, window);
-        if (window.limit !== undefined && window.limit > 0) {
-          const used = window.used ?? ((window.remaining !== undefined) ? window.limit - window.remaining : 0);
-          work.quotaScore = Math.min(Math.max((used / window.limit) * 100, 0), 100);
-        }
+        work.quotaText = quotaSummary(context, snapshot.quotaWindows[0]);
       }
     }
     if (snapshotsFound > 0 && snapshotsFound < enabledCount) {
@@ -314,23 +293,23 @@ struct Index {  @State accounts: Account[] = [];
         pctText: ''
       };
     });
-    // Normalize comparison-bar fractions against the max score; a zero/absent
-    // max leaves every fill at 0 with no % labels.
-    let maxScore = 0;
-    const scores: Array<number | null> = blocks.map((block: ProviderOverview): number | null => {
-      const work = workByProvider.get(block.key) as ProviderWork;
-      const score = providerScore(work);
-      if (score !== null && score > maxScore) {
-        maxScore = score;
+    // 对比条 = 今日调用次数占比:每行填充 = 该 provider 今日 requests ÷ 全部
+    // provider 今日 requests 总和(合计 100%)。无调用数据的 provider 记 0%;
+    // 总和为 0(如刚安装)时所有行不填充、不显示百分比。
+    let totalRequests = 0;
+    for (const key of providerOrder) {
+      const work = workByProvider.get(key) as ProviderWork;
+      if (work.hasTodayRequests) {
+        totalRequests += work.todayRequests;
       }
-      return score;
-    });
-    this.providerBlocks = blocks.map((block: ProviderOverview, index: number): ProviderOverview => {
-      const score = scores[index];
-      if (score === null || maxScore <= 0 || !block.hasEnabled) {
+    }
+    this.providerBlocks = blocks.map((block: ProviderOverview): ProviderOverview => {
+      if (!block.hasEnabled || totalRequests <= 0) {
         return block;
       }
-      const fraction = Math.min(Math.max(score / maxScore, 0), 1);
+      const work = workByProvider.get(block.key) as ProviderWork;
+      const requests = work.hasTodayRequests ? work.todayRequests : 0;
+      const fraction = Math.min(Math.max(requests / totalRequests, 0), 1);
       block.fraction = fraction;
       block.pctText = `${Math.round(fraction * 100)}%`;
       return block;
@@ -505,15 +484,27 @@ struct Index {  @State accounts: Account[] = [];
   // zero cached snapshots — missing data shows '--' / 暂无数据 placeholders
   // inside the panel instead of hiding it. Header keeps only today's totals
   // (prominent); providers are a vertical multi-row list of full-width
-  // consumption-comparison rows at every screen width.
+  // consumption-comparison rows at every screen width. 头部与 provider 行
+  // 统一 12vp 内边距,所有文字的左边缘对齐;「今日」与大号数字 Bottom
+  // 对齐,视觉基线一致。
   @Builder
   overviewPanel() {
     Column({ space: 12 }) {
-      Row({ space: 10 }) {
-        Text($r('app.string.overview_label'))
-          .fontSize(11)
-          .fontColor($r('app.color.textSecondary'))
-          .margin({ top: 6 })
+      Column({ space: 6 }) {
+        Row() {
+          Text($r('app.string.overview_label'))
+            .fontSize(11)
+            .fontColor($r('app.color.textSecondary'))
+            .layoutWeight(1)
+          if (this.overviewPartial) {
+            Text($r('app.string.overview_partial'))
+              .fontSize(11)
+              .fontColor($r('app.color.warning'))
+              .maxLines(1)
+          }
+        }
+        .width('100%')
+
         Row({ space: 8 }) {
           Text($r('app.string.overview_today'))
             .fontSize(12)
@@ -525,18 +516,13 @@ struct Index {  @State accounts: Account[] = [];
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
-          if (this.overviewPartial) {
-            Text($r('app.string.overview_partial'))
-              .fontSize(11)
-              .fontColor($r('app.color.warning'))
-              .maxLines(1)
-          }
         }
-        .layoutWeight(1)
+        .width('100%')
         .alignItems(VerticalAlign.Bottom)
       }
       .width('100%')
-      .alignItems(VerticalAlign.Top)
+      .padding({ left: 12, right: 12 })
+      .alignItems(HorizontalAlign.Start)
 
       if (this.providerBlocks.length > 0) {
         Column({ space: 8 }) {
