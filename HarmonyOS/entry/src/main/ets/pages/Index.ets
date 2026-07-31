@@ -501,102 +501,103 @@ struct Index {
 
   @Builder
   providerBlock(block: ProviderOverview) {
-    Stack({ alignContent: Alignment.Start }) {
-      // Comparison-fill track behind the content: width = score ÷ max score.
-      // accentTealTint (16%-alpha of the mode's teal) stays legible under
-      // textPrimary/accentTeal text in both palettes.
-      Row() {
-        Column()
-          .width(`${Math.round(block.fraction * 100)}%`)
-          .height('100%')
-          .backgroundColor($r('app.color.accentTealTint'))
-      }
-      .width('100%')
-      .height('100%')
-
-      // Single-line row (~34vp): color bar + name take the left, everything
-      // informational collapses to one right-aligned ellipsized string, pct
-      // last. Balance keeps a quiet accentTeal Medium at 11sp — same size as
-      // the rest so the line stays even at this density.
-      Row({ space: 6 }) {
-        Column()
-          .width(3)
-          .height(12)
-          .borderRadius(2)
-          .backgroundColor($r('app.color.accentTeal'))
-        Text(block.name)
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor($r('app.color.textPrimary'))
+    // Single-line row (~34vp): color bar + name take the left, everything
+    // informational collapses to one right-aligned ellipsized string, pct
+    // last. Balance keeps a quiet accentTeal Medium at 11sp — same size as
+    // the rest so the line stays even at this density.
+    //
+    // Comparison fill = hard-stop horizontal gradient painted on the row
+    // itself: accentTealTint up to `fraction`, appBackground after. The old
+    // Stack + `height('100%')` track resolved its percentage against the
+    // page-level Scroll's viewport instead of the content-sized row, so
+    // every block stretched to a full screen; a gradient always matches the
+    // row's own height. accentTealTint (16%-alpha of the mode's teal) stays
+    // legible under textPrimary/accentTeal text in both palettes.
+    Row({ space: 6 }) {
+      Column()
+        .width(3)
+        .height(12)
+        .borderRadius(2)
+        .backgroundColor($r('app.color.accentTeal'))
+      Text(block.name)
+        .fontSize(13)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.textPrimary'))
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .layoutWeight(1)
+      if (block.stale) {
+        Text($r('app.string.stale_hint_short'))
+          .fontSize(10)
+          .fontColor($r('app.color.warning'))
           .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .layoutWeight(1)
-        if (block.stale) {
-          Text($r('app.string.stale_hint_short'))
-            .fontSize(10)
-            .fontColor($r('app.color.warning'))
-            .maxLines(1)
-        }
-        if (!block.hasEnabled) {
-          Text($r('app.string.overview_disabled'))
-            .fontSize(11)
-            .fontColor($r('app.color.textSecondary'))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .constraintSize({ maxWidth: '55%' })
-        } else if (!block.hasData) {
-          Text($r('app.string.no_data'))
-            .fontSize(11)
-            .fontColor($r('app.color.textSecondary'))
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .constraintSize({ maxWidth: '55%' })
-        } else {
-          Text() {
-            if (block.balanceText.length > 0) {
-              Span(block.balanceText)
-                .fontSize(11)
-                .fontWeight(FontWeight.Medium)
-                .fontColor($r('app.color.accentTeal'))
-            }
-            if (block.todayText.length > 0) {
-              if (block.balanceText.length > 0) {
-                Span(' · ')
-                  .fontSize(11)
-                  .fontColor($r('app.color.textSecondary'))
-              }
-              Span(block.todayText)
-                .fontSize(11)
-                .fontColor($r('app.color.textSecondary'))
-            }
-            if (block.quotaText.length > 0) {
-              if (block.balanceText.length > 0 || block.todayText.length > 0) {
-                Span(' · ')
-                  .fontSize(11)
-                  .fontColor($r('app.color.textSecondary'))
-              }
-              Span(block.quotaText)
-                .fontSize(11)
-                .fontColor($r('app.color.textSecondary'))
-            }
-          }
+      }
+      if (!block.hasEnabled) {
+        Text($r('app.string.overview_disabled'))
+          .fontSize(11)
+          .fontColor($r('app.color.textSecondary'))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .constraintSize({ maxWidth: '55%' })
+      } else if (!block.hasData) {
+        Text($r('app.string.no_data'))
+          .fontSize(11)
+          .fontColor($r('app.color.textSecondary'))
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .constraintSize({ maxWidth: '55%' })
+      } else {
+        Text() {
+          if (block.balanceText.length > 0) {
+            Span(block.balanceText)
+              .fontSize(11)
+              .fontWeight(FontWeight.Medium)
+              .fontColor($r('app.color.accentTeal'))
+          }
+          if (block.todayText.length > 0) {
+            if (block.balanceText.length > 0) {
+              Span(' · ')
+                .fontSize(11)
+                .fontColor($r('app.color.textSecondary'))
+            }
+            Span(block.todayText)
+              .fontSize(11)
+              .fontColor($r('app.color.textSecondary'))
+          }
+          if (block.quotaText.length > 0) {
+            if (block.balanceText.length > 0 || block.todayText.length > 0) {
+              Span(' · ')
+                .fontSize(11)
+                .fontColor($r('app.color.textSecondary'))
+            }
+            Span(block.quotaText)
+              .fontSize(11)
+              .fontColor($r('app.color.textSecondary'))
+          }
         }
-        if (block.pctText.length > 0) {
-          Text(block.pctText)
-            .fontSize(10)
-            .fontColor($r('app.color.textSecondary'))
-            .maxLines(1)
-        }
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .constraintSize({ maxWidth: '55%' })
       }
-      .width('100%')
-      .padding({ left: 12, right: 12, top: 7, bottom: 7 })
-      .alignItems(VerticalAlign.Center)
+      if (block.pctText.length > 0) {
+        Text(block.pctText)
+          .fontSize(10)
+          .fontColor($r('app.color.textSecondary'))
+          .maxLines(1)
+      }
     }
     .width('100%')
+    .padding({ left: 12, right: 12, top: 7, bottom: 7 })
+    .alignItems(VerticalAlign.Center)
     .backgroundColor($r('app.color.appBackground'))
+    .linearGradient({
+      angle: 90,
+      colors: [
+        [$r('app.color.accentTealTint'), 0.0],
+        [$r('app.color.accentTealTint'), block.fraction],
+        [$r('app.color.appBackground'), block.fraction]
+      ]
+    })
     .borderRadius(10)
     .clip(true)
     .opacity(block.hasEnabled ? 1 : 0.5)
