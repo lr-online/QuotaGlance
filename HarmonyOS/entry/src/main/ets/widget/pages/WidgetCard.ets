@@ -10,20 +10,24 @@ struct WidgetCard {
       Text(this.balanceText)
         .fontSize(26)
         .fontWeight(FontWeight.Bold)
+        .fontColor($r('app.color.accentTeal'))
         .maxLines(1)
 
       Text(this.statusText)
         .fontSize(12)
-        .fontColor('#666666')
+        .fontColor($r('app.color.textSecondary'))
         .maxLines(1)
 
       Text(this.updatedAtText)
         .fontSize(10)
-        .fontColor('#999999')
+        .fontColor($r('app.color.slateSecondary'))
         .maxLines(1)
 
-      Button('打开应用')
+      Button($r('app.string.open_app'))
         .fontSize(12)
+        .fontColor($r('app.color.appBackground'))
+        .backgroundColor($r('app.color.accentTeal'))
+        .borderRadius(14)
         .height(28)
         .onClick(() => {
           postCardAction(this, {
@@ -36,5 +40,7 @@ struct WidgetCard {
     .height('100%')
     .justifyContent(FlexAlign.Center)
     .padding(12)
+    .backgroundColor($r('app.color.appBackground'))
+    .borderRadius(16)
   }
 }

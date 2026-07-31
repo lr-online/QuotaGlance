@@ -16,6 +16,12 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    try {
+      // Brand navy behind the first frame so launch matches the app theme.
+      windowStage.getMainWindowSync().setWindowBackgroundColor('#12161F');
+    } catch (error) {
+      hilog.warn(DOMAIN, 'QuotaGlance', 'setWindowBackgroundColor failed: %{public}s', (error as Error).message);
+    }
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'QuotaGlance', 'Failed to load content: %{public}s', JSON.stringify(err));
