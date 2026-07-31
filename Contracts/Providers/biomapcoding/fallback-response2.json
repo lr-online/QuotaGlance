@@ -1,0 +1,8 @@
+{
+  "object": "list",
+  "data": [
+    { "id": "gpt-4o" },
+    { "id": "claude-sonnet" },
+    { "id": "deepseek-v3" }
+  ]
+}

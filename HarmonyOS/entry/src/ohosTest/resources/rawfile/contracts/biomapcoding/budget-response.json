@@ -1,0 +1,8 @@
+{
+  "info": {
+    "spend": 3.25,
+    "max_budget": 25,
+    "budget_duration": "30d",
+    "blocked": false
+  }
+}
