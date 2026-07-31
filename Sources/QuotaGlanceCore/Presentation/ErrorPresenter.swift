@@ -1,75 +1,92 @@
 import Foundation
 
 public enum ErrorPresenter {
-    public static func message(for error: any Error) -> String {
+    public static func message(
+        for error: any Error,
+        language: AppLanguage = .english
+    ) -> String {
         switch error {
         case AccountValidationError.emptyDisplayName:
-            "Enter an account name."
+            L10n.string(.errorEmptyDisplayName, language: language)
         case AccountValidationError.emptyAPIKey:
-            "Enter an API key."
+            L10n.string(.errorEmptyAPIKey, language: language)
         case AccountValidationError.maximumAccountsReached:
-            "QuotaGlance supports up to \(AccountValidator.maximumAccountCount) accounts."
+            L10n.string(
+                .errorMaximumAccounts,
+                language: language,
+                AccountValidator.maximumAccountCount
+            )
         case AccountValidationError.duplicateDisplayName:
-            "Account names must be unique."
+            L10n.string(.errorDuplicateDisplayName, language: language)
         case AccountValidationError.invalidThreshold:
-            "Enter a valid non-negative threshold."
+            L10n.string(.errorInvalidThreshold, language: language)
         case AccountValidationError.replacementKeyRequired:
-            "Enter a replacement key when changing providers."
+            L10n.string(.errorReplacementKeyRequired, language: language)
         case ProviderError.invalidCredential, ProviderError.providerInactive:
-            "The provider rejected this key."
+            L10n.string(.errorInvalidCredential, language: language)
         case ProviderError.rateLimited:
-            "The provider is rate limiting requests. Try again later."
+            L10n.string(.errorRateLimited, language: language)
         case let ProviderError.httpStatus(statusCode):
-            "The provider returned HTTP \(statusCode). Try again later."
+            L10n.string(.errorHTTPStatus, language: language, statusCode)
         case ProviderError.unsupportedCredential:
-            "MiniMax pay-as-you-go keys are not supported. Add a Token or Coding Plan subscription key."
+            L10n.string(.errorUnsupportedCredential, language: language)
         case ProviderError.regionDetectionFailed:
-            "Neither official regional endpoint accepted this key. Check the key and try again."
+            L10n.string(.errorRegionDetectionFailed, language: language)
         case ProviderError.profileMismatch:
-            "The saved key type no longer matches this account. Replace the key to detect it again."
+            L10n.string(.errorProfileMismatch, language: language)
         case ProviderError.invalidResponse:
-            "The provider returned an unexpected response."
+            L10n.string(.errorInvalidResponse, language: language)
         case ProviderError.providerUnavailable:
-            "This provider is not available in this build."
+            L10n.string(.errorProviderUnavailable, language: language)
         case CredentialStoreError.notFound:
-            "The API key is missing from Keychain."
+            L10n.string(.errorCredentialNotFound, language: language)
         case CredentialStoreError.invalidData:
-            "The saved API key in Keychain is invalid. Replace the key and try again."
+            L10n.string(.errorCredentialInvalidData, language: language)
         case CredentialStoreError.interactionRequired:
-            "Keychain approval is required for saved API keys. Click Refresh to unlock them."
+            L10n.string(.errorCredentialInteractionRequired, language: language)
         case let CredentialStoreError.unexpectedStatus(status):
-            keychainMessage(for: status)
+            keychainMessage(for: status, language: language)
         case let urlError as URLError:
-            networkMessage(for: urlError)
+            networkMessage(for: urlError, language: language)
         default:
-            "The operation could not be completed."
+            L10n.string(.errorGeneric, language: language)
         }
     }
 }
 
 private extension ErrorPresenter {
-    static func keychainMessage(for status: OSStatus) -> String {
+    static func keychainMessage(
+        for status: OSStatus,
+        language: AppLanguage
+    ) -> String {
         if status == -67068 {
-            return "QuotaGlance could not access Keychain because this app build is no longer on disk. Quit and reopen the installed app, then try again."
+            return L10n.string(.errorKeychainMissingBuild, language: language)
         }
-        return "QuotaGlance could not access Keychain (status \(status)). Reopen the app and try again."
+        return L10n.string(.errorKeychainStatus, language: language, status)
     }
 
-    static func networkMessage(for error: URLError) -> String {
+    static func networkMessage(
+        for error: URLError,
+        language: AppLanguage
+    ) -> String {
         switch error.code {
         case .notConnectedToInternet, .networkConnectionLost:
-            "No internet connection is available. Check the network and try again."
+            L10n.string(.errorNoInternet, language: language)
         case .timedOut:
-            "The provider request timed out. Try again later."
+            L10n.string(.errorTimedOut, language: language)
         case .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
-            "The provider host could not be reached. Check the network and try again."
+            L10n.string(.errorHostUnreachable, language: language)
         case .secureConnectionFailed, .serverCertificateUntrusted,
              .serverCertificateHasBadDate, .serverCertificateHasUnknownRoot:
-            "A secure connection to the provider could not be established."
+            L10n.string(.errorSecureConnectionFailed, language: language)
         case .cancelled:
-            "The provider request was cancelled. Try again."
+            L10n.string(.errorCancelled, language: language)
         default:
-            "A network error interrupted the provider request (\(error.code.rawValue)). Try again."
+            L10n.string(
+                .errorNetworkInterrupted,
+                language: language,
+                error.code.rawValue
+            )
         }
     }
 }

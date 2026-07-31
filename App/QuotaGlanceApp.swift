@@ -1,4 +1,5 @@
 import AppKit
+import QuotaGlanceCore
 import SwiftUI
 
 @main
@@ -31,15 +32,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.settingsWindowPresenter.show(
                     model: self.model,
-                    title: "QuotaGlance Settings"
+                    title: L10n.string(
+                        .settingsWindowTitle,
+                        language: self.model.resolvedLanguage
+                    )
                 )
             }
         )
 
         Task {
             await model.start()
+            ApplicationMenuInstaller.installMainMenuIfNeeded(
+                language: model.resolvedLanguage,
+                force: true
+            )
             if model.accounts.isEmpty {
-                settingsWindowPresenter.show(model: model)
+                settingsWindowPresenter.show(
+                    model: model,
+                    title: L10n.string(
+                        .setupWindowTitle,
+                        language: model.resolvedLanguage
+                    )
+                )
             }
         }
     }

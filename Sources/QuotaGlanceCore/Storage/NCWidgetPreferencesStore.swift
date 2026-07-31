@@ -5,10 +5,35 @@ public struct NCWidgetPreferences: Codable, Equatable, Sendable {
 
     public var schemaVersion: Int
     public var defaultAccountID: UUID?
+    public var preferredLanguage: AppLanguagePreference
 
-    public init(schemaVersion: Int, defaultAccountID: UUID?) {
+    public init(
+        schemaVersion: Int,
+        defaultAccountID: UUID?,
+        preferredLanguage: AppLanguagePreference = .system
+    ) {
         self.schemaVersion = schemaVersion
         self.defaultAccountID = defaultAccountID
+        self.preferredLanguage = preferredLanguage
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case defaultAccountID
+        case preferredLanguage
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        defaultAccountID = try container.decodeIfPresent(
+            UUID.self,
+            forKey: .defaultAccountID
+        )
+        preferredLanguage = try container.decodeIfPresent(
+            AppLanguagePreference.self,
+            forKey: .preferredLanguage
+        ) ?? .system
     }
 }
 
@@ -57,7 +82,8 @@ public struct NCWidgetPreferencesStore: Sendable {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             return NCWidgetPreferences(
                 schemaVersion: NCWidgetPreferences.currentSchemaVersion,
-                defaultAccountID: nil
+                defaultAccountID: nil,
+                preferredLanguage: .system
             )
         }
         let data = try Data(contentsOf: fileURL)

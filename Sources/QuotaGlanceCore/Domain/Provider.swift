@@ -30,22 +30,44 @@ public enum ProviderID: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    public func profileDescription(for profile: ProviderProfile?) -> String {
-        guard let profile else { return "Not detected" }
+    public func profileDescription(
+        for profile: ProviderProfile?,
+        language: AppLanguage = .english
+    ) -> String {
+        guard let profile else {
+            return L10n.string(.notDetected, language: language)
+        }
 
         return switch self {
         case .kimi:
             switch profile.region {
-            case .china: "China / CNY"
-            case .international: "International / USD"
-            case .global: "Global / \(profile.credentialKind.displayName)"
+            case .china:
+                L10n.string(.chinaCNY, language: language)
+            case .international:
+                L10n.string(.internationalUSD, language: language)
+            case .global:
+                L10n.string(
+                    .globalCredential,
+                    language: language,
+                    profile.credentialKind.displayName(language: language)
+                )
             }
         case .openRouter:
-            profile.credentialKind.displayName
+            profile.credentialKind.displayName(language: language)
         case .miniMax:
-            "\(profile.region.displayName) / \(profile.credentialKind.displayName)"
+            L10n.string(
+                .regionCredential,
+                language: language,
+                profile.region.displayName(language: language),
+                profile.credentialKind.displayName(language: language)
+            )
         case .apiInfo, .deepSeek, .bioMapCoding:
-            "\(profile.region.displayName) / \(profile.credentialKind.displayName)"
+            L10n.string(
+                .regionCredential,
+                language: language,
+                profile.region.displayName(language: language),
+                profile.credentialKind.displayName(language: language)
+            )
         }
     }
 
@@ -76,10 +98,17 @@ public enum ProviderRegion: String, Codable, Sendable {
     case international
 
     public var displayName: String {
+        displayName(language: .english)
+    }
+
+    public func displayName(language: AppLanguage) -> String {
         switch self {
-        case .global: "Global"
-        case .china: "China"
-        case .international: "International"
+        case .global:
+            L10n.string(.global, language: language)
+        case .china:
+            L10n.string(.china, language: language)
+        case .international:
+            L10n.string(.international, language: language)
         }
     }
 }
@@ -90,10 +119,17 @@ public enum ProviderCredentialKind: String, Codable, Sendable {
     case tokenPlan
 
     public var displayName: String {
+        displayName(language: .english)
+    }
+
+    public func displayName(language: AppLanguage) -> String {
         switch self {
-        case .standard: "Standard key"
-        case .management: "Management key"
-        case .tokenPlan: "Token Plan"
+        case .standard:
+            L10n.string(.standardKey, language: language)
+        case .management:
+            L10n.string(.managementKey, language: language)
+        case .tokenPlan:
+            L10n.string(.tokenPlan, language: language)
         }
     }
 }

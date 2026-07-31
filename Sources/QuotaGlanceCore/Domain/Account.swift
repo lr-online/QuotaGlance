@@ -92,20 +92,48 @@ public struct AppPreferences: Codable, Equatable, Sendable {
     public var refreshInterval: RefreshInterval
     public var launchAtLogin: Bool
     public var notificationCenterDefaultAccountID: UUID?
+    public var preferredLanguage: AppLanguagePreference
 
     public init(
         refreshInterval: RefreshInterval,
         launchAtLogin: Bool,
-        notificationCenterDefaultAccountID: UUID? = nil
+        notificationCenterDefaultAccountID: UUID? = nil,
+        preferredLanguage: AppLanguagePreference = .system
     ) {
         self.refreshInterval = refreshInterval
         self.launchAtLogin = launchAtLogin
         self.notificationCenterDefaultAccountID = notificationCenterDefaultAccountID
+        self.preferredLanguage = preferredLanguage
     }
 
     public static let `default` = AppPreferences(
         refreshInterval: .fiveMinutes,
         launchAtLogin: false,
-        notificationCenterDefaultAccountID: nil
+        notificationCenterDefaultAccountID: nil,
+        preferredLanguage: .system
     )
+
+    private enum CodingKeys: String, CodingKey {
+        case refreshInterval
+        case launchAtLogin
+        case notificationCenterDefaultAccountID
+        case preferredLanguage
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        refreshInterval = try container.decode(
+            RefreshInterval.self,
+            forKey: .refreshInterval
+        )
+        launchAtLogin = try container.decode(Bool.self, forKey: .launchAtLogin)
+        notificationCenterDefaultAccountID = try container.decodeIfPresent(
+            UUID.self,
+            forKey: .notificationCenterDefaultAccountID
+        )
+        preferredLanguage = try container.decodeIfPresent(
+            AppLanguagePreference.self,
+            forKey: .preferredLanguage
+        ) ?? .system
+    }
 }

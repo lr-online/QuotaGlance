@@ -3,6 +3,7 @@ import SwiftUI
 
 struct UsageChartView: View {
     let days: [MenuBarDayPresentation]
+    var language: AppLanguage = .english
 
     private var maximum: Double {
         max(
@@ -49,6 +50,6 @@ struct UsageChartView: View {
         }
         .frame(height: 72)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Seven day usage")
+        .accessibilityLabel(L10n.string(.sevenDayUsage, language: language))
     }
 }

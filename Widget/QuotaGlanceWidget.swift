@@ -6,6 +6,7 @@ import WidgetKit
 struct QuotaGlanceWidgetEntry: TimelineEntry {
     let date: Date
     let presentation: WidgetPresentation
+    let language: AppLanguage
 }
 
 #if QUOTAGLANCE_CERTIFICATE_FREE_STORAGE
@@ -71,12 +72,18 @@ private func makeWidgetEntry(
         .flatMap { try? $0.read() },
     selection: WidgetSelection
 ) -> QuotaGlanceWidgetEntry {
-    QuotaGlanceWidgetEntry(
+    let language = AppLanguage.resolve(
+        preference: (try? QuotaGlanceShared.ncWidgetPreferencesStore()?.read())?
+            .preferredLanguage ?? .system
+    )
+    return QuotaGlanceWidgetEntry(
         date: .now,
         presentation: WidgetPresenter.make(
             selection: selection,
-            envelope: envelope
-        )
+            envelope: envelope,
+            language: language
+        ),
+        language: language
     )
 }
 

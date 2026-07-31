@@ -148,6 +148,23 @@ struct StorageTests {
         #expect(reloaded.preferences.notificationCenterDefaultAccountID == accountID)
     }
 
+    @Test("Preferred language preference round-trips")
+    func preferredLanguagePreferenceRoundTrips() throws {
+        let suiteName = "QuotaGlanceTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = AccountPreferencesStore(defaults: defaults)
+
+        let preferences = AppPreferences(
+            refreshInterval: .fiveMinutes,
+            launchAtLogin: false,
+            preferredLanguage: .chinese
+        )
+        try store.save(accounts: [], preferences: preferences)
+        let reloaded = try store.load()
+        #expect(reloaded.preferences.preferredLanguage == .chinese)
+    }
+
     @Test("Credential storage identifies same-name accounts by UUID")
     func credentialStorageUsesAccountUUID() async throws {
         let first = Account(displayName: "Personal")

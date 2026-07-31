@@ -37,11 +37,14 @@ public struct CompactAccountPresentation: Equatable, Identifiable, Sendable {
     public let primaryMetric: PrimaryMetric?
     public let metricsUnavailableReason: String?
 
-    public init(account: AccountSnapshot) {
+    public init(account: AccountSnapshot, language: AppLanguage = .english) {
         accountID = account.accountID
         displayName = account.displayName
         health = account.health
-        primaryMetric = DashboardPresenter.primaryMetric(for: account.usage)
+        primaryMetric = DashboardPresenter.primaryMetric(
+            for: account.usage,
+            language: language
+        )
         metricsUnavailableReason = account.usage?.metricsUnavailableReason
     }
 }
@@ -121,17 +124,21 @@ public struct DashboardPresentation: Equatable, Sendable {
 public enum DashboardPresenter {
     public static func make(
         selection: DashboardSelection,
-        envelope: WidgetSnapshotEnvelope
+        envelope: WidgetSnapshotEnvelope,
+        language: AppLanguage = .english
     ) -> DashboardPresentation? {
         switch selection {
         case .allAccounts:
             let aggregate = envelope.aggregate
             return DashboardPresentation(
-                title: "All Accounts",
+                title: L10n.string(.allAccounts, language: language),
                 balances: aggregate.balances,
                 remaining: aggregate.remaining,
                 primaryMetric: aggregate.remaining.map {
-                    PrimaryMetric(label: "Balance", value: .money($0))
+                    PrimaryMetric(
+                        label: L10n.string(.balance, language: language),
+                        value: .money($0)
+                    )
                 },
                 todayActualCost: aggregate.todayActualCost,
                 todayRequests: aggregate.todayRequests,
@@ -157,7 +164,7 @@ public enum DashboardPresenter {
                 title: account.displayName,
                 balances: account.usage?.balances.map(\.available) ?? [],
                 remaining: account.usage?.remaining,
-                primaryMetric: primaryMetric(for: account.usage),
+                primaryMetric: primaryMetric(for: account.usage, language: language),
                 todayActualCost: account.usage?.spend.today
                     ?? account.usage?.today?.actualCost,
                 todayRequests: account.usage?.today?.requests,
@@ -185,7 +192,8 @@ public enum DashboardPresenter {
     }
 
     public static func primaryMetric(
-        for usage: ProviderUsageSnapshot?
+        for usage: ProviderUsageSnapshot?,
+        language: AppLanguage = .english
     ) -> PrimaryMetric? {
         guard let usage else { return nil }
         if let balance = usage.primaryBalance {
@@ -211,21 +219,36 @@ public enum DashboardPresenter {
             if let used = quota.used, let limit = quota.limit, limit > 0 {
                 return PrimaryMetric(
                     label: quota.label,
-                    value: .quantity(used / limit * 100, unit: "% used")
+                    value: .quantity(
+                        used / limit * 100,
+                        unit: L10n.string(.percentUsed, language: language)
+                    )
                 )
             }
         }
         if let month = usage.spend.month {
-            return PrimaryMetric(label: "Spent this month", value: .money(month))
+            return PrimaryMetric(
+                label: L10n.string(.spentThisMonth, language: language),
+                value: .money(month)
+            )
         }
         if let week = usage.spend.week {
-            return PrimaryMetric(label: "Spent this week", value: .money(week))
+            return PrimaryMetric(
+                label: L10n.string(.spentThisWeek, language: language),
+                value: .money(week)
+            )
         }
         if let today = usage.spend.today {
-            return PrimaryMetric(label: "Spent today", value: .money(today))
+            return PrimaryMetric(
+                label: L10n.string(.spentToday, language: language),
+                value: .money(today)
+            )
         }
         if let total = usage.spend.total {
-            return PrimaryMetric(label: "Total spent", value: .money(total))
+            return PrimaryMetric(
+                label: L10n.string(.totalSpent, language: language),
+                value: .money(total)
+            )
         }
         return nil
     }

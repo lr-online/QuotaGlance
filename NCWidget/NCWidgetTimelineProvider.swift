@@ -5,6 +5,7 @@ import WidgetKit
 struct NCWidgetEntry: TimelineEntry {
     let date: Date
     let presentation: WidgetPresentation
+    let language: AppLanguage
 }
 
 /// Certificate-free / ad-hoc builds cannot reliably drive SiriKit
@@ -59,9 +60,18 @@ struct NCWidgetTimelineProvider: TimelineProvider {
         envelope: WidgetSnapshotEnvelope?,
         selection: WidgetSelection
     ) -> Entry {
-        NCWidgetEntry(
+        let language = AppLanguage.resolve(
+            preference: (try? QuotaGlanceShared.ncWidgetPreferencesStore()?.read())?
+                .preferredLanguage ?? .system
+        )
+        return NCWidgetEntry(
             date: .now,
-            presentation: WidgetPresenter.make(selection: selection, envelope: envelope)
+            presentation: WidgetPresenter.make(
+                selection: selection,
+                envelope: envelope,
+                language: language
+            ),
+            language: language
         )
     }
 }
