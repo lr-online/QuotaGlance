@@ -255,6 +255,22 @@
     {
       "name": "stale_hint_short",
       "value": "过期"
+    },
+    {
+      "name": "theme",
+      "value": "主题"
+    },
+    {
+      "name": "theme_system",
+      "value": "跟随系统"
+    },
+    {
+      "name": "theme_light",
+      "value": "浅色"
+    },
+    {
+      "name": "theme_dark",
+      "value": "深色"
     }
   ]
 }

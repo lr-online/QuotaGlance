@@ -8,9 +8,6 @@ import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 import { AccountDetailView } from '../components/AccountDetailView';
 
-const THEME_MODES: ThemeMode[] = ['system', 'light', 'dark'];
-const THEME_CHOOSER_LABELS: string[] = ['跟随系统', '浅色', '深色'];
-
 @Entry
 @Component
 struct Index {
@@ -38,49 +35,55 @@ struct Index {
     this.themeMode = await themeStore.load();
   }
 
-  private themeLabel(): string {
-    if (this.themeMode === 'light') {
-      return '浅色';
+  // Selecting the already-active mode is a no-op (the menu closes on tap).
+  private selectTheme(mode: ThemeMode): void {
+    if (mode === this.themeMode) {
+      return;
     }
-    if (this.themeMode === 'dark') {
-      return '深色';
-    }
-    return '跟随';
+    this.themeMode = mode;
+    const context = getContext(this) as common.UIAbilityContext;
+    ThemeStore.create(context)
+      .then((store: ThemeStore) => store.save(mode))
+      .then(() => {
+        applyThemeMode(context, mode);
+        // Idempotent with EntryAbility.onConfigurationUpdate (see
+        // ThemeUtils): correct whether or not that callback fires for an
+        // app-level setColorMode.
+        reapplyWindowBackground(context);
+      })
+      .catch((error: Object) => {
+        promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
+      });
   }
 
-  private openThemeChooser(): void {
-    const context = getContext(this) as common.UIAbilityContext;
-    promptAction.showActionMenu({
-      title: '主题',
-      buttons: [
-        { text: THEME_CHOOSER_LABELS[0], color: $r('app.color.textPrimary') },
-        { text: THEME_CHOOSER_LABELS[1], color: $r('app.color.textPrimary') },
-        { text: THEME_CHOOSER_LABELS[2], color: $r('app.color.textPrimary') }
-      ]
-    }).then((response: promptAction.ActionMenuSuccessResponse) => {
-      if (response.index < 0 || response.index >= THEME_MODES.length) {
-        return;
-      }
-      const mode = THEME_MODES[response.index];
-      if (mode === this.themeMode) {
-        return;
-      }
-      this.themeMode = mode;
-      ThemeStore.create(context)
-        .then((store: ThemeStore) => store.save(mode))
-        .then(() => {
-          applyThemeMode(context, mode);
-          // Idempotent with EntryAbility.onConfigurationUpdate (see
-          // ThemeUtils): correct whether or not that callback fires for an
-          // app-level setColorMode.
-          reapplyWindowBackground(context);
-        })
-        .catch((error: Object) => {
-          promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
-        });
-    }).catch((error: Object) => {
-      // Dismissed without a selection; nothing to do.
-    });
+  @Builder
+  themeMenuItem(mode: ThemeMode, label: Resource) {
+    Row({ space: 6 }) {
+      Text(this.themeMode === mode ? '✓' : '')
+        .fontSize(13)
+        .fontColor($r('app.color.accentTeal'))
+        .width(16)
+      Text(label)
+        .fontSize(14)
+        .fontWeight(this.themeMode === mode ? FontWeight.Medium : FontWeight.Normal)
+        .fontColor(this.themeMode === mode ? $r('app.color.accentTeal') : $r('app.color.textPrimary'))
+    }
+    .width('100%')
+    .padding({ left: 14, right: 14, top: 11, bottom: 11 })
+    .alignItems(VerticalAlign.Center)
+    .onClick(() => {
+      this.selectTheme(mode);
+    })
+  }
+
+  @Builder
+  themeMenu() {
+    Column() {
+      this.themeMenuItem('system', $r('app.string.theme_system'))
+      this.themeMenuItem('light', $r('app.string.theme_light'))
+      this.themeMenuItem('dark', $r('app.string.theme_dark'))
+    }
+    .width(168)
   }
 
   // Pre-warm every TabContent so first switches don't pay the lazy-build
@@ -234,13 +237,16 @@ struct Index {
               })
           }
         }
-        Text(this.themeLabel())
+        Text($r('app.string.theme'))
           .fontSize(15)
           .fontColor($r('app.color.accentTeal'))
           .padding(4)
           .margin({ right: 16 })
-          .onClick(() => {
-            this.openThemeChooser();
+          .bindMenu(this.themeMenu(), {
+            backgroundColor: $r('app.color.cardBackground'),
+            borderRadius: 12,
+            placement: Placement.Bottom,
+            enableArrow: false
           })
         Text($r('app.string.screensaver'))
           .fontSize(15)
