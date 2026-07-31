@@ -4,7 +4,12 @@ import { AccountService } from '../services/AccountService';
 import { Account } from '../storage/AccountStore';
 import { providerDisplayName } from '../providers/UsageProvider';
 import { friendlyErrorText } from '../utils/ErrorMapping';
+import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
+import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 import { AccountDetailView } from '../components/AccountDetailView';
+
+const THEME_MODES: ThemeMode[] = ['system', 'light', 'dark'];
+const THEME_CHOOSER_LABELS: string[] = ['跟随系统', '浅色', '深色'];
 
 @Entry
 @Component
@@ -13,6 +18,7 @@ struct Index {
   @State refreshingAll: boolean = false;
   @State currentIndex: number = 0;
   @State syncTick: number = 0;
+  @State themeMode: ThemeMode = 'system';
   private tabsController: TabsController = new TabsController();
 
   onPageShow(): void {
@@ -28,6 +34,53 @@ struct Index {
       this.currentIndex = 0;
     }
     this.preloadTabs();
+    const themeStore = await ThemeStore.create(context);
+    this.themeMode = await themeStore.load();
+  }
+
+  private themeLabel(): string {
+    if (this.themeMode === 'light') {
+      return '浅色';
+    }
+    if (this.themeMode === 'dark') {
+      return '深色';
+    }
+    return '跟随';
+  }
+
+  private openThemeChooser(): void {
+    const context = getContext(this) as common.UIAbilityContext;
+    promptAction.showActionMenu({
+      title: '主题',
+      buttons: [
+        { text: THEME_CHOOSER_LABELS[0], color: $r('app.color.textPrimary') },
+        { text: THEME_CHOOSER_LABELS[1], color: $r('app.color.textPrimary') },
+        { text: THEME_CHOOSER_LABELS[2], color: $r('app.color.textPrimary') }
+      ]
+    }).then((response: promptAction.ActionMenuSuccessResponse) => {
+      if (response.index < 0 || response.index >= THEME_MODES.length) {
+        return;
+      }
+      const mode = THEME_MODES[response.index];
+      if (mode === this.themeMode) {
+        return;
+      }
+      this.themeMode = mode;
+      ThemeStore.create(context)
+        .then((store: ThemeStore) => store.save(mode))
+        .then(() => {
+          applyThemeMode(context, mode);
+          // Idempotent with EntryAbility.onConfigurationUpdate (see
+          // ThemeUtils): correct whether or not that callback fires for an
+          // app-level setColorMode.
+          reapplyWindowBackground(context);
+        })
+        .catch((error: Object) => {
+          promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
+        });
+    }).catch((error: Object) => {
+      // Dismissed without a selection; nothing to do.
+    });
   }
 
   // Pre-warm every TabContent so first switches don't pay the lazy-build
@@ -181,6 +234,14 @@ struct Index {
               })
           }
         }
+        Text(this.themeLabel())
+          .fontSize(15)
+          .fontColor($r('app.color.accentTeal'))
+          .padding(4)
+          .margin({ right: 16 })
+          .onClick(() => {
+            this.openThemeChooser();
+          })
         Text($r('app.string.screensaver'))
           .fontSize(15)
           .fontColor($r('app.color.accentTeal'))
