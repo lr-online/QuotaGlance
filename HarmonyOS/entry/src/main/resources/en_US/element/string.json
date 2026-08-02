@@ -301,6 +301,30 @@
       "value": "Disabled"
     },
     {
+      "name": "widget_choose_account",
+      "value": "Card Account"
+    },
+    {
+      "name": "widget_show_overview",
+      "value": "Show Overview"
+    },
+    {
+      "name": "widget_current_selection",
+      "value": "Current Card"
+    },
+    {
+      "name": "widget_open_target",
+      "value": "Open Target"
+    },
+    {
+      "name": "widget_updated",
+      "value": "Card Updated"
+    },
+    {
+      "name": "widget_select_hint",
+      "value": "Choose the default account this card should show"
+    },
+    {
       "name": "language",
       "value": "Language"
     },

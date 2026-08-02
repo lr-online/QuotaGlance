@@ -11,7 +11,6 @@ import {
   AggregationClock,
   aggregateSnapshots
 } from '../aggregation/SnapshotAggregator';
-import { UsageSnapshot } from '../providers/UsageSnapshot';
 import { formatAmount, formatCompactCount } from '../utils/NumberFormat';
 
 const DOMAIN = 0x0000;

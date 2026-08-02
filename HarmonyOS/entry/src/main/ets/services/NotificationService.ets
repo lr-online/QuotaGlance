@@ -28,7 +28,8 @@ const TAG = 'QuotaGlance';
 
 // One-shot permission prompt guard in the shared preferences file.
 const STORE_NAME = 'quotaglance_store';
-const PERMISSION_ASKED_KEY = 'notification_permission_asked_v1';
+const PERMISSION_ASKED_FLAG = 'notification_permission_prompted_v1';
+const LEGACY_PERMISSION_ASKED_FLAG = 'notification_permission_asked_v1';
 
 // First-use moment for the notification permission prompt: app launch, but
 // only once at least one account exists (no accounts = nothing to notify
@@ -43,11 +44,12 @@ export async function requestNotificationPermissionOnce(context: common.UIAbilit
   }
   try {
     const store = await preferences.getPreferences(context, { name: STORE_NAME });
-    const asked = await store.get(PERMISSION_ASKED_KEY, false) as boolean;
+    const asked = await store.get(PERMISSION_ASKED_FLAG,
+      await store.get(LEGACY_PERMISSION_ASKED_FLAG, false)) as boolean;
     if (asked) {
       return;
     }
-    await store.put(PERMISSION_ASKED_KEY, true);
+    await store.put(PERMISSION_ASKED_FLAG, true);
     await store.flush();
     await notificationManager.requestEnableNotification(context);
   } catch (error) {

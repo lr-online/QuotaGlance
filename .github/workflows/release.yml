@@ -30,8 +30,13 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
-      - name: Install ripgrep
-        run: brew install ripgrep
+      - name: Ensure ripgrep
+        run: |
+          if command -v rg >/dev/null 2>&1; then
+            rg --version
+          else
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install ripgrep
+          fi
 
       - name: Run Swift tests
         run: swift test
