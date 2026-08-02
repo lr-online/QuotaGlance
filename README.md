@@ -143,7 +143,7 @@ swift test
 Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 
 ```bash
-./scripts/install-local.sh
+./scripts/install-local.sh [full|legacy]
 ```
 
 默认构建使用完整版 Xcode 生成可配置 Widget 所需的 App Intent 元数据，然后使用稳定的本地临时签名；不需要 App Store 或 Apple Developer 证书。安装器会将应用放到 `~/Applications/QuotaGlance.app`。若已有同 bundle ID 的版本，会先移动到 `~/Library/Application Support/QuotaGlance/Backups`；若目标路径属于其他 bundle ID，安装器会拒绝覆盖。

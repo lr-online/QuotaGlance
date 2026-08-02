@@ -87,8 +87,12 @@ final class AppModel: ObservableObject {
         hasStarted = true
         notificationPermission = await notificationService.permissionState()
         preferences.launchAtLogin = launchAtLoginService.isEnabled
-        persistReportingErrors()
-        mirrorNCWidgetPreferences()
+        do {
+            try persist()
+            try mirrorNCWidgetPreferences()
+        } catch {
+            lastErrorMessage = message(for: error)
+        }
         restartSchedule()
         if accounts.contains(where: \.isEnabled) {
             await refresh(credentialAccessMode: .nonInteractive)
@@ -276,7 +280,7 @@ final class AppModel: ObservableObject {
         do {
             try persist()
             if didClearNCWidgetDefault {
-                mirrorNCWidgetPreferences()
+                try mirrorNCWidgetPreferences()
             }
             await refreshCoordinator.removeSnapshot(for: id)
             publishCachedState()
@@ -323,7 +327,7 @@ final class AppModel: ObservableObject {
         preferences.notificationCenterDefaultAccountID = accountID
         do {
             try persist()
-            mirrorNCWidgetPreferences()
+            try mirrorNCWidgetPreferences()
             WidgetCenter.shared.reloadAllTimelines()
         } catch {
             lastErrorMessage = message(for: error)
@@ -347,7 +351,7 @@ final class AppModel: ObservableObject {
         preferences.preferredLanguage = preference
         do {
             try persist()
-            mirrorNCWidgetPreferences()
+            try mirrorNCWidgetPreferences()
             ApplicationMenuInstaller.installMainMenuIfNeeded(
                 language: resolvedLanguage,
                 force: true
@@ -451,9 +455,9 @@ private extension AppModel {
         }
     }
 
-    func mirrorNCWidgetPreferences() {
+    func mirrorNCWidgetPreferences() throws {
         guard let store = QuotaGlanceShared.ncWidgetPreferencesStore() else { return }
-        try? store.write(
+        try store.write(
             NCWidgetPreferences(
                 schemaVersion: NCWidgetPreferences.currentSchemaVersion,
                 defaultAccountID: preferences.notificationCenterDefaultAccountID,

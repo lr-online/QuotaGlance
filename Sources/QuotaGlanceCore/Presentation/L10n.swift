@@ -241,8 +241,8 @@ public enum L10n {
             .chinese: "通知中心小组件",
         ],
         .notificationCenterWidgetFooter: [
-            .english: "Chooses which account the Notification Center medium widget displays.",
-            .chinese: "选择通知中心中等小组件显示的账户。",
+            .english: "Affects widgets still set to Use App Default; individually edited widgets are unchanged.",
+            .chinese: "仅影响仍使用应用默认值的小组件；单独编辑过的小组件不受影响。",
         ],
         .defaultAccount: [
             .english: "Default Account",

@@ -97,11 +97,11 @@ targets:
         excludes:
           - Info.plist
           - QuotaGlanceNCWidget.entitlements
-          # Intent sources stay on QuotaGlanceNCIntents until IntentConfiguration
-          # is restored; the widget itself uses StaticConfiguration.
           - NCWidgetAccountIntent.intentdefinition
-          - NCWidgetAccountIntent+Generated.swift
-          - NCWidgetAccountIntentChoice.swift
+      # Keep the definition as metadata while the hand-written Intent class
+      # remains the single source of truth for both widget and Intents targets.
+      - path: NCWidget/NCWidgetAccountIntent.intentdefinition
+        buildPhase: resources
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore

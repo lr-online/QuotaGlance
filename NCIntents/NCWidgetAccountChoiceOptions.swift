@@ -9,15 +9,24 @@ import QuotaGlanceCore
 func ncWidgetAccountChoiceOptions(
     envelope: WidgetSnapshotEnvelope? = QuotaGlanceShared.snapshotStore()
         .flatMap { try? $0.read() }
-) -> [String] {
+) -> [NCWidgetAccountIntentChoice] {
     var options = [
-        NCWidgetAccountIntentChoice.useAppDefault,
-        NCWidgetAccountIntentChoice.allAccounts
+        NCWidgetAccountIntentChoice(
+            identifier: NCWidgetAccountIntentChoice.useAppDefaultIdentifier,
+            display: "Use App Default"
+        ),
+        NCWidgetAccountIntentChoice(
+            identifier: NCWidgetAccountIntentChoice.allAccountsIdentifier,
+            display: "All Accounts"
+        )
     ]
 
     options.append(
         contentsOf: (envelope?.accounts ?? []).map {
-            "account:\($0.accountID.uuidString)"
+            NCWidgetAccountIntentChoice(
+                identifier: "account:\($0.accountID.uuidString)",
+                display: $0.displayName
+            )
         }
     )
     return options

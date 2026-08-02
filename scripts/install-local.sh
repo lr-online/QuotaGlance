@@ -5,15 +5,33 @@ APP_NAME="QuotaGlance"
 APP_BUNDLE_ID="com.liangrui.QuotaGlance"
 WIDGET_NAME="QuotaGlanceWidget"
 WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.Widget"
+NC_WIDGET_NAME="QuotaGlanceNCWidget"
+NC_WIDGET_BUNDLE_ID="com.liangrui.QuotaGlance.NCWidget"
+NC_INTENTS_NAME="QuotaGlanceNCIntents"
+NC_INTENTS_BUNDLE_ID="com.liangrui.QuotaGlance.NCIntents"
+
+EDITION="${1:-full}"
+case "$EDITION" in
+  full|legacy)
+    ;;
+  *)
+    echo "usage: $0 [full|legacy]" >&2
+    exit 2
+    ;;
+esac
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/local-snapshot-storage.sh"
 
-BUILT_APP="$("$ROOT_DIR/scripts/build-local.sh" Release)"
+BUILT_APP="$("$ROOT_DIR/scripts/build-local.sh" Release "$EDITION")"
 BUILT_WIDGET="$BUILT_APP/Contents/PlugIns/$WIDGET_NAME.appex"
+BUILT_NC_WIDGET="$BUILT_APP/Contents/PlugIns/$NC_WIDGET_NAME.appex"
+BUILT_NC_INTENTS="$BUILT_APP/Contents/PlugIns/$NC_INTENTS_NAME.appex"
 INSTALL_DIR="$HOME/Applications"
 INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
 INSTALLED_WIDGET="$INSTALLED_APP/Contents/PlugIns/$WIDGET_NAME.appex"
+INSTALLED_NC_WIDGET="$INSTALLED_APP/Contents/PlugIns/$NC_WIDGET_NAME.appex"
+INSTALLED_NC_INTENTS="$INSTALLED_APP/Contents/PlugIns/$NC_INTENTS_NAME.appex"
 BACKUP_DIR="$HOME/Library/Application Support/$APP_NAME/Backups"
 LOCAL_SNAPSHOT_DIR="/Users/Shared/$APP_NAME"
 LOCAL_SNAPSHOT="$LOCAL_SNAPSHOT_DIR/quota-snapshot-v1.json"
@@ -41,9 +59,19 @@ require_bundle_id() {
 }
 
 require_bundle_id "$BUILT_APP" "$APP_BUNDLE_ID"
-require_bundle_id "$BUILT_WIDGET" "$WIDGET_BUNDLE_ID"
+require_bundle_id "$BUILT_NC_WIDGET" "$NC_WIDGET_BUNDLE_ID"
+require_bundle_id "$BUILT_NC_INTENTS" "$NC_INTENTS_BUNDLE_ID"
+if [[ "$EDITION" == full ]]; then
+  require_bundle_id "$BUILT_WIDGET" "$WIDGET_BUNDLE_ID"
+elif [[ -e "$BUILT_WIDGET" ]]; then
+  echo "Legacy build unexpectedly contains the desktop Widget" >&2
+  exit 1
+fi
 /usr/bin/codesign --verify --deep --strict "$BUILT_APP"
-"$ROOT_DIR/scripts/verify-local-widget-bundle.sh" "$BUILT_APP"
+"$ROOT_DIR/scripts/verify-nc-extensions.sh" "$BUILT_APP"
+if [[ "$EDITION" == full ]]; then
+  "$ROOT_DIR/scripts/verify-local-widget-bundle.sh" "$BUILT_APP"
+fi
 
 /bin/mkdir -p "$INSTALL_DIR"
 /bin/mkdir -p "$BACKUP_DIR"
@@ -60,11 +88,19 @@ if [[ -e "$INSTALLED_APP" ]]; then
     exit 1
   fi
 
-  if [[ -d "$INSTALLED_WIDGET" ]]; then
-    require_bundle_id "$INSTALLED_WIDGET" "$WIDGET_BUNDLE_ID"
-    /usr/bin/pkill -x "$WIDGET_NAME" >/dev/null 2>&1 || true
-    /usr/bin/pluginkit -r "$INSTALLED_WIDGET" >/dev/null 2>&1 || true
-  fi
+  unregister_extension() {
+    local bundle_path="$1"
+    local executable_name="$2"
+    local expected_bundle_id="$3"
+    if [[ -d "$bundle_path" ]]; then
+      require_bundle_id "$bundle_path" "$expected_bundle_id"
+      /usr/bin/pkill -x "$executable_name" >/dev/null 2>&1 || true
+      /usr/bin/pluginkit -r "$bundle_path" >/dev/null 2>&1 || true
+    fi
+  }
+  unregister_extension "$INSTALLED_NC_WIDGET" "$NC_WIDGET_NAME" "$NC_WIDGET_BUNDLE_ID"
+  unregister_extension "$INSTALLED_NC_INTENTS" "$NC_INTENTS_NAME" "$NC_INTENTS_BUNDLE_ID"
+  unregister_extension "$INSTALLED_WIDGET" "$WIDGET_NAME" "$WIDGET_BUNDLE_ID"
   /usr/bin/pkill -x "$APP_NAME" >/dev/null 2>&1 || true
   /bin/mv "$INSTALLED_APP" "$backup_path"
   echo "Previous installation moved to: $backup_path"
@@ -72,26 +108,44 @@ fi
 
 /usr/bin/ditto "$BUILT_APP" "$INSTALLED_APP"
 require_bundle_id "$INSTALLED_APP" "$APP_BUNDLE_ID"
-require_bundle_id "$INSTALLED_WIDGET" "$WIDGET_BUNDLE_ID"
-/usr/bin/codesign --verify --deep --strict "$INSTALLED_APP"
-
-/usr/bin/pluginkit -a "$INSTALLED_WIDGET"
-/usr/bin/open -n "$INSTALLED_APP"
-
-widget_registered=false
-for _ in {1..20}; do
-  if /usr/bin/pluginkit -m -A -D | /usr/bin/grep -F "$WIDGET_BUNDLE_ID" >/dev/null; then
-    widget_registered=true
-    break
-  fi
-  sleep 0.5
-done
-
-if [[ "$widget_registered" != true ]]; then
-  echo "The app was installed, but WidgetKit has not registered $WIDGET_BUNDLE_ID." >&2
-  echo "Open the app once, then run this installer again or log out and back in." >&2
+require_bundle_id "$INSTALLED_NC_WIDGET" "$NC_WIDGET_BUNDLE_ID"
+require_bundle_id "$INSTALLED_NC_INTENTS" "$NC_INTENTS_BUNDLE_ID"
+if [[ "$EDITION" == full ]]; then
+  require_bundle_id "$INSTALLED_WIDGET" "$WIDGET_BUNDLE_ID"
+elif [[ -e "$INSTALLED_WIDGET" ]]; then
+  echo "Legacy installation unexpectedly contains the desktop Widget" >&2
   exit 1
 fi
+/usr/bin/codesign --verify --deep --strict "$INSTALLED_APP"
 
-echo "Installed and launched: $INSTALLED_APP"
-echo "Registered widget: $WIDGET_BUNDLE_ID"
+/usr/bin/pluginkit -a "$INSTALLED_NC_WIDGET"
+/usr/bin/pluginkit -a "$INSTALLED_NC_INTENTS"
+if [[ "$EDITION" == full ]]; then
+  /usr/bin/pluginkit -a "$INSTALLED_WIDGET"
+fi
+/usr/bin/open -n "$INSTALLED_APP"
+
+required_bundle_ids=("$NC_WIDGET_BUNDLE_ID" "$NC_INTENTS_BUNDLE_ID")
+if [[ "$EDITION" == full ]]; then
+  required_bundle_ids+=("$WIDGET_BUNDLE_ID")
+fi
+for required_bundle_id in "${required_bundle_ids[@]}"; do
+  extension_registered=false
+  for _ in {1..20}; do
+    registered_extensions="$(/usr/bin/pluginkit -m -A -D || true)"
+    if /usr/bin/grep -F "$required_bundle_id" <<< "$registered_extensions" >/dev/null; then
+      extension_registered=true
+      break
+    fi
+    sleep 0.5
+  done
+
+  if [[ "$extension_registered" != true ]]; then
+    echo "The app was installed, but PlugInKit has not registered $required_bundle_id." >&2
+    echo "Open the app once, then run this installer again or log out and back in." >&2
+    exit 1
+  fi
+done
+
+echo "Installed and launched ($EDITION): $INSTALLED_APP"
+printf 'Registered extension: %s\n' "${required_bundle_ids[@]}"
