@@ -240,7 +240,7 @@ struct SpecEngineOrchestrationTests {
         let snapshot = try await makeEngine(specData: specData, httpClient: gotoClient)
             .fetch(apiKey: "key", profile: globalStandard)
         #expect(snapshot.providerStatus == "fallback")
-        #expect(gotoClient.requests.count == 2)
+        #expect(await gotoClient.recorder.requests.count == 2)
 
         let errorClient = ContractURLStubHTTPClient(responses: [
             "https://engine.test/primary": (body(#"{}"#), 401),
@@ -249,7 +249,7 @@ struct SpecEngineOrchestrationTests {
             try await makeEngine(specData: specData, httpClient: errorClient)
                 .fetch(apiKey: "key", profile: globalStandard)
         }
-        #expect(errorClient.requests.count == 1)
+        #expect(await errorClient.recorder.requests.count == 1)
     }
 
     @Test("An onDemand step never runs in listed order without a gotoStep")
@@ -277,7 +277,7 @@ struct SpecEngineOrchestrationTests {
             .fetch(apiKey: "key", profile: globalStandard)
 
         #expect(snapshot.providerStatus == "primary")
-        #expect(httpClient.requests.count == 1)
+        #expect(await httpClient.recorder.requests.count == 1)
     }
 }
 
@@ -298,7 +298,7 @@ struct SpecEngineCredentialKindTests {
             )
         }
         // The mismatch throws right after /key parses; /credits is never called.
-        #expect(httpClient.requests.count == 1)
+        #expect(await httpClient.recorder.requests.count == 1)
     }
 
     @Test("Detect takes the credential kind from credentialKindDetection")
@@ -318,7 +318,7 @@ struct SpecEngineCredentialKindTests {
                 == ProviderProfile(region: .global, credentialKind: .management)
         )
         #expect(detection.snapshot.balances.count == 1)
-        #expect(httpClient.requests.count == 2)
+        #expect(await httpClient.recorder.requests.count == 2)
     }
 }
 
@@ -346,7 +346,7 @@ struct SpecEngineRegionFallbackTests {
             detection.profile
                 == ProviderProfile(region: .international, credentialKind: .tokenPlan)
         )
-        #expect(httpClient.requests.count == 2)
+        #expect(await httpClient.recorder.requests.count == 2)
     }
 
     @Test("Embedded authentication rejections also fall back")
@@ -365,7 +365,7 @@ struct SpecEngineRegionFallbackTests {
         let detection = try await provider.detect(apiKey: "redacted-plan-key")
 
         #expect(detection.profile.region == .international)
-        #expect(httpClient.requests.count == 2)
+        #expect(await httpClient.recorder.requests.count == 2)
     }
 
     @Test("Exhausting every region candidate throws the exhausted error")
@@ -384,7 +384,7 @@ struct SpecEngineRegionFallbackTests {
         await #expect(throws: ProviderError.regionDetectionFailed) {
             try await provider.detect(apiKey: "redacted-plan-key")
         }
-        #expect(httpClient.requests.count == 2)
+        #expect(await httpClient.recorder.requests.count == 2)
     }
 
     @Test("Errors outside fallbackOn do not probe another region")
@@ -401,7 +401,7 @@ struct SpecEngineRegionFallbackTests {
         await #expect(throws: ProviderError.rateLimited) {
             try await provider.detect(apiKey: "redacted-plan-key")
         }
-        #expect(httpClient.requests.count == 1)
+        #expect(await httpClient.recorder.requests.count == 1)
     }
 }
 
@@ -417,7 +417,7 @@ struct SpecEngineProfileCredentialTests {
                 profile: ProviderProfile(region: .china, credentialKind: .standard)
             )
         }
-        #expect(deepSeekClient.requests.isEmpty)
+        #expect(await deepSeekClient.recorder.requests.isEmpty)
 
         let openRouterClient = ContractURLStubHTTPClient(responses: [:])
         let openRouter = try contractSpecEngine(
@@ -430,7 +430,7 @@ struct SpecEngineProfileCredentialTests {
                 profile: ProviderProfile(region: .global, credentialKind: .tokenPlan)
             )
         }
-        #expect(openRouterClient.requests.isEmpty)
+        #expect(await openRouterClient.recorder.requests.isEmpty)
     }
 
     @Test("Rejected credential prefixes fail before any request")
@@ -445,7 +445,7 @@ struct SpecEngineProfileCredentialTests {
         await #expect(throws: ProviderError.unsupportedCredential) {
             try await provider.detect(apiKey: "  sk-api-redacted  ")
         }
-        #expect(httpClient.requests.isEmpty)
+        #expect(await httpClient.recorder.requests.isEmpty)
     }
 
     @Test("Whitespace trimming applies before rejection rules and requests")
@@ -462,7 +462,7 @@ struct SpecEngineProfileCredentialTests {
 
         _ = try await provider.detect(apiKey: "  redacted-plan-key  ")
 
-        let request = try #require(httpClient.requests.first)
+        let request = try #require(await httpClient.recorder.requests.first)
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer redacted-plan-key")
     }
 
@@ -495,7 +495,7 @@ struct SpecEngineProfileCredentialTests {
         let detection = try await provider.detect(apiKey: "redacted-test-key")
 
         #expect(detection.profile == ProviderProfile(region: .china, credentialKind: .standard))
-        #expect(httpClient.requests.count == 1)
+        #expect(await httpClient.recorder.requests.count == 1)
     }
 }
 
