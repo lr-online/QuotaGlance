@@ -390,17 +390,14 @@ struct SettingsView: View {
     }
 
     private func accountDetail(_ account: Account) -> (primary: String, secondary: String?) {
+        let descriptor = ProviderCatalog.descriptor(for: account.provider)
         let primary = [
-            account.provider.displayName,
-            account.provider.profileDescription(
-                for: account.detectedProfile,
-                language: language
-            ),
+            descriptor.displayName,
+            descriptor.profileDescription(account.detectedProfile, language),
         ].joined(separator: " · ")
 
-        guard account.provider.supportsLowBalanceThreshold(
-            profile: account.detectedProfile
-        ), let threshold = account.lowBalanceThreshold else {
+        guard descriptor.supportsLowBalanceThreshold(account.detectedProfile),
+              let threshold = account.lowBalanceThreshold else {
             return (primary, nil)
         }
 

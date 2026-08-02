@@ -44,7 +44,8 @@ struct AccountEditorView: View {
     }
 
     private var supportsLowBalanceThreshold: Bool {
-        draft.provider.supportsLowBalanceThreshold(profile: selectedProfile)
+        ProviderCatalog.descriptor(for: draft.provider)
+            .supportsLowBalanceThreshold(selectedProfile)
     }
 
     private var providerSelection: Binding<ProviderID> {
@@ -52,9 +53,8 @@ struct AccountEditorView: View {
             get: { draft.provider },
             set: { provider in
                 draft.provider = provider
-                if !provider.supportsLowBalanceThreshold(
-                    profile: selectedProfile
-                ) {
+                if !ProviderCatalog.descriptor(for: provider)
+                    .supportsLowBalanceThreshold(selectedProfile) {
                     draft.lowBalanceThresholdText = ""
                 }
             }
@@ -67,7 +67,8 @@ struct AccountEditorView: View {
                 labeledRow(L10n.string(.provider, language: language)) {
                     Picker("", selection: providerSelection) {
                         ForEach(ProviderID.allCases) { provider in
-                            Text(provider.displayName).tag(provider)
+                            Text(ProviderCatalog.descriptor(for: provider).displayName)
+                                .tag(provider)
                         }
                     }
                     .labelsHidden()
@@ -204,9 +205,8 @@ struct AccountEditorView: View {
 
     private static func thresholdText(for account: Account?) -> String {
         guard let account,
-              account.provider.supportsLowBalanceThreshold(
-                  profile: account.detectedProfile
-              ),
+              ProviderCatalog.descriptor(for: account.provider)
+                  .supportsLowBalanceThreshold(account.detectedProfile),
               let threshold = account.lowBalanceThreshold else {
             return ""
         }
