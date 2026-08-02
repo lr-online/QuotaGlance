@@ -206,10 +206,10 @@ function counterStats(context: common.Context, counters: UsageCounters): StatIte
   } else {
     const parts: string[] = [];
     if (counters.inputTokens !== undefined) {
-      parts.push(`入 ${formatTokenCount(counters.inputTokens)}`);
+      parts.push(`${getString(context, $r('app.string.stat_input_short'))} ${formatTokenCount(counters.inputTokens)}`);
     }
     if (counters.outputTokens !== undefined) {
-      parts.push(`出 ${formatTokenCount(counters.outputTokens)}`);
+      parts.push(`${getString(context, $r('app.string.stat_output_short'))} ${formatTokenCount(counters.outputTokens)}`);
     }
     if (parts.length > 0) {
       items.push({

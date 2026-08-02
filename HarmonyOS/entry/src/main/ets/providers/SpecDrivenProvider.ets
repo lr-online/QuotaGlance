@@ -663,10 +663,9 @@ function validateValueType(type: Object | null | undefined, context: string): vo
 
 // Builds the ProviderDescriptor from spec.descriptor. profileDescription
 // returns the stable L10n key tokens (with region/credential-kind args
-// appended, colon-separated): the ArkTS UI does not render profile
-// descriptions today and has no L10n tables for these keys, so the branch
-// structure is pinned but the copy stays a token, exactly like the error
-// tokens. See Contracts/README.md ("Why L10n keys, not copy").
+// appended, colon-separated). ProfileDescriptionL10n resolves them at the UI
+// seam, so the provider keeps returning tokens and remains independent of
+// ArkUI resources. See Contracts/README.md ("Why L10n keys, not copy").
 function makeDescriptor(id: ProviderID, spec: Record<string, Object>): ProviderDescriptor {
   const descriptorSpec = asRecord(spec['descriptor']) as Record<string, Object>;
   const threshold = asRecord(descriptorSpec['supportsLowBalanceThreshold']) as Record<string, Object>;

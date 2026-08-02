@@ -14,7 +14,9 @@ import { providerDisplayName } from '../providers/ProviderCatalog';
 import { QuotaWindow } from '../providers/UsageSnapshot';
 import { friendlyErrorText } from '../utils/ErrorMapping';
 import { formatAmount, formatCompactCount, formatQuotaValue } from '../utils/NumberFormat';
+import { LanguagePreference, LanguageStore } from '../storage/LanguageStore';
 import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
+import { applyLanguage } from '../utils/LanguageUtils';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 import { AccountDetailView, markAccountsRefreshedThisLaunch } from '../components/AccountDetailView';
 
@@ -135,6 +137,7 @@ struct Index {
   private overviewHeight: number = 0;
   private totalHeight: number = 0;
   @State syncTick: number = 0;
+  @State languagePreference: LanguagePreference = 'system';
   @State themeMode: ThemeMode = 'system';
   @State overviewToday: string = '';
   @State overviewPartial: boolean = false;
@@ -217,6 +220,12 @@ struct Index {
       this.themeMode = await themeStore.load();
     } catch (error) {
       hilog.error(DOMAIN, TAG, 'reload theme failed: %{public}s', (error as Error).message);
+    }
+    try {
+      const languageStore = await LanguageStore.create(context);
+      this.languagePreference = await languageStore.load();
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, 'reload language failed: %{public}s', (error as Error).message);
     }
     try {
       await this.loadOverview(context);
@@ -303,6 +312,23 @@ struct Index {
       })
       .catch((error: Object) => {
         promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
+      });
+  }
+
+  private selectLanguage(preference: LanguagePreference): void {
+    if (preference === this.languagePreference) {
+      return;
+    }
+    this.languagePreference = preference;
+    const context = getContext(this) as common.UIAbilityContext;
+    LanguageStore.create(context)
+      .then((store: LanguageStore) => store.save(preference))
+      .then(() => {
+        applyLanguage(preference);
+        this.syncTick += 1;
+      })
+      .catch((error: Object) => {
+        hilog.error(DOMAIN, TAG, 'save language failed: %{public}s', (error as Error).message);
       });
   }
 
@@ -450,6 +476,37 @@ struct Index {
       this.themeMenuItem('system', $r('app.string.theme_system'))
       this.themeMenuItem('light', $r('app.string.theme_light'))
       this.themeMenuItem('dark', $r('app.string.theme_dark'))
+    }
+    .width(168)
+  }
+
+  @Builder
+  languageMenuItem(preference: LanguagePreference, label: Resource) {
+    Row({ space: 6 }) {
+      Text(this.languagePreference === preference ? '✓' : '')
+        .fontSize(13)
+        .fontColor($r('app.color.accentTeal'))
+        .width(16)
+      Text(label)
+        .fontSize(14)
+        .fontWeight(this.languagePreference === preference ? FontWeight.Medium : FontWeight.Normal)
+        .fontColor(this.languagePreference === preference
+          ? $r('app.color.accentTeal') : $r('app.color.textPrimary'))
+    }
+    .width('100%')
+    .padding({ left: 14, right: 14, top: 11, bottom: 11 })
+    .alignItems(VerticalAlign.Center)
+    .onClick(() => {
+      this.selectLanguage(preference);
+    })
+  }
+
+  @Builder
+  languageMenu() {
+    Column() {
+      this.languageMenuItem('system', $r('app.string.language_system'))
+      this.languageMenuItem('english', $r('app.string.language_english'))
+      this.languageMenuItem('chinese', $r('app.string.language_chinese'))
     }
     .width(168)
   }
@@ -801,6 +858,17 @@ struct Index {
           .chipStyle()
           .margin({ right: 8 })
           .bindMenu(this.themeMenu(), {
+            backgroundColor: $r('app.color.cardBackground'),
+            borderRadius: 12,
+            placement: Placement.Bottom,
+            enableArrow: false
+          })
+        Text($r('app.string.language'))
+          .fontSize(14)
+          .fontColor($r('app.color.accentTeal'))
+          .chipStyle()
+          .margin({ right: 8 })
+          .bindMenu(this.languageMenu(), {
             backgroundColor: $r('app.color.cardBackground'),
             borderRadius: 12,
             placement: Placement.Bottom,

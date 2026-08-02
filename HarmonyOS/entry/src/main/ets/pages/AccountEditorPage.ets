@@ -4,6 +4,7 @@ import { AccountService, CreateAccountInput } from '../services/AccountService';
 import { ALL_PROVIDER_IDS, ProviderID } from '../providers/UsageProvider';
 import { providerDescriptor, providerDisplayName } from '../providers/ProviderCatalog';
 import { friendlyErrorText } from '../utils/ErrorMapping';
+import { resolveProfileDescription } from '../utils/ProfileDescriptionL10n';
 
 // Threshold support comes from the provider spec descriptor; pre-detection
 // there is no profile, matching the spec's `undetected` rule.
@@ -127,6 +128,13 @@ struct AccountEditorPage {
             .scrollable(ScrollDirection.Horizontal)
             .scrollBar(BarState.Off)
             .width('100%')
+            Text(resolveProfileDescription(
+              getContext(this) as common.Context,
+              providerDescriptor(getContext(this), this.selectedProvider).profileDescription(undefined)
+            ))
+              .fontSize(12)
+              .fontColor($r('app.color.textSecondary'))
+              .margin({ top: 8 })
           }
           .alignItems(HorizontalAlign.Start)
           .width('100%')

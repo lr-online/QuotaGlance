@@ -14,71 +14,71 @@
     },
     {
       "name": "EntryFormAbility_label",
-      "value": "QuotaGlance 余额"
+      "value": "QuotaGlance Balance"
     },
     {
       "name": "EntryFormAbility_desc",
-      "value": "显示 AI 服务商账户余额/额度"
+      "value": "View AI provider account balances and quotas"
     },
     {
       "name": "widget_display_name",
-      "value": "QuotaGlance 余额"
+      "value": "QuotaGlance Balance"
     },
     {
       "name": "widget_description",
-      "value": "显示 AI 服务商账户余额/额度，每 30 分钟刷新"
+      "value": "View AI provider account balances and quotas, refreshed every 30 minutes"
     },
     {
       "name": "add_account",
-      "value": "添加账户"
+      "value": "Add Account"
     },
     {
       "name": "onboarding_tagline",
-      "value": "在一个地方看清所有 AI 额度"
+      "value": "See all your AI quotas in one place"
     },
     {
       "name": "onboarding_hint",
-      "value": "支持 DeepSeek、Kimi、OpenRouter 等 6 家服务商"
+      "value": "Supports six providers including DeepSeek, Kimi, and OpenRouter"
     },
     {
       "name": "manage_accounts",
-      "value": "账户管理"
+      "value": "Accounts"
     },
     {
       "name": "empty_accounts",
-      "value": "还没有账户"
+      "value": "No accounts yet"
     },
     {
       "name": "delete",
-      "value": "删除"
+      "value": "Delete"
     },
     {
       "name": "cancel",
-      "value": "取消"
+      "value": "Cancel"
     },
     {
       "name": "confirm",
-      "value": "确定"
+      "value": "Confirm"
     },
     {
       "name": "delete_confirm_title",
-      "value": "删除账户"
+      "value": "Delete Account"
     },
     {
       "name": "delete_confirm_message",
-      "value": "将同时删除该账户的 API Key 与缓存数据，且无法恢复。"
+      "value": "This will also delete the account's API key and cached data. This cannot be undone."
     },
     {
       "name": "account_added",
-      "value": "已添加"
+      "value": "Added"
     },
     {
       "name": "provider_label",
-      "value": "服务商"
+      "value": "Provider"
     },
     {
       "name": "name_label",
-      "value": "名称"
+      "value": "Name"
     },
     {
       "name": "api_key_label",
@@ -86,83 +86,83 @@
     },
     {
       "name": "threshold_label",
-      "value": "低余额提醒阈值（可选）"
+      "value": "Low-balance alert threshold (optional)"
     },
     {
       "name": "threshold_placeholder",
-      "value": "例如 10"
+      "value": "For example, 10"
     },
     {
       "name": "threshold_invalid",
-      "value": "请输入有效的非负数字"
+      "value": "Enter a valid non-negative number"
     },
     {
       "name": "save",
-      "value": "保存"
+      "value": "Save"
     },
     {
       "name": "verifying_key",
-      "value": "正在验证 Key…"
+      "value": "Verifying key…"
     },
     {
       "name": "open_app",
-      "value": "打开应用"
+      "value": "Open App"
     },
     {
       "name": "updated_prefix",
-      "value": "更新于"
+      "value": "Updated"
     },
     {
       "name": "stale_text",
-      "value": "更新失败 · 数据过期"
+      "value": "Update failed · Data is stale"
     },
     {
       "name": "not_refreshed",
-      "value": "尚未刷新"
+      "value": "Not refreshed yet"
     },
     {
       "name": "detail_balance",
-      "value": "余额"
+      "value": "Balance"
     },
     {
       "name": "detail_spending_limit",
-      "value": "消费上限"
+      "value": "Spending Limit"
     },
     {
       "name": "detail_quota",
-      "value": "配额窗口"
+      "value": "Quota Windows"
     },
     {
       "name": "detail_today",
-      "value": "当天调用"
+      "value": "Today's Requests"
     },
     {
       "name": "detail_recent_7d",
-      "value": "最近7天"
+      "value": "Last 7 Days"
     },
     {
       "name": "detail_models",
-      "value": "模型用量"
+      "value": "Model Usage"
     },
     {
       "name": "detail_spend",
-      "value": "周期支出"
+      "value": "Period Spend"
     },
     {
       "name": "detail_total",
-      "value": "总计"
+      "value": "Total"
     },
     {
       "name": "detail_status",
-      "value": "状态"
+      "value": "Status"
     },
     {
       "name": "stat_cost",
-      "value": "花费"
+      "value": "Cost"
     },
     {
       "name": "stat_requests",
-      "value": "请求"
+      "value": "Requests"
     },
     {
       "name": "stat_tokens",
@@ -170,143 +170,143 @@
     },
     {
       "name": "stat_input_short",
-      "value": "入"
+      "value": "In"
     },
     {
       "name": "stat_output_short",
-      "value": "出"
+      "value": "Out"
     },
     {
       "name": "used_label",
-      "value": "已用"
+      "value": "Used"
     },
     {
       "name": "limit_label",
-      "value": "上限"
+      "value": "Limit"
     },
     {
       "name": "reset_prefix",
-      "value": "重置于"
+      "value": "Resets"
     },
     {
       "name": "below_threshold",
-      "value": "低于设定阈值"
+      "value": "Below the configured threshold"
     },
     {
       "name": "spend_today",
-      "value": "今日"
+      "value": "Today"
     },
     {
       "name": "spend_week",
-      "value": "本周"
+      "value": "This Week"
     },
     {
       "name": "spend_month",
-      "value": "本月"
+      "value": "This Month"
     },
     {
       "name": "spend_total",
-      "value": "累计"
+      "value": "All Time"
     },
     {
       "name": "requests_unit",
-      "value": "次"
+      "value": "requests"
     },
     {
       "name": "no_data",
-      "value": "暂无数据"
+      "value": "No Data"
     },
     {
       "name": "err_invalid_credential",
-      "value": "API Key 无效或已过期，请检查后重试"
+      "value": "API key is invalid or expired. Check and try again."
     },
     {
       "name": "err_rate_limited",
-      "value": "请求过于频繁，请稍后重试"
+      "value": "Too many requests. Try again later."
     },
     {
       "name": "err_region_detection",
-      "value": "无法识别该 Key 所属的服务区域"
+      "value": "The service region for this key could not be detected."
     },
     {
       "name": "err_unsupported_credential",
-      "value": "不支持此类型的 Key（MiniMax 需要 Token 计划 Key）"
+      "value": "This key type is not supported (MiniMax requires a Token Plan key)."
     },
     {
       "name": "err_provider_inactive",
-      "value": "该账户已被服务商停用"
+      "value": "The provider has deactivated this account."
     },
     {
       "name": "err_account_limit",
-      "value": "账户数量已达上限（20 个）"
+      "value": "The account limit has been reached (20 accounts)."
     },
     {
       "name": "err_network",
-      "value": "网络连接失败，请检查网络后重试"
+      "value": "Network connection failed. Check your network and try again."
     },
     {
       "name": "err_http_status",
-      "value": "服务返回错误，请稍后重试"
+      "value": "The provider returned an error. Try again later."
     },
     {
       "name": "err_generic",
-      "value": "验证失败，请稍后重试"
+      "value": "Verification failed. Try again later."
     },
     {
       "name": "screensaver",
-      "value": "屏保"
+      "value": "Screensaver"
     },
     {
       "name": "screensaver_exit_hint",
-      "value": "点击屏幕任意处退出"
+      "value": "Click anywhere to exit"
     },
     {
       "name": "stale_hint_short",
-      "value": "过期"
+      "value": "Stale"
     },
     {
       "name": "theme",
-      "value": "主题"
+      "value": "Theme"
     },
     {
       "name": "theme_system",
-      "value": "跟随系统"
+      "value": "System"
     },
     {
       "name": "theme_light",
-      "value": "浅色"
+      "value": "Light"
     },
     {
       "name": "theme_dark",
-      "value": "深色"
+      "value": "Dark"
     },
     {
       "name": "overview_label",
-      "value": "总览"
+      "value": "Overview"
     },
     {
       "name": "overview_today",
-      "value": "今日"
+      "value": "Today"
     },
     {
       "name": "overview_partial",
-      "value": "部分数据过期"
+      "value": "Some data is stale"
     },
     {
       "name": "overview_quota",
-      "value": "配额"
+      "value": "Quota"
     },
     {
       "name": "overview_disabled",
-      "value": "已停用"
+      "value": "Disabled"
     },
     {
       "name": "language",
-      "value": "语言"
+      "value": "Language"
     },
     {
       "name": "language_system",
-      "value": "跟随系统"
+      "value": "System"
     },
     {
       "name": "language_english",
@@ -314,43 +314,43 @@
     },
     {
       "name": "language_chinese",
-      "value": "简体中文"
+      "value": "Simplified Chinese"
     },
     {
       "name": "widget_balance_unconfigured",
-      "value": "未配置"
+      "value": "Not configured"
     },
     {
       "name": "widget_status_prompt_key",
-      "value": "打开应用录入 API Key"
+      "value": "Open the app to enter an API key"
     },
     {
       "name": "widget_status_ok",
-      "value": "正常"
+      "value": "OK"
     },
     {
       "name": "widget_status_unavailable",
-      "value": "服务不可用"
+      "value": "Service unavailable"
     },
     {
       "name": "widget_loading",
-      "value": "加载中…"
+      "value": "Loading…"
     },
     {
       "name": "l10n_not_detected",
-      "value": "未检测"
+      "value": "Not detected"
     },
     {
       "name": "l10n_china_cny",
-      "value": "中国 / CNY"
+      "value": "China / CNY"
     },
     {
       "name": "l10n_international_usd",
-      "value": "国际 / USD"
+      "value": "International / USD"
     },
     {
       "name": "l10n_global_credential",
-      "value": "全球 / %s"
+      "value": "Global / %s"
     },
     {
       "name": "l10n_region_credential",
@@ -358,31 +358,31 @@
     },
     {
       "name": "l10n_global",
-      "value": "全球"
+      "value": "Global"
     },
     {
       "name": "l10n_china",
-      "value": "中国"
+      "value": "China"
     },
     {
       "name": "l10n_international",
-      "value": "国际"
+      "value": "International"
     },
     {
       "name": "l10n_standard_key",
-      "value": "标准密钥"
+      "value": "Standard key"
     },
     {
       "name": "l10n_management_key",
-      "value": "管理密钥"
+      "value": "Management key"
     },
     {
       "name": "l10n_token_plan",
-      "value": "Token 套餐"
+      "value": "Token Plan"
     },
     {
       "name": "profile_label",
-      "value": "配置"
+      "value": "Profile"
     }
   ]
 }

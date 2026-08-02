@@ -1,0 +1,102 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Install actionlint
+        env:
+          GOBIN: ${{ runner.temp }}/go-bin
+        run: |
+          mkdir -p "$GOBIN"
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          echo "$GOBIN" >> "$GITHUB_PATH"
+
+      - name: Install zizmor
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zizmor"
+          "$RUNNER_TEMP/zizmor/bin/pip" install \
+            --disable-pip-version-check \
+            --no-input \
+            zizmor==1.12.0
+
+      - name: Run actionlint
+        run: actionlint -color=false
+
+      - name: Run zizmor
+        run: |
+          "$RUNNER_TEMP/zizmor/bin/zizmor" \
+            --offline \
+            --min-severity medium \
+            --no-progress \
+            .github/workflows
+
+      - name: Run ShellCheck
+        run: |
+          find scripts Tests -type f -name '*.sh' -print0 \
+            | xargs -0 -r shellcheck --shell=bash --severity=warning
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks
+        env:
+          GOBIN: ${{ runner.temp }}/go-bin
+        run: |
+          mkdir -p "$GOBIN"
+          go install github.com/zricethezav/gitleaks/v8@v8.28.0
+          echo "$GOBIN" >> "$GITHUB_PATH"
+
+      - name: Scan Git history
+        run: gitleaks git --redact --no-banner --exit-code 1 .
+
+      - name: Scan working tree
+        run: gitleaks dir --redact --no-banner --exit-code 1 .
+
+  provider-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Verify provider protocol parity
+        run: bash scripts/verify-provider-parity.sh
+
+      - name: Exercise parity failure detection
+        run: bash Tests/ScriptTests/ProviderParityTests.sh

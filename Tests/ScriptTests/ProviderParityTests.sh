@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PARITY_SCRIPT="$ROOT_DIR/scripts/verify-provider-parity.sh"
+CONTRACT_TEST="$ROOT_DIR/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"
 
 TEST_ROOT="$(mktemp -d /tmp/QuotaGlance-provider-parity-tests.XXXXXX)"
 
@@ -14,7 +15,7 @@ restore_backup() {
     /bin/cp "$backup" "$target"
   fi
 }
-trap '
+cleanup() {
   if (( ${#restore_files[@]} > 0 )); then
     for i in "${restore_files[@]}"; do
       restore_backup "$TEST_ROOT/$i.src" "$i"
@@ -22,7 +23,8 @@ trap '
     done
   fi
   /bin/rm -rf "$TEST_ROOT"
-' EXIT
+}
+trap cleanup EXIT
 
 fail() {
   echo "FAIL: $*" >&2
@@ -78,10 +80,34 @@ test_tampered_harmonyos_spec_copy_is_red() {
     || fail "verify-provider-parity.sh still failing after restoring the spec copy"
 }
 
+test_missing_contract_case_registration_is_red() {
+  /bin/cp "$CONTRACT_TEST" "$TEST_ROOT/Contract.test.ets.bak"
+  /usr/bin/python3 - "$CONTRACT_TEST" <<'PY'
+from pathlib import Path
+import re, sys
+path = Path(sys.argv[1])
+text = path.read_text()
+# Remove the first case object that has name: 'balance' and provider deepSeek
+pattern = re.compile(
+    r"\s*\{\s*provider:\s*'deepSeek',\s*name:\s*'balance',[\s\S]*?\},",
+    re.M,
+)
+new, n = pattern.subn("\n", text, count=1)
+if n != 1:
+    raise SystemExit("could not remove deepSeek balance CONTRACT_CASES entry")
+path.write_text(new)
+PY
+  assert_fails /bin/bash "$PARITY_SCRIPT"
+  /bin/cp "$TEST_ROOT/Contract.test.ets.bak" "$CONTRACT_TEST"
+  /bin/bash "$PARITY_SCRIPT" >/dev/null \
+    || fail "verify-provider-parity.sh still failing after restoring CONTRACT_CASES"
+}
+
 backup_spec_copies
 test_parity_script_exists
 test_current_tree_is_green
 test_tampered_core_spec_copy_is_red
 test_tampered_harmonyos_spec_copy_is_red
+test_missing_contract_case_registration_is_red
 
 echo "Provider parity tests passed"

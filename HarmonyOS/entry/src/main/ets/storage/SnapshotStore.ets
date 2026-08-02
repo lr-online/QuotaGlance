@@ -63,11 +63,12 @@ export class SnapshotStore {
 // Presentation helper for the current single-account UI and widget. Reads the
 // primary balance (balances[0]) exactly as before; a later UI pass replaces
 // presentation wholesale.
-export function formatSnapshotTexts(stored: StoredSnapshot | null): Record<string, string> {
+export function formatSnapshotTexts(context: common.Context, stored: StoredSnapshot | null): Record<string, string> {
+  const rm = context.resourceManager;
   if (!stored || stored.snapshot.balances.length === 0) {
     return {
-      'balanceText': '未配置',
-      'statusText': '打开应用录入 DeepSeek API Key',
+      'balanceText': rm.getStringSync($r('app.string.widget_balance_unconfigured').id),
+      'statusText': rm.getStringSync($r('app.string.widget_status_prompt_key').id),
       'updatedAtText': ''
     };
   }
@@ -75,20 +76,23 @@ export function formatSnapshotTexts(stored: StoredSnapshot | null): Record<strin
   const primary = snapshot.balances[0];
   const texts: Record<string, string> = {
     'balanceText': `${formatAmount(primary.available.amount)} ${primary.available.currency}`,
-    'statusText': '正常',
-    'updatedAtText': formatTime(snapshot.receivedAtMs)
+    'statusText': rm.getStringSync($r('app.string.widget_status_ok').id),
+    'updatedAtText': formatTime(
+      snapshot.receivedAtMs,
+      rm.getStringSync($r('app.string.updated_prefix').id)
+    )
   };
   if (stored.isStale) {
-    texts['statusText'] = '更新失败 · 数据过期';
+    texts['statusText'] = rm.getStringSync($r('app.string.stale_text').id);
   } else if (snapshot.providerStatus !== 'active') {
-    texts['statusText'] = '服务不可用';
+    texts['statusText'] = rm.getStringSync($r('app.string.widget_status_unavailable').id);
   }
   return texts;
 }
 
-function formatTime(ms: number): string {
+function formatTime(ms: number, prefix: string): string {
   const date = new Date(ms);
   const hours = date.getHours().toString().padStart(2, '0');
   const minutes = date.getMinutes().toString().padStart(2, '0');
-  return `更新于 ${hours}:${minutes}`;
+  return `${prefix} ${hours}:${minutes}`;
 }

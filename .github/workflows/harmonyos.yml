@@ -5,19 +5,25 @@ on:
   pull_request:
     paths:
       - "HarmonyOS/**"
-      - "Contracts/Providers/**"
+      - "Contracts/**"
       - "scripts/build-harmonyos.sh"
       - "scripts/sync-contracts-to-harmonyos.sh"
+      - "scripts/verify-provider-parity.sh"
       - ".github/workflows/harmonyos.yml"
   push:
     branches:
       - main
     paths:
       - "HarmonyOS/**"
-      - "Contracts/Providers/**"
+      - "Contracts/**"
       - "scripts/build-harmonyos.sh"
       - "scripts/sync-contracts-to-harmonyos.sh"
+      - "scripts/verify-provider-parity.sh"
       - ".github/workflows/harmonyos.yml"
+
+concurrency:
+  group: harmonyos-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -28,7 +34,9 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Install Linux dependencies
         run: |
@@ -37,7 +45,7 @@ jobs:
 
       - name: Setup HarmonyOS CLI tools
         id: setup-ohos
-        uses: ErBWs/setup-ohos@v2
+        uses: ErBWs/setup-ohos@4dbb63025116eb6165ceac58a4bf47cbdc5ac721 # v2
         with:
           # Matches HarmonyOS/build-profile.json5 targetSdkVersion 6.1.1(24)
           # and ErBWs/ohos-sdk release tags (command-line-tools + SDK mirror).
@@ -63,6 +71,9 @@ jobs:
           ohpm -v
           node -v
 
+      - name: Verify provider parity
+        run: bash scripts/verify-provider-parity.sh
+
       - name: Sync shared contract fixtures
         run: bash scripts/sync-contracts-to-harmonyos.sh
 
@@ -81,7 +92,7 @@ jobs:
         run: bash scripts/build-harmonyos.sh
 
       - name: Upload HAP artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: QuotaGlance-HarmonyOS-phone-tablet-${{ github.sha }}
           path: |

@@ -28,8 +28,10 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
 1. **`profileDescription` 返回 L10n key token 而非文案。** Swift 侧
    `(profile?, AppLanguage) -> String` 直接查 L10n 表返回本地化文案；ArkTS 侧
    `(profile?) -> string` 返回稳定 key token（需要参数时以冒号分隔附加
-   region/credentialKind），因为 ArkTS UI 尚未渲染 profile 描述、也没有这些
-   key 的 L10n 表（见 `UsageProvider.ets` 中 `ProviderDescriptor` 的注释）。
+   region/credentialKind），UI 再通过 `utils/ProfileDescriptionL10n.ets` 与
+   string resource 解析。双端使用相同 key 集合并保持相同可见语义；差异只在
+   Swift 于 descriptor 内解析、ArkTS 于 UI seam 解析（见 `UsageProvider.ets`
+   中 `ProviderDescriptor` 的注释）。
 2. **decimal 归一化的实现差异。** 规则是共享的（`Contracts/README.md`
    "Decimal and Money canonicalization"），但实现不同：Swift 用 `Decimal`
    数值比较；ArkTS 的 `SpecDecimal` 额外携带 `canonical` 字符串——JSON string
@@ -40,12 +42,15 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
    `SpecEngine.ets` 的 `jsonInt` 拒绝非整数和超出 Int64 范围的值，但范围比较
    本身是 double 近似（超过 2^53 即失去整数精度）。fixture 不要钉接近
    2^53 的整数值。
-4. **请求断言粒度。** Swift harness 断言请求数量、顺序、method、url 和 header
-   模式（`"Bearer"` 等）；ArkTS harness（`Contract.test.ets` 的
-   `assertRequestUrls`）只断言 URL 序列和 method 恒为 GET——尽管 stub fetcher
-   现在能收到完整 header 表，逐 header 断言尚未在 ArkTS 侧实现。
+4. **请求断言粒度已对齐。** Swift 与 ArkTS harness（`Contract.test.ets` 的
+   `assertRequests`）均断言请求数量、顺序、method、url 和 header 模式（`"Bearer"`
+   等）。双端语义与 `Contracts/README.md` Requests-fixture schema 一致。
 5. **传输错误形状。** Swift 透传 `URLError`；ArkTS 抛 `network:<BusinessError
    code>`。两者都在 spec 错误模型之外。
+6. **“跟随系统”语言在进程内固定为选择时的系统语言。** 当前 SDK 没有清除
+   app preferred language override 的 API；ArkTS 通过
+   `setAppPreferredLanguage(getSystemLanguage())` 恢复当前系统语言。因此用户
+   随后在系统设置中切换语言时，QuotaGlance 要到下次启动才会跟随。
 
 ## 同步脚本与 rawfile 布局
 
@@ -71,4 +76,6 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
   `SpecEngine.test.ets` 等）**需要模拟器或真机**，本地经 DevEco 或 hvigor
   测试任务运行。CI（`.github/workflows/harmonyos.yml`，ubuntu-latest +
   ErBWs/setup-ohos 6.1.1.280）目前只做契约同步 + 构建 HAP + 上传产物，
-  不跑 ohosTest——provider 行为改动不能只靠 CI 兜底，本机有条件要跑 ohosTest。
+  不跑 ohosTest；`verify-provider-parity.sh` 提供静态 coverage gate，要求每个
+  provider fixture case 均登记到 `CONTRACT_CASES`，并校验 step URL 与 requests
+  fixture 一致。provider 行为改动仍不能只靠 CI 兜底，本机有条件要跑 ohosTest。
