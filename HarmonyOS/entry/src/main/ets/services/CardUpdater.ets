@@ -2,7 +2,8 @@ import { formBindingData, formProvider } from '@kit.FormKit';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Account, AccountStore } from '../storage/AccountStore';
-import { FormBinding, FormBindingStore } from '../storage/FormBindingStore';
+import { FormBindingStore } from '../storage/FormBindingStore';
+import { FormBinding } from '../storage/StateCodecs';
 import { SnapshotStore, StoredSnapshot, formatSnapshotTexts } from '../storage/SnapshotStore';
 import {
   AggregateAccount,
@@ -128,7 +129,7 @@ export async function buildCardData(context: common.Context, formId: string): Pr
   if (target !== null) {
     base.title = target.displayName;
     const stored = await snapshotStore.load(target.id);
-    const texts = formatSnapshotTexts(stored);
+    const texts = formatSnapshotTexts(context, stored);
     base.balanceText = texts['balanceText'] ?? '--';
     base.statusText = texts['statusText'] ?? '';
     base.updatedAtText = texts['updatedAtText'] ?? '';

@@ -193,6 +193,14 @@
       "value": "低于设定阈值"
     },
     {
+      "name": "low_balance_title",
+      "value": "余额提醒"
+    },
+    {
+      "name": "low_balance_body",
+      "value": "%s 当前余额为 %s，已低于阈值 %s"
+    },
+    {
       "name": "spend_today",
       "value": "今日"
     },

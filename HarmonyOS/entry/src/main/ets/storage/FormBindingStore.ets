@@ -60,12 +60,13 @@ export class FormBindingStore {
   async setAccount(formId: string, accountId: string | null): Promise<void> {
     const bindings = await this.loadAll();
     const binding = bindings.get(formId) ?? { dimension: 2 };
-    if (accountId === null) {
-      delete binding.accountId;
-    } else {
-      binding.accountId = accountId;
+    const updated: FormBinding = {
+      dimension: binding.dimension
+    };
+    if (accountId !== null) {
+      updated.accountId = accountId;
     }
-    bindings.set(formId, binding);
+    bindings.set(formId, updated);
     await this.saveAll(bindings);
   }
 

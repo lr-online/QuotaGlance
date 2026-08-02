@@ -193,6 +193,14 @@
       "value": "Below the configured threshold"
     },
     {
+      "name": "low_balance_title",
+      "value": "Low balance alert"
+    },
+    {
+      "name": "low_balance_body",
+      "value": "%s has %s remaining, below the threshold of %s"
+    },
+    {
       "name": "spend_today",
       "value": "Today"
     },
