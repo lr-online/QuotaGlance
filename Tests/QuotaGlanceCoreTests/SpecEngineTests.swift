@@ -528,11 +528,11 @@ struct SpecEngineSpecLoadingTests {
                 [\(makeStep(url: #"{"byRegion":{"china":"https://engine.test/cn"}}"#))]
                 """
         )
-        #expect {
-            try ProviderSpec(data: specData)
-        } throws: { error in
-            guard case let ProviderSpecError.invalidSpec(message) = error else { return false }
-            return message.contains("international")
+        do {
+            _ = try ProviderSpec(data: specData)
+            Issue.record("expected ProviderSpecError.invalidSpec")
+        } catch let ProviderSpecError.invalidSpec(message) {
+            #expect(message.contains("international"))
         }
     }
 }
