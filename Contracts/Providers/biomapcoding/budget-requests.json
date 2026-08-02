@@ -1,0 +1,10 @@
+[
+  {
+    "method": "GET",
+    "url": "https://coding.biomap-int.com/key/info",
+    "headers": {
+      "Authorization": "Bearer",
+      "Accept": "application/json"
+    }
+  }
+]

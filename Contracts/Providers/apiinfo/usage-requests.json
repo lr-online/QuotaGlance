@@ -1,0 +1,10 @@
+[
+  {
+    "method": "GET",
+    "url": "https://www.api-info.net/v1/usage",
+    "headers": {
+      "Authorization": "Bearer",
+      "Accept": "application/json"
+    }
+  }
+]

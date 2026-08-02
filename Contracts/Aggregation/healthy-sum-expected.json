@@ -1,0 +1,27 @@
+{
+  "balances": [
+    { "amount": "644.05", "currency": "USD" }
+  ],
+  "todayActualCost": { "amount": "15.00", "currency": "USD" },
+  "todayRequests": 42,
+  "dailyUsage": [
+    { "date": "2026-07-16", "actualCost": { "amount": "0", "currency": "USD" } },
+    { "date": "2026-07-17", "actualCost": { "amount": "0", "currency": "USD" } },
+    { "date": "2026-07-18", "actualCost": { "amount": "0", "currency": "USD" } },
+    { "date": "2026-07-19", "actualCost": { "amount": "0", "currency": "USD" } },
+    { "date": "2026-07-20", "actualCost": { "amount": "0", "currency": "USD" } },
+    { "date": "2026-07-21", "actualCost": { "amount": "3.00", "currency": "USD" } },
+    { "date": "2026-07-22", "actualCost": { "amount": "12.00", "currency": "USD" } }
+  ],
+  "accounts": [
+    {
+      "accountID": "00000000-0000-0000-0000-000000000001",
+      "displayName": "Primary"
+    },
+    {
+      "accountID": "00000000-0000-0000-0000-000000000002",
+      "displayName": "Backup"
+    }
+  ],
+  "isPartial": false
+}

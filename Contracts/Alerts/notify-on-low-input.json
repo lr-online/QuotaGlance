@@ -1,0 +1,16 @@
+{
+  "accounts": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "displayName": "Low",
+      "lowBalanceThreshold": "10"
+    }
+  ],
+  "freshSnapshots": [
+    {
+      "accountID": "00000000-0000-0000-0000-000000000001",
+      "health": "belowThreshold",
+      "remaining": { "amount": "5", "currency": "USD" }
+    }
+  ]
+}
