@@ -39,10 +39,11 @@ editions embed the new Notification Center extension after this change.
 
 | Target | Min OS | Role |
 |--------|--------|------|
-| `QuotaGlance` | 14.0 | Full host; embeds desktop Widget + NC Widget |
-| `QuotaGlanceLegacy` | 12.0 | Compatibility host; embeds NC Widget only |
+| `QuotaGlance` | 14.0 | Full host; embeds desktop Widget + NC Widget + NC Intents |
+| `QuotaGlanceLegacy` | 12.0 | Compatibility host; embeds NC Widget + NC Intents |
 | `QuotaGlanceWidget` | 14.0 | Existing AppIntent desktop widgets (unchanged) |
 | `QuotaGlanceNCWidget` | 12.0 | New IntentConfiguration Notification Center widget |
+| `QuotaGlanceNCIntents` | 12.0 | SiriKit Intents service for dynamic account choices |
 
 New bundle identifier: `com.liangrui.QuotaGlance.NCWidget`.
 
@@ -156,18 +157,21 @@ Accounts after the host has cleared the preference on delete.
 - `QuotaGlanceLegacy` embeds `QuotaGlanceNCWidget`.
 - `QuotaGlance` embeds `QuotaGlanceNCWidget` and continues to embed
   `QuotaGlanceWidget`.
+- `QuotaGlanceLegacy` also embeds `QuotaGlanceNCIntents` for dynamic account options.
+- `QuotaGlance` also embeds `QuotaGlanceNCIntents` and continues to embed
+  `QuotaGlanceWidget`.
 - Entitlements for the NC appex match the desktop Widget sandbox and App Group
   pattern: sandbox on, same App Group, no network entitlement.
 
 ### Script and verifier contract updates
 
-Previously the macOS 12 edition was required to contain **no** `.appex`.
+Previously the macOS 12 edition was required to contain **no** `.appex`; the contract now includes the NC Widget and its Intents service.
 Update that contract:
 
 | Edition | Allowed appexes |
 |---------|-----------------|
-| legacy (macOS 12) | Only `QuotaGlanceNCWidget.appex` (min 12.0) |
-| full (macOS 14) | `QuotaGlanceNCWidget.appex` (min 12.0) and `QuotaGlanceWidget.appex` (min 14.0) |
+| legacy (macOS 12) | `QuotaGlanceNCWidget.appex` and `QuotaGlanceNCIntents.appex` (both min 12.0) |
+| full (macOS 14) | `QuotaGlanceNCWidget.appex` and `QuotaGlanceNCIntents.appex` (min 12.0), plus `QuotaGlanceWidget.appex` (min 14.0) |
 
 Update:
 
@@ -188,6 +192,8 @@ README wording:
 Add a focused NC bundle verifier that checks bundle id, WidgetKit extension
 point, arm64-only executable, IntentConfiguration path (not AppIntent),
 medium-only families, and expected entitlements.
+It also verifies the separate Intents service bundle id, extension point, deployment
+target, and arm64 executable.
 
 Also update the macOS 12 compatibility design contract language from "no
 Widget extension" to "no desktop Widget extension; Notification Center medium

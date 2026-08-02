@@ -72,7 +72,7 @@ The verifier receives the expected edition and checks:
   exports;
 - host bundle identifier, arm64 architecture, ad hoc signature, source commit,
   README version, and minimum system version;
-- macOS 12 edition has no Widget extension and minimum version 12.0;
+- macOS 12 edition has no desktop Widget extension, includes the Notification Center widget and Intents service, and has minimum version 12.0;
 - macOS 14 edition has the expected Widget extension and minimum version 14.0;
 - Gatekeeper is accepted only when it returns the documented ad hoc rejection,
   not for arbitrary `spctl` failures.
@@ -94,4 +94,3 @@ storage, refresh intervals, and menu bar account switching remain identical.
 
 The macOS 14 edition retains all current Widget sizes and per-account Widget
 configuration. No provider expansion is included in this work.
-

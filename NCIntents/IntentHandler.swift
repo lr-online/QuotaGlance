@@ -14,10 +14,13 @@ final class IntentHandler: INExtension, NCWidgetAccountIntentHandling {
 
     func provideAccountChoiceOptionsCollection(
         for intent: NCWidgetAccountIntent,
-        with completion: @escaping (INObjectCollection<NSString>?, Error?) -> Void
+        with completion: @escaping (
+            INObjectCollection<NCWidgetAccountIntentChoice>?,
+            Error?
+        ) -> Void
     ) {
         completion(
-            INObjectCollection(items: ncWidgetAccountChoiceOptions() as [NSString]),
+            INObjectCollection(items: ncWidgetAccountChoiceOptions()),
             nil
         )
     }

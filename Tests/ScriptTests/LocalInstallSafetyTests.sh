@@ -129,25 +129,52 @@ test_entitlement_validation() {
 
 test_installer_restarts_widget_extension() {
   local installer="$ROOT_DIR/scripts/install-local.sh"
-  local stop_widget='/usr/bin/pkill -x "$WIDGET_NAME"'
-  local unregister_widget='/usr/bin/pluginkit -r "$INSTALLED_WIDGET"'
+  local stop_extension='/usr/bin/pkill -x "$executable_name"'
+  local unregister_extension='/usr/bin/pluginkit -r "$bundle_path"'
+  local unregister_widget='unregister_extension "$INSTALLED_WIDGET" "$WIDGET_NAME" "$WIDGET_BUNDLE_ID"'
+  local unregister_nc_widget='unregister_extension "$INSTALLED_NC_WIDGET" "$NC_WIDGET_NAME" "$NC_WIDGET_BUNDLE_ID"'
+  local register_nc_widget='/usr/bin/pluginkit -a "$INSTALLED_NC_WIDGET"'
+  local registration_scan='registered_extensions="$(/usr/bin/pluginkit -m -A -D || true)"'
   local replace_app='/bin/mv "$INSTALLED_APP" "$backup_path"'
   local stop_line
   local unregister_line
+  local unregister_extension_line
+  local unregister_nc_line
+  local register_nc_line
+  local registration_scan_line
   local replace_line
 
-  stop_line="$(rg -nF "$stop_widget" "$installer" | head -1 | cut -d: -f1 || true)"
+  stop_line="$(rg -nF "$stop_extension" "$installer" | head -1 | cut -d: -f1 || true)"
   unregister_line="$(
     rg -nF "$unregister_widget" "$installer" | head -1 | cut -d: -f1 || true
+  )"
+  unregister_extension_line="$(
+    rg -nF "$unregister_extension" "$installer" | head -1 | cut -d: -f1 || true
+  )"
+  unregister_nc_line="$(
+    rg -nF "$unregister_nc_widget" "$installer" | head -1 | cut -d: -f1 || true
+  )"
+  register_nc_line="$(
+    rg -nF "$register_nc_widget" "$installer" | head -1 | cut -d: -f1 || true
+  )"
+  registration_scan_line="$(
+    rg -nF "$registration_scan" "$installer" | head -1 | cut -d: -f1 || true
   )"
   replace_line="$(rg -nF "$replace_app" "$installer" | head -1 | cut -d: -f1 || true)"
 
   [[ -n "$stop_line" ]] || fail "installer does not stop the existing widget"
+  [[ -n "$unregister_extension_line" ]] \
+    || fail "installer lacks the extension unregister helper"
   [[ -n "$unregister_line" ]] || fail "installer does not unregister the existing widget"
+  [[ -n "$unregister_nc_line" ]] || fail "installer does not unregister the existing NC widget"
+  [[ -n "$register_nc_line" ]] || fail "installer does not register the NC widget"
+  [[ -n "$registration_scan_line" ]] || fail "installer does not verify PlugInKit registration"
   [[ -n "$replace_line" ]] || fail "installer replacement step is missing"
   (( stop_line < replace_line )) || fail "widget is stopped after replacing the app"
   (( unregister_line < replace_line )) \
     || fail "widget is unregistered after replacing the app"
+  (( unregister_nc_line < replace_line )) \
+    || fail "NC widget is unregistered after replacing the app"
 }
 
 test_snapshot_directory_validation
