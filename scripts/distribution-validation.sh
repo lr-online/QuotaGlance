@@ -45,13 +45,10 @@ quota_glance_validate_source_items() {
 
 quota_glance_validate_mounted_payload() {
   local mount_point="$1"
-  local item
 
   [[ -d "$mount_point/QuotaGlance.app" \
     && ! -L "$mount_point/QuotaGlance.app" ]] || return 1
-  for item in README.txt; do
-    [[ -f "$mount_point/$item" && ! -L "$mount_point/$item" ]] || return 1
-  done
+  [[ -f "$mount_point/README.txt" && ! -L "$mount_point/README.txt" ]] || return 1
   [[ -L "$mount_point/Applications" \
     && "$(/usr/bin/readlink "$mount_point/Applications")" == "/Applications" ]] \
     || return 1
