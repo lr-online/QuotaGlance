@@ -212,7 +212,9 @@ enum URLSpec: Decodable, Equatable, Sendable {
         let container = try decoder.singleValueContainer()
         if let url = try? container.decode(String.self) {
             self = .fixed(url)
-        } else if let table = try? container.decode([String: String].self) {
+        } else if let wrapper = try? container.decode([String: [String: String]].self),
+                  wrapper.count == 1,
+                  let table = wrapper["byRegion"] {
             self = .byRegion(table)
         } else {
             throw DecodingError.dataCorruptedError(
@@ -1085,13 +1087,17 @@ public enum ProviderSpecLoader {
     }
 
     /// Reads `<id>.json` (camelCase provider id) from the bundle's
-    /// `ProviderSpecs` resource directory.
+    /// `ProviderSpecs` resource directory, falling back to the bundle root —
+    /// `.process` resources may flatten loose files out of their subdirectory.
     public static func specData(for id: ProviderID, in bundle: Bundle) throws -> Data {
         let name = id.rawValue
         guard let url = bundle.url(
             forResource: name,
             withExtension: "json",
             subdirectory: "ProviderSpecs"
+        ) ?? bundle.url(
+            forResource: name,
+            withExtension: "json"
         ) else {
             throw ProviderSpecError.specNotFound(name)
         }
