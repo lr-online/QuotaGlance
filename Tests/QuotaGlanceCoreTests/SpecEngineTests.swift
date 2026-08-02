@@ -533,6 +533,8 @@ struct SpecEngineSpecLoadingTests {
             Issue.record("expected ProviderSpecError.invalidSpec")
         } catch let ProviderSpecError.invalidSpec(message) {
             #expect(message.contains("international"))
+        } catch {
+            Issue.record("expected ProviderSpecError.invalidSpec, got \(error)")
         }
     }
 }
