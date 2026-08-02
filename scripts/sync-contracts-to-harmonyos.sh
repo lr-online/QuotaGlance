@@ -4,15 +4,20 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$REPO_ROOT/Contracts/Providers"
+CONTRACTS="$REPO_ROOT/Contracts"
 DST="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts"
 
-if [[ ! -d "$SRC" ]]; then
-  echo "error: $SRC not found" >&2
-  exit 1
-fi
+for dir in Providers Aggregation Alerts; do
+  if [[ ! -d "$CONTRACTS/$dir" ]]; then
+    echo "error: $CONTRACTS/$dir not found" >&2
+    exit 1
+  fi
+done
 
 rm -rf "$DST"
 mkdir -p "$DST"
-cp -R "$SRC/." "$DST/"
+cp -R "$CONTRACTS/Providers/." "$DST/"
+mkdir -p "$DST/aggregation" "$DST/alerts"
+cp -R "$CONTRACTS/Aggregation/." "$DST/aggregation/"
+cp -R "$CONTRACTS/Alerts/." "$DST/alerts/"
 echo "Synced contracts -> $DST"

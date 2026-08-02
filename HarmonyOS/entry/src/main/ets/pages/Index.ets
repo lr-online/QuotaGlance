@@ -2,14 +2,23 @@ import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AccountService } from '../services/AccountService';
+import { consumePendingDeepLink, DeepLinkRoute, subscribeDeepLink, unsubscribeDeepLink } from '../services/DeepLink';
 import {
   setLaunchRefresh,
   clearLaunchRefresh,
   subscribeOverviewRefresh,
   unsubscribeOverviewRefresh
 } from '../services/LaunchRefresh';
+import { requestNotificationPermissionOnce } from '../services/NotificationService';
 import { Account } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
+import {
+  AggregateAccount,
+  AggregateHealth,
+  AggregateSnapshotInput,
+  AggregationClock,
+  aggregateSnapshots
+} from '../aggregation/SnapshotAggregator';
 import { providerDisplayName } from '../providers/ProviderCatalog';
 import { QuotaWindow } from '../providers/UsageSnapshot';
 import { friendlyErrorText } from '../utils/ErrorMapping';
@@ -151,13 +160,18 @@ struct Index {
       hilog.warn(DOMAIN, TAG, 'overview listener reload failed: %{public}s', (error as Error).message);
     });
   };
+  private readonly deepLinkListener: () => void = () => {
+    this.consumeDeepLink();
+  };
 
   aboutToAppear(): void {
     subscribeOverviewRefresh(this.overviewListener);
+    subscribeDeepLink(this.deepLinkListener);
   }
 
   aboutToDisappear(): void {
     unsubscribeOverviewRefresh(this.overviewListener);
+    unsubscribeDeepLink(this.deepLinkListener);
   }
 
   onPageShow(): void {
@@ -186,6 +200,7 @@ struct Index {
       const previousId: string | null =
         this.currentIndex < this.accounts.length ? this.accounts[this.currentIndex].id : null;
       this.accounts = await service.loadAccounts();
+      await requestNotificationPermissionOnce(context, this.accounts.length > 0);
       hilog.info(DOMAIN, TAG, 'reload: %{public}d accounts', this.accounts.length);
       let nextIndex = 0;
       if (previousId !== null) {
@@ -239,6 +254,19 @@ struct Index {
         hilog.warn(DOMAIN, TAG, 'launch refresh await failed: %{public}s', (error as Error).message);
       }
     }
+    this.consumeDeepLink();
+  }
+
+  private consumeDeepLink(): void {
+    const route: DeepLinkRoute | null = consumePendingDeepLink();
+    if (route === null) {
+      return;
+    }
+    if (route.kind === 'account') {
+      router.pushUrl({ url: 'pages/AccountDetailPage', params: { accountId: route.targetId } });
+      return;
+    }
+    router.pushUrl({ url: 'pages/FormAccountPickerPage', params: { formId: route.targetId } });
   }
 
   // Once per cold app launch: kick off refreshAllEnabled in the background
@@ -261,31 +289,29 @@ struct Index {
   }
 
   // Busy chip while running, then recompute the overview and bump the tabs'
-  // syncTick. Only accounts whose refresh actually landed (fresh, non-stale
-  // snapshot) are pre-marked in AccountDetailView's launch set — accounts
-  // that failed stay unmarked so each tab's once-per-launch auto-refresh can
-  // retry them as the fallback, instead of both paths ending up empty.
+  // syncTick. The batch goes through the RefreshCoordinator; its per-account
+  // verdicts replace the old snapshot-store re-read — only accounts whose
+  // refresh actually landed are pre-marked in AccountDetailView's launch set,
+  // so failed accounts stay unmarked and each tab's once-per-launch
+  // auto-refresh can retry them as the fallback.
   private async runLaunchRefresh(service: AccountService, context: common.UIAbilityContext,
     enabledIds: string[]): Promise<void> {
     hilog.info(DOMAIN, TAG, 'launch refresh start: %{public}d accounts', enabledIds.length);
     this.refreshingAll = true;
+    let succeeded: string[] = [];
     try {
-      await service.refreshAllEnabled();
+      const result = await service.getRefreshCoordinator().refreshAllEnabled();
+      succeeded = result.succeeded;
+      for (const id of result.failed) {
+        hilog.warn(DOMAIN, TAG, 'launch refresh failed: %{public}s', id);
+      }
     } catch (error) {
       hilog.error(DOMAIN, TAG, 'launch refresh failed: %{public}s', (error as Error).message);
       promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
     }
     this.refreshingAll = false;
-    const store = await SnapshotStore.create(context);
-    const succeeded: string[] = [];
-    for (const id of enabledIds) {
-      const stored: StoredSnapshot | null = await store.load(id);
-      if (stored !== null && !stored.isStale) {
-        succeeded.push(id);
-        hilog.info(DOMAIN, TAG, 'launch refresh ok: %{public}s', id);
-      } else {
-        hilog.warn(DOMAIN, TAG, 'launch refresh stale/missing: %{public}s', id);
-      }
+    for (const id of succeeded) {
+      hilog.info(DOMAIN, TAG, 'launch refresh ok: %{public}s', id);
     }
     markAccountsRefreshedThisLaunch(succeeded);
     clearLaunchRefresh();
@@ -333,18 +359,16 @@ struct Index {
   }
 
   // Aggregates the CACHED snapshots for the overview panel — no network.
-  // Header keeps only today's totals (per-provider balances live in the
-  // provider blocks; per the macOS contract, spendingLimit/quotaWindow
-  // values never enter balance sums). Every provider with ≥1 account gets a
-  // block, even with no cached data or only disabled accounts (常驻).
+  // Header totals (today cost/requests, partial chip) come from the shared
+  // aggregation engine (the macOS contract: all-or-nothing today metrics,
+  // stale/missing snapshots flip the partial flag); per-provider blocks keep
+  // their own grouping below. Every provider with ≥1 account gets a block,
+  // even with no cached data or only disabled accounts (常驻).
   private async loadOverview(context: common.UIAbilityContext): Promise<void> {
     const store = await SnapshotStore.create(context);
-    const todayCosts = new Map<string, number>();
-    let todayRequests = 0;
-    let hasTodayRequests = false;
     let snapshotsFound = 0;
     let enabledCount = 0;
-    let partial = false;
+    const snapshotInputs: AggregateSnapshotInput[] = [];
     const workByProvider = new Map<string, ProviderWork>();
     const providerOrder: string[] = [];
 
@@ -376,21 +400,24 @@ struct Index {
       }
       snapshotsFound += 1;
       if (stored.isStale) {
-        partial = true;
         work.stale = true;
       }
       const snapshot = stored.snapshot;
+      const health: AggregateHealth = stored.isStale ? 'stale' : 'healthy';
+      snapshotInputs.push({
+        accountID: account.id,
+        displayName: '',
+        usage: snapshot,
+        health: health
+      });
       for (const balance of snapshot.balances) {
         sumInto(work.balances, balance.available.currency, balance.available.amount);
       }
       if (snapshot.today !== undefined) {
         if (snapshot.today.actualCost !== undefined) {
-          sumInto(todayCosts, snapshot.today.actualCost.currency, snapshot.today.actualCost.amount);
           sumInto(work.todayCosts, snapshot.today.actualCost.currency, snapshot.today.actualCost.amount);
         }
         if (snapshot.today.requests !== undefined) {
-          todayRequests += snapshot.today.requests;
-          hasTodayRequests = true;
           work.todayRequests += snapshot.today.requests;
           work.hasTodayRequests = true;
         }
@@ -400,12 +427,34 @@ struct Index {
         work.quotaText = quotaSummary(context, snapshot.quotaWindows[0]);
       }
     }
-    if (snapshotsFound > 0 && snapshotsFound < enabledCount) {
-      partial = true;
-    }
 
-    this.overviewToday = todayBody(context, todayCosts, todayRequests, hasTodayRequests);
-    this.overviewPartial = partial;
+    // Header via the aggregation engine. Missing today data renders '--' as
+    // before (empty string -> '--' in overviewPanel). The partial chip stays
+    // hidden when zero snapshots exist (the panel shows '--' placeholders
+    // instead of a warning), matching the previous inline behavior.
+    const clock: AggregationClock = {
+      nowMs: Date.now(),
+      timeZoneOffsetMinutes: -new Date().getTimezoneOffset()
+    };
+    const accountInputs: AggregateAccount[] = this.accounts.map((account: Account): AggregateAccount => {
+      return {
+        id: account.id,
+        displayName: account.displayName,
+        isEnabled: account.isEnabled,
+        sortOrder: account.sortOrder
+      };
+    });
+    const aggregate = aggregateSnapshots(accountInputs, snapshotInputs, clock);
+    const headerParts: string[] = [];
+    if (aggregate.todayActualCost !== undefined) {
+      headerParts.push(`${formatAmount(aggregate.todayActualCost.amount)} ${aggregate.todayActualCost.currency}`);
+    }
+    if (aggregate.todayRequests !== undefined) {
+      const unit = context.resourceManager.getStringSync($r('app.string.requests_unit').id);
+      headerParts.push(`${formatCompactCount(aggregate.todayRequests)} ${unit}`);
+    }
+    this.overviewToday = headerParts.join(' · ');
+    this.overviewPartial = aggregate.isPartial && snapshotsFound > 0;
 
     const todayLabel = context.resourceManager.getStringSync($r('app.string.overview_today').id);
     const blocks: ProviderOverview[] = providerOrder.map((key: string): ProviderOverview => {
@@ -536,7 +585,7 @@ struct Index {
     const context = getContext(this) as common.UIAbilityContext;
     try {
       const service = await AccountService.create(context);
-      await service.refreshAllEnabled();
+      await service.getRefreshCoordinator().refreshAllEnabled();
     } catch (error) {
       promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
     }

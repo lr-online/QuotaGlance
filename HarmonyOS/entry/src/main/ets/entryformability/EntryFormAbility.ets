@@ -1,67 +1,72 @@
-import { formBindingData, FormExtensionAbility, formProvider } from '@kit.FormKit';
+import { formBindingData, FormExtensionAbility } from '@kit.FormKit';
 import { Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { AccountService } from '../services/AccountService';
-import { Account } from '../storage/AccountStore';
-import { LanguageStore } from '../storage/LanguageStore';
-import { SnapshotStore, StoredSnapshot, formatSnapshotTexts } from '../storage/SnapshotStore';
-import { applyLanguage } from '../utils/LanguageUtils';
+import { updateFormCard } from '../services/CardUpdater';
+import { FormBindingStore } from '../storage/FormBindingStore';
 
 const TAG = 'EntryFormAbility';
 const DOMAIN_NUMBER = 0xFF00;
 const FORM_ID_PARAM = 'ohos.extra.param.key.form_identity';
 
+function parseDimension(raw: Object | undefined): number {
+  if (typeof raw === 'number' && raw >= 1) {
+    return raw;
+  }
+  if (typeof raw === 'string') {
+    if (raw === '1*2') {
+      return 1;
+    }
+    if (raw === '2*2') {
+      return 2;
+    }
+    if (raw === '2*4') {
+      return 3;
+    }
+    if (raw === '4*4') {
+      return 4;
+    }
+  }
+  return 2;
+}
+
 export default class EntryFormAbility extends FormExtensionAbility {
   onAddForm(want: Want): formBindingData.FormBindingData {
     const formId = want.parameters?.[FORM_ID_PARAM] as string;
+    const dimension = parseDimension(want.parameters?.['ohos.extra.param.key.form_dimension']);
     if (formId) {
-      this.refreshForm(formId);
+      FormBindingStore.create(this.context)
+        .then((store: FormBindingStore) => store.registerForm(formId, dimension))
+        .then(() => updateFormCard(this.context, formId))
+        .catch((error: Object) => {
+          hilog.warn(DOMAIN_NUMBER, TAG, 'onAddForm register failed: %{public}s', (error as Error).message);
+        });
     }
     const placeholder: Record<string, string> = {
+      'formId': formId ?? '',
+      'formDimension': '' + dimension,
+      'mode': 'aggregate',
+      'title': this.context.resourceManager.getStringSync($r('app.string.overview_label').id),
       'balanceText': this.context.resourceManager.getStringSync($r('app.string.widget_loading').id),
       'statusText': '',
-      'updatedAtText': ''
+      'updatedAtText': '',
+      'todayText': '',
+      'rowsText': '',
+      'targetAccountId': ''
     };
     return formBindingData.createFormBindingData(placeholder);
   }
 
   onUpdateForm(formId: string): void {
-    this.refreshForm(formId);
+    updateFormCard(this.context, formId).catch((error: Object) => {
+      hilog.warn(DOMAIN_NUMBER, TAG, 'onUpdateForm failed: %{public}s', (error as Error).message);
+    });
   }
 
   onRemoveForm(formId: string): void {
-    hilog.info(DOMAIN_NUMBER, TAG, `onRemoveForm: ${formId}`);
-  }
-
-  private async refreshForm(formId: string): Promise<void> {
-    try {
-      const languageStore = await LanguageStore.create(this.context);
-      applyLanguage(await languageStore.load());
-      const service = await AccountService.create(this.context);
-      await service.ensureLegacyMigration();
-      const accounts = await service.loadAccounts();
-      let firstEnabled: Account | null = null;
-      for (const account of accounts) {
-        if (account.isEnabled) {
-          firstEnabled = account;
-          break;
-        }
-      }
-      let stored: StoredSnapshot | null = null;
-      if (firstEnabled) {
-        try {
-          await service.refreshAccount(firstEnabled);
-        } catch (error) {
-          // refreshAccount already marked the snapshot stale.
-        }
-        const store = await SnapshotStore.create(this.context);
-        stored = await store.load(firstEnabled.id);
-      }
-      const texts = formatSnapshotTexts(this.context, stored);
-      const data = formBindingData.createFormBindingData(texts);
-      await formProvider.updateForm(formId, data);
-    } catch (error) {
-      hilog.error(DOMAIN_NUMBER, TAG, `refreshForm failed: ${(error as Error).message}`);
-    }
+    FormBindingStore.create(this.context)
+      .then((store: FormBindingStore) => store.removeForm(formId))
+      .catch((error: Object) => {
+        hilog.warn(DOMAIN_NUMBER, TAG, 'onRemoveForm failed: %{public}s', (error as Error).message);
+      });
   }
 }

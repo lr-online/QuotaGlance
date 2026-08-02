@@ -1,0 +1,2 @@
+# Confirmed false positive: notification permission state key is not a secret.
+856b2787d92c54516e02a2cb27197ebcf56969f3:HarmonyOS/entry/src/main/ets/services/NotificationService.ets:generic-api-key:31

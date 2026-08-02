@@ -3,15 +3,23 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { AccountService } from '../services/AccountService';
 import { LanguagePreference, LanguageStore } from '../storage/LanguageStore';
+import { registerBackgroundRefresh } from '../services/BackgroundRefreshScheduler';
+import { setPendingDeepLink } from '../services/DeepLink';
+import { FormBindingStore } from '../storage/FormBindingStore';
 import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 import { applyLanguage } from '../utils/LanguageUtils';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 
 const DOMAIN = 0x0000;
+const FORM_ID_PARAM = 'ohos.extra.param.key.form_identity';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'QuotaGlance', '%{public}s', 'Ability onCreate');
+    this.captureDeepLink(want);
+    // Periodic background refresh via Work Scheduler Kit; best-effort, never
+    // blocks launch (see BackgroundRefreshScheduler).
+    registerBackgroundRefresh(this.context);
     AccountService.create(this.context)
       .then((service: AccountService) => service.ensureLegacyMigration())
       .catch((error: Object) => {
@@ -48,11 +56,36 @@ export default class EntryAbility extends UIAbility {
     });
   }
 
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    this.captureDeepLink(want);
+  }
+
   onConfigurationUpdate(newConfig: Configuration): void {
     // Fires for system dark/light flips and is expected to fire for the
     // app-level setColorMode override as well (both are configuration
     // changes); re-resolving here is idempotent with the explicit re-apply
     // the theme switcher performs right after setColorMode.
     reapplyWindowBackground(this.context);
+  }
+
+  private captureDeepLink(want: Want): void {
+    const accountId = want.parameters?.['accountId'];
+    if (typeof accountId === 'string' && accountId.length > 0) {
+      setPendingDeepLink({ kind: 'account', targetId: accountId });
+      return;
+    }
+    const formId = want.parameters?.[FORM_ID_PARAM];
+    if (typeof formId === 'string' && formId.length > 0) {
+      FormBindingStore.create(this.context)
+        .then((store: FormBindingStore) => store.bindingFor(formId))
+        .then((binding) => {
+          if (binding?.accountId !== undefined && binding.accountId.length > 0) {
+            setPendingDeepLink({ kind: 'account', targetId: binding.accountId });
+          }
+        })
+        .catch((error: Object) => {
+          hilog.warn(DOMAIN, 'QuotaGlance', 'form binding resolve failed: %{public}s', (error as Error).message);
+        });
+    }
   }
 }

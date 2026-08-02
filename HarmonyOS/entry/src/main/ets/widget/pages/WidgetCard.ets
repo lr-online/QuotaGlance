@@ -1,47 +1,163 @@
-// The card is intentionally dark-styled in BOTH system color modes (form
-// cards on dark desktops read fine), so it pins the dark palette as literal
-// hex instead of $r('app.color.*'), which now follows the system mode.
 @Entry
 @Component
 struct WidgetCard {
+  @LocalStorageProp('formId') formId: string = '';
+  @LocalStorageProp('formDimension') formDimension: string = '2';
+  @LocalStorageProp('mode') mode: string = 'aggregate';
+  @LocalStorageProp('title') title: string = '总览';
   @LocalStorageProp('balanceText') balanceText: string = '--';
   @LocalStorageProp('statusText') statusText: string = '';
   @LocalStorageProp('updatedAtText') updatedAtText: string = '';
+  @LocalStorageProp('todayText') todayText: string = '';
+  @LocalStorageProp('rowsText') rowsText: string = '';
+  @LocalStorageProp('targetAccountId') targetAccountId: string = '';
 
-  build() {
+  private dimension(): number {
+    const parsed = Number(this.formDimension);
+    if (parsed >= 1 && parsed <= 4) {
+      return parsed;
+    }
+    return 2;
+  }
+
+  private rows(): string[] {
+    if (this.rowsText.length === 0) {
+      return [];
+    }
+    return this.rowsText.split('\n').filter((row: string) => row.length > 0);
+  }
+
+  private openApp(): void {
+    postCardAction(this, {
+      action: 'router',
+      abilityName: 'EntryAbility'
+    });
+  }
+
+  @Builder
+  footerButton() {
+    Button(this.mode === 'account' ? '查看详情' : $r('app.string.open_app'))
+      .fontSize(12)
+      .fontColor('#12161F')
+      .backgroundColor('#57E0D6')
+      .borderRadius(14)
+      .height(28)
+      .onClick(() => {
+        this.openApp();
+      })
+  }
+
+  @Builder
+  compactBody() {
     Column({ space: 6 }) {
+      Text(this.title)
+        .fontSize(11)
+        .fontColor('#99A1B3')
+        .maxLines(1)
       Text(this.balanceText)
-        .fontSize(26)
+        .fontSize(22)
         .fontWeight(FontWeight.Bold)
         .fontColor('#57E0D6')
         .maxLines(1)
+      if (this.todayText.length > 0) {
+        Text(this.todayText)
+          .fontSize(11)
+          .fontColor('#CFD6E6')
+          .maxLines(1)
+      }
+      if (this.statusText.length > 0) {
+        Text(this.statusText)
+          .fontSize(10)
+          .fontColor('#99A1B3')
+          .maxLines(1)
+      }
+      if (this.updatedAtText.length > 0) {
+        Text(this.updatedAtText)
+          .fontSize(10)
+          .fontColor('#54607A')
+          .maxLines(1)
+      }
+    }
+    .width('100%')
+    .alignItems(HorizontalAlign.Start)
+  }
 
-      Text(this.statusText)
-        .fontSize(12)
-        .fontColor('#99A1B3')
-        .maxLines(1)
+  @Builder
+  listBody() {
+    Column({ space: 8 }) {
+      Row() {
+        Text(this.title)
+          .fontSize(12)
+          .fontColor('#99A1B3')
+          .layoutWeight(1)
+          .maxLines(1)
+        if (this.statusText.length > 0) {
+          Text(this.statusText)
+            .fontSize(10)
+            .fontColor('#99A1B3')
+            .maxLines(1)
+        }
+      }
+      .width('100%')
 
-      Text(this.updatedAtText)
-        .fontSize(10)
-        .fontColor('#54607A')
-        .maxLines(1)
+      Text(this.balanceText)
+        .fontSize(this.dimension() === 4 ? 24 : 20)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#57E0D6')
+        .maxLines(2)
 
-      Button($r('app.string.open_app'))
-        .fontSize(12)
-        .fontColor('#12161F')
-        .backgroundColor('#57E0D6')
-        .borderRadius(14)
-        .height(28)
-        .onClick(() => {
-          postCardAction(this, {
-            action: 'router',
-            abilityName: 'EntryAbility'
-          });
-        })
+      if (this.todayText.length > 0) {
+        Text(this.todayText)
+          .fontSize(11)
+          .fontColor('#CFD6E6')
+          .maxLines(2)
+      }
+
+      if (this.rows().length > 0) {
+        Column({ space: 4 }) {
+          ForEach(this.rows(), (row: string) => {
+            Text(row)
+              .fontSize(10)
+              .fontColor('#CFD6E6')
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+          }, (row: string) => row)
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+      } else {
+        Blank()
+          .layoutWeight(1)
+      }
+
+      if (this.updatedAtText.length > 0) {
+        Text(this.updatedAtText)
+          .fontSize(10)
+          .fontColor('#54607A')
+          .maxLines(1)
+          .width('100%')
+      }
     }
     .width('100%')
     .height('100%')
-    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  build() {
+    Column({ space: 8 }) {
+      if (this.dimension() >= 3) {
+        this.listBody()
+      } else {
+        this.compactBody()
+      }
+
+      this.footerButton()
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.SpaceBetween)
     .padding(12)
     .backgroundColor('#12161F')
     .borderRadius(16)

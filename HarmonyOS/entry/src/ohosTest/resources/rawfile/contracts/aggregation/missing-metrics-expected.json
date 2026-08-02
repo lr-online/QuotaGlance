@@ -1,0 +1,12 @@
+{
+  "balances": [
+    { "amount": "30", "currency": "USD" }
+  ],
+  "todayActualCost": null,
+  "todayRequests": null,
+  "accounts": [
+    { "accountID": "00000000-0000-0000-0000-000000000001" },
+    { "accountID": "00000000-0000-0000-0000-000000000002" }
+  ],
+  "isPartial": false
+}
