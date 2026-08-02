@@ -2,7 +2,7 @@ import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { AccountService } from '../services/AccountService';
 import { Account, AccountStore } from '../storage/AccountStore';
-import { providerDisplayName } from '../providers/UsageProvider';
+import { providerDisplayName } from '../providers/ProviderCatalog';
 import { friendlyErrorText } from '../utils/ErrorMapping';
 
 // Row gap mirrors List({ space: 12 }). Used with the measured row height to
@@ -200,7 +200,7 @@ struct AccountsPage {
           .fontColor($r('app.color.textPrimary'))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(providerDisplayName(account.provider))
+        Text(providerDisplayName(getContext(this), account.provider))
           .fontSize(11)
           .fontColor($r('app.color.accentTeal'))
           .backgroundColor($r('app.color.accentTealTint'))

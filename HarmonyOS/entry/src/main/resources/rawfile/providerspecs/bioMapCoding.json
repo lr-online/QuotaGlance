@@ -1,0 +1,180 @@
+{
+  "specVersion": 1,
+  "id": "bioMapCoding",
+  "displayName": "BioMap Coding",
+  "descriptor": {
+    "supportsLowBalanceThreshold": { "always": false },
+    "profileDescription": {
+      "undetected": { "l10nKey": "notDetected" },
+      "detected": { "style": "regionCredential" }
+    }
+  },
+  "credential": {
+    "trimWhitespace": false
+  },
+  "profiles": {
+    "supported": [
+      { "region": "global", "credentialKind": "standard" }
+    ]
+  },
+  "detect": {
+    "strategy": "fixedProfile",
+    "profile": { "region": "global", "credentialKind": "standard" }
+  },
+  "fetch": {
+    "steps": [
+      {
+        "name": "keyInfo",
+        "request": {
+          "method": "GET",
+          "url": "https://coding.biomap-int.com/key/info",
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [403, 404, 405], "action": "gotoStep", "step": "models" },
+          { "match": [401], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "info", "required": true },
+            {
+              "path": "info.spend",
+              "type": "decimal",
+              "strict": true,
+              "error": "invalidResponse"
+            },
+            {
+              "path": "info.blocked",
+              "when": { "equals": true },
+              "error": "providerInactive"
+            },
+            {
+              "path": "info.max_budget",
+              "type": "decimal",
+              "when": { "lt": 0 },
+              "error": "invalidResponse"
+            }
+          ],
+          "values": {
+            "currency": { "literal": "USD" },
+            "spend": { "path": "info.spend", "type": "decimal" },
+            "maximum": { "path": "info.max_budget", "type": "decimal" },
+            "remaining": {
+              "op": "subtract",
+              "a": { "path": "info.max_budget", "type": "decimal" },
+              "b": { "path": "info.spend", "type": "decimal" }
+            },
+            "duration": {
+              "path": "info.budget_duration",
+              "type": "string",
+              "transforms": ["trim"],
+              "nullIfEmpty": true
+            }
+          },
+          "snapshot": {
+            "spendingLimit": {
+              "when": { "path": "info.max_budget", "exists": true },
+              "object": {
+                "label": { "literal": "Key budget" },
+                "used": {
+                  "money": {
+                    "amount": { "value": "spend" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "limit": {
+                  "money": {
+                    "amount": { "value": "maximum" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "remaining": {
+                  "money": {
+                    "amount": { "value": "remaining" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "resetDescription": { "template": "Budget period: ${duration}" }
+              }
+            },
+            "spend": {
+              "object": {
+                "total": {
+                  "money": {
+                    "amount": { "value": "spend" },
+                    "currency": { "value": "currency" }
+                  }
+                }
+              }
+            },
+            "providerStatus": { "literal": "active" },
+            "metricsUnavailableReason": {
+              "when": {
+                "all": [
+                  { "path": "info.spend", "exists": false },
+                  { "path": "info.max_budget", "exists": false }
+                ]
+              },
+              "value": { "literal": "Budget metrics unavailable for this key." }
+            }
+          }
+        }
+      },
+      {
+        "name": "models",
+        "onDemand": true,
+        "request": {
+          "method": "GET",
+          "url": "https://coding.biomap-int.com/v1/models",
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [401, 403], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "object", "type": "string", "required": true },
+            {
+              "path": "object",
+              "when": { "notEquals": "list" },
+              "error": "invalidResponse"
+            },
+            { "path": "data", "required": true, "nonEmpty": true },
+            {
+              "eachItem": {
+                "of": "data",
+                "path": "id",
+                "type": "string",
+                "transforms": ["trim"],
+                "required": true,
+                "nonEmpty": true
+              },
+              "error": "invalidResponse"
+            }
+          ],
+          "values": {
+            "modelCount": { "op": "count", "path": "data" }
+          },
+          "snapshot": {
+            "providerStatus": { "literal": "connected" },
+            "metricsUnavailableReason": {
+              "template": "${modelCount} models available. Budget metrics unavailable for this key."
+            }
+          }
+        }
+      }
+    ]
+  }
+}

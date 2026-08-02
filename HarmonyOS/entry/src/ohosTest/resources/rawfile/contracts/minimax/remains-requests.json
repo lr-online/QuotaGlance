@@ -1,0 +1,11 @@
+[
+  {
+    "method": "GET",
+    "url": "https://www.minimaxi.com/v1/token_plan/remains",
+    "headers": {
+      "Authorization": "Bearer",
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    }
+  }
+]

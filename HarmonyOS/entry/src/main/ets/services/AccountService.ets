@@ -1,11 +1,9 @@
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { createProviderRegistry } from '../providers/ProviderCatalog';
+import { createProviderRegistry, providerDisplayName } from '../providers/ProviderCatalog';
 import {
   ProviderID,
-  ProviderRegistry,
-  UsageProvider,
-  providerDisplayName
+  ProviderRegistry
 } from '../providers/UsageProvider';
 import { Account, AccountStore, generateAccountId } from '../storage/AccountStore';
 import { KeyRepository } from '../storage/KeyRepository';
@@ -25,11 +23,18 @@ export interface CreateAccountInput {
 // Error tokens from the provider layer propagate unchanged; the UI maps them
 // to friendly text.
 export class AccountService {
+  private readonly context: common.Context;
   private readonly registry: ProviderRegistry;
   private readonly accountStore: AccountStore;
   private readonly snapshotStore: SnapshotStore;
 
-  private constructor(registry: ProviderRegistry, accountStore: AccountStore, snapshotStore: SnapshotStore) {
+  private constructor(
+    context: common.Context,
+    registry: ProviderRegistry,
+    accountStore: AccountStore,
+    snapshotStore: SnapshotStore
+  ) {
+    this.context = context;
     this.registry = registry;
     this.accountStore = accountStore;
     this.snapshotStore = snapshotStore;
@@ -38,7 +43,7 @@ export class AccountService {
   static async create(context: common.Context): Promise<AccountService> {
     const accountStore = await AccountStore.create(context);
     const snapshotStore = await SnapshotStore.create(context);
-    return new AccountService(createProviderRegistry(), accountStore, snapshotStore);
+    return new AccountService(context, createProviderRegistry(context), accountStore, snapshotStore);
   }
 
   async loadAccounts(): Promise<Account[]> {
@@ -58,7 +63,7 @@ export class AccountService {
     const detection = await provider.detect(apiKey);
     const account: Account = {
       id: generateAccountId(),
-      displayName: displayName.length > 0 ? displayName : providerDisplayName(input.provider),
+      displayName: displayName.length > 0 ? displayName : providerDisplayName(this.context, input.provider),
       provider: input.provider,
       detectedProfile: detection.profile,
       isEnabled: true,
@@ -90,11 +95,12 @@ export class AccountService {
     const provider = this.registry.provider(account.provider);
     try {
       const profile = account.detectedProfile;
-      if (profile !== undefined && (profile.region !== undefined || profile.credentialKind !== undefined)) {
-        await this.snapshotStore.save(account.id, await provider.fetchWithProfile(apiKey, profile));
-      } else {
-        await this.snapshotStore.save(account.id, await provider.fetch(apiKey));
+      // No stored profile cannot be refreshed through the narrowed provider
+      // interface (Swift's RefreshCoordinator fails the same way).
+      if (profile === undefined || (profile.region === undefined && profile.credentialKind === undefined)) {
+        throw new Error('profileMismatch');
       }
+      await this.snapshotStore.save(account.id, await provider.fetch(apiKey, profile));
       hilog.info(DOMAIN, TAG, 'refreshAccount ok: %{public}s', account.id);
     } catch (error) {
       hilog.warn(DOMAIN, TAG, 'refreshAccount failed: %{public}s %{public}s', account.id, (error as Error).message);
@@ -144,7 +150,7 @@ export class AccountService {
     }
     const account: Account = {
       id: generateAccountId(),
-      displayName: providerDisplayName('deepSeek'),
+      displayName: providerDisplayName(this.context, 'deepSeek'),
       provider: 'deepSeek',
       isEnabled: true,
       sortOrder: 0

@@ -1,16 +1,11 @@
 import { describe, it, expect } from '@ohos/hypium';
 import { abilityDelegatorRegistry } from '@kit.TestKit';
 import { util } from '@kit.ArkTS';
-import { APIInfoProvider } from '../../../main/ets/providers/APIInfoProvider';
-import { BioMapCodingProvider } from '../../../main/ets/providers/BioMapCodingProvider';
-import { DeepSeekProvider } from '../../../main/ets/providers/DeepSeekProvider';
-import { KimiProvider } from '../../../main/ets/providers/KimiProvider';
-import { MiniMaxProvider } from '../../../main/ets/providers/MiniMaxProvider';
-import { OpenRouterProvider } from '../../../main/ets/providers/OpenRouterProvider';
+import { SpecDrivenProvider } from '../../../main/ets/providers/SpecDrivenProvider';
 import {
   HttpFetcher,
   ProviderID,
-  ProviderRegion,
+  ProviderProfile,
   RawJsonResponse,
   UsageProvider
 } from '../../../main/ets/providers/UsageProvider';
@@ -105,6 +100,17 @@ interface ExpectedSnapshot {
   metricsUnavailableReason?: string;
 }
 
+// Requests-fixture schema: pins the exact request sequence a fetch issues.
+// Header values are assertion patterns ("Bearer" = scheme assertion) — on
+// HarmonyOS headers are built inside the shared HttpClient, so only the URL
+// sequence and the (constant GET) method are asserted here. See
+// Contracts/README.md.
+interface ExpectedRequest {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+}
+
 // One stubbed HTTP step: the fixture file served when the provider requests
 // this URL, with this status code (default 200). Steps are looked up by URL,
 // so a provider may hit its endpoints in any order.
@@ -117,81 +123,80 @@ interface StubStep {
 interface ContractCase {
   provider: ProviderID;
   name: string;
-  preferredRegion?: ProviderRegion;
+  profile: ProviderProfile;
   steps: StubStep[];
 }
 
 // One entry per synced contract case. Fixture files live under
 // contracts/<lowercased provider id>/<name>-expected.json plus the step files.
+// Endpoint URLs are pinned by the <case>-requests.json fixtures asserted
+// below; the profile is the one the fetch runs under (the same profile
+// detect would produce for the case).
 const CONTRACT_CASES: ContractCase[] = [
   {
     provider: 'deepSeek',
     name: 'balance',
-    steps: [{ url: DeepSeekProvider.ENDPOINT, file: 'balance-response.json' }]
+    profile: { region: 'global', credentialKind: 'standard' },
+    steps: [{ url: 'https://api.deepseek.com/user/balance', file: 'balance-response.json' }]
   },
   {
     provider: 'apiInfo',
     name: 'usage',
-    steps: [{ url: APIInfoProvider.ENDPOINT, file: 'usage-response.json' }]
+    profile: { region: 'global', credentialKind: 'standard' },
+    steps: [{ url: 'https://www.api-info.net/v1/usage', file: 'usage-response.json' }]
   },
   {
     provider: 'kimi',
     name: 'china',
-    preferredRegion: 'china',
-    steps: [{ url: KimiProvider.CHINA_ENDPOINT, file: 'china-response.json' }]
+    profile: { region: 'china', credentialKind: 'standard' },
+    steps: [{ url: 'https://api.moonshot.cn/v1/users/me/balance', file: 'china-response.json' }]
   },
   {
     provider: 'openRouter',
     name: 'key-standard',
-    steps: [{ url: OpenRouterProvider.KEY_ENDPOINT, file: 'key-standard-response.json' }]
+    profile: { region: 'global', credentialKind: 'standard' },
+    steps: [{ url: 'https://openrouter.ai/api/v1/key', file: 'key-standard-response.json' }]
   },
   {
     provider: 'openRouter',
     name: 'key-management',
+    profile: { region: 'global', credentialKind: 'management' },
     steps: [
-      { url: OpenRouterProvider.KEY_ENDPOINT, file: 'key-management-response.json' },
-      { url: OpenRouterProvider.CREDITS_ENDPOINT, file: 'key-management-response2.json' }
+      { url: 'https://openrouter.ai/api/v1/key', file: 'key-management-response.json' },
+      { url: 'https://openrouter.ai/api/v1/credits', file: 'key-management-response2.json' }
     ]
   },
   {
     provider: 'miniMax',
     name: 'remains',
-    preferredRegion: 'china',
-    steps: [{ url: MiniMaxProvider.CHINA_ENDPOINT, file: 'remains-response.json' }]
+    profile: { region: 'china', credentialKind: 'tokenPlan' },
+    steps: [{ url: 'https://www.minimaxi.com/v1/token_plan/remains', file: 'remains-response.json' }]
   },
   {
     provider: 'bioMapCoding',
     name: 'budget',
-    steps: [{ url: BioMapCodingProvider.KEY_INFO_ENDPOINT, file: 'budget-response.json' }]
+    profile: { region: 'global', credentialKind: 'standard' },
+    steps: [{ url: 'https://coding.biomap-int.com/key/info', file: 'budget-response.json' }]
   },
   {
     provider: 'bioMapCoding',
     name: 'fallback',
+    profile: { region: 'global', credentialKind: 'standard' },
     steps: [
-      { url: BioMapCodingProvider.KEY_INFO_ENDPOINT, file: 'fallback-response.json', code: 403 },
-      { url: BioMapCodingProvider.MODELS_ENDPOINT, file: 'fallback-response2.json' }
+      { url: 'https://coding.biomap-int.com/key/info', file: 'fallback-response.json', code: 403 },
+      { url: 'https://coding.biomap-int.com/v1/models', file: 'fallback-response2.json' }
     ]
   }
 ];
 
-// Builds the provider under test with a pinned clock (receivedAtMs = 0) and
+// Builds the provider under test: the spec synced into
+// contracts/<lowercased id>/spec.json, a pinned clock (receivedAtMs = 0) and
 // the stubbed transport.
 function createTestProvider(contractCase: ContractCase, fetcher: HttpFetcher): UsageProvider {
+  const dir = contractCase.provider.toLowerCase();
+  const specJson = readRawFileString(`contracts/${dir}/spec.json`);
   const now = (): number => 0;
-  switch (contractCase.provider) {
-    case 'apiInfo':
-      return new APIInfoProvider(now, fetcher);
-    case 'deepSeek':
-      return new DeepSeekProvider(now, fetcher);
-    case 'kimi':
-      return new KimiProvider(contractCase.preferredRegion, now, fetcher);
-    case 'openRouter':
-      return new OpenRouterProvider(now, fetcher);
-    case 'miniMax':
-      return new MiniMaxProvider(contractCase.preferredRegion, now, fetcher);
-    case 'bioMapCoding':
-      return new BioMapCodingProvider(now, fetcher);
-  }
+  return new SpecDrivenProvider(specJson, { now: now, fetcher: fetcher });
 }
 
 function readRawFileString(path: string): string {
@@ -371,6 +376,32 @@ function assertSnapshot(snapshot: UsageSnapshot, expected: ExpectedSnapshot): vo
   }
 }
 
+// Returns undefined when the case has no <case>-requests.json fixture yet.
+function loadExpectedRequests(dir: string, name: string): ExpectedRequest[] | undefined {
+  try {
+    return JSON.parse(
+      readRawFileString(`contracts/${dir}/${name}-requests.json`)
+    ) as ExpectedRequest[];
+  } catch (error) {
+    return undefined;
+  }
+}
+
+// Asserts the recorded request URL sequence against a requests fixture. All
+// pinned methods are GET (asserted as a constant); header fields are sent
+// verbatim from the spec's header list and are not asserted per-field on this
+// platform — see Contracts/README.md.
+function assertRequestUrls(actual: string[], expected: ExpectedRequest[] | undefined): void {
+  if (expected === undefined) {
+    return;
+  }
+  expect(actual.length).assertEqual(expected.length);
+  for (let i = 0; i < expected.length; i++) {
+    expect(expected[i].method).assertEqual('GET');
+    expect(actual[i]).assertEqual(expected[i].url);
+  }
+}
+
 export default function contractTest() {
   describe('ContractTest', () => {
     for (const contractCase of CONTRACT_CASES) {
@@ -384,30 +415,44 @@ export default function contractTest() {
         for (const step of contractCase.steps) {
           stepsByUrl.set(step.url, step);
         }
-        const fetcher: HttpFetcher = (url: string, apiKey: string): Promise<RawJsonResponse> => {
-          const step = stepsByUrl.get(url);
-          if (step === undefined) {
-            return Promise.reject(new Error(`unstubbedUrl:${url}`));
-          }
-          const response: RawJsonResponse = {
-            code: step.code ?? 200,
-            body: readRawFileString(`contracts/${dir}/${step.file}`)
+        const recordedUrls: string[] = [];
+        const fetcher: HttpFetcher =
+          (url: string, headers: Record<string, string>): Promise<RawJsonResponse> => {
+            recordedUrls.push(url);
+            const step = stepsByUrl.get(url);
+            if (step === undefined) {
+              return Promise.reject(new Error(`unstubbedUrl:${url}`));
+            }
+            const response: RawJsonResponse = {
+              code: step.code ?? 200,
+              body: readRawFileString(`contracts/${dir}/${step.file}`)
+            };
+            return Promise.resolve(response);
           };
-          return Promise.resolve(response);
-        };
 
         const provider = createTestProvider(contractCase, fetcher);
-        const snapshot = await provider.fetch('redacted-test-key');
+        const snapshot = await provider.fetch('redacted-test-key', contractCase.profile);
 
         assertSnapshot(snapshot, expected);
+        assertRequestUrls(recordedUrls, loadExpectedRequests(dir, contractCase.name));
       });
     }
 
-    it('deepSeekRejectsEmptyBalanceInfos', 0, () => {
-      const provider: UsageProvider = new DeepSeekProvider();
+    it('deepSeekRejectsEmptyBalanceInfos', 0, async () => {
+      const specJson = readRawFileString('contracts/deepseek/spec.json');
+      const fetcher: HttpFetcher =
+        (url: string, headers: Record<string, string>): Promise<RawJsonResponse> => {
+          const response: RawJsonResponse = {
+            code: 200,
+            body: '{"is_available":true,"balance_infos":[]}'
+          };
+          return Promise.resolve(response);
+        };
+      const provider: UsageProvider =
+        new SpecDrivenProvider(specJson, { now: (): number => 0, fetcher: fetcher });
       let message = '';
       try {
-        provider.parseResponse('{"is_available":true,"balance_infos":[]}', 0);
+        await provider.fetch('redacted-test-key', { region: 'global', credentialKind: 'standard' });
       } catch (error) {
         message = (error as Error).message;
       }

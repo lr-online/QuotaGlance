@@ -1,5 +1,5 @@
-// Provider framework. Mirrors Sources/QuotaGlanceCore/Providers/UsageProvider.swift
-// and Sources/QuotaGlanceCore/Domain/Provider.swift.
+// Provider framework. Mirrors Sources/QuotaGlanceCore/Providers/UsageProvider.swift,
+// ProviderDescriptor.swift and Sources/QuotaGlanceCore/Domain/Provider.swift.
 //
 // Error taxonomy: providers report failures as `Error` objects whose message is
 // one of the following stable tokens (matching the Swift ProviderError cases):
@@ -16,16 +16,17 @@
 
 import { UsageSnapshot } from './UsageSnapshot';
 
-// Injectable HTTP transport: given a URL and API key, returns the raw status
-// code and body. Production providers default to getJsonWithStatus from
-// network/HttpClient.ets; tests inject stubs that serve fixture responses.
-// Mirrors Swift's HTTPClient protocol injection.
+// Injectable HTTP transport: given a URL and the exact header table built by
+// the spec engine, returns the raw status code and body. Production providers
+// default to getJsonWithStatus from network/HttpClient.ets; tests inject
+// stubs that serve fixture responses. Mirrors Swift's HTTPClient protocol
+// injection.
 export interface RawJsonResponse {
   code: number;
   body: string;
 }
 
-export type HttpFetcher = (url: string, apiKey: string) => Promise<RawJsonResponse>;
+export type HttpFetcher = (url: string, headers: Record<string, string>) => Promise<RawJsonResponse>;
 
 export type ProviderID = 'apiInfo' | 'deepSeek' | 'kimi' | 'openRouter' | 'miniMax' | 'bioMapCoding';
 
@@ -43,18 +44,26 @@ export interface ProviderDetection {
   snapshot: UsageSnapshot;
 }
 
+// Static provider capabilities, built from spec.descriptor by the engine.
+// profileDescription returns stable L10n key tokens (with colon-separated
+// region/credential-kind args where the spec declares them); the ArkTS UI
+// does not render profile descriptions yet and has no L10n tables for these
+// keys. See Contracts/README.md ("descriptor").
+export interface ProviderDescriptor {
+  id: ProviderID;
+  displayName: string;
+  supportsLowBalanceThreshold: (profile?: ProviderProfile) => boolean;
+  profileDescription: (profile?: ProviderProfile) => string;
+}
+
 export interface UsageProvider {
   readonly id: ProviderID;
 
-  fetch(apiKey: string): Promise<UsageSnapshot>;
+  readonly descriptor: ProviderDescriptor;
 
   detect(apiKey: string): Promise<ProviderDetection>;
 
-  fetchWithProfile(apiKey: string, profile: ProviderProfile): Promise<UsageSnapshot>;
-
-  // Parses a raw provider response body into a snapshot without any network
-  // access. Contract fixtures on both platforms exercise this path.
-  parseResponse(responseBody: string, receivedAtMs: number): UsageSnapshot;
+  fetch(apiKey: string, profile: ProviderProfile): Promise<UsageSnapshot>;
 }
 
 export const ALL_PROVIDER_IDS: ProviderID[] = [
@@ -65,19 +74,6 @@ export const ALL_PROVIDER_IDS: ProviderID[] = [
   'miniMax',
   'bioMapCoding'
 ];
-
-const PROVIDER_DISPLAY_NAMES: Record<ProviderID, string> = {
-  'apiInfo': 'API Info',
-  'deepSeek': 'DeepSeek',
-  'kimi': 'Kimi',
-  'openRouter': 'OpenRouter',
-  'miniMax': 'MiniMax',
-  'bioMapCoding': 'BioMap Coding'
-};
-
-export function providerDisplayName(id: ProviderID): string {
-  return PROVIDER_DISPLAY_NAMES[id];
-}
 
 export class ProviderRegistry {
   private readonly providers: Map<ProviderID, UsageProvider> = new Map();
