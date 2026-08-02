@@ -9,15 +9,11 @@ Last updated: 2026-08-02
 - Add a production macOS app icon asset set.
 - Keep the visual direction quiet and utility-focused rather than mascot or marketing-led.
 
-### 2. GitHub Actions automation
+### 2. HarmonyOS internationalization
 
-- Add a CI workflow for pull requests and pushes to `main`.
-- Run the existing repository verification commands:
-  - `swift test`
-  - `Tests/ScriptTests/BuildEditionTests.sh`
-  - `Tests/ScriptTests/DMGPackagingTests.sh`
-  - `Tests/ScriptTests/LocalInstallSafetyTests.sh`
-- Add a release workflow that packages DMGs from version tags and publishes the artifacts.
+- Add System / English / 简体中文 language preference on HarmonyOS, mirroring macOS `AppLanguage`.
+- Localize pages, service-card widget copy, error toasts, and provider profile descriptions via resource qualifiers.
+- Implementation plan: `docs/superpowers/plans/2026-08-02-harmonyos-i18n.md` (Part A of `docs/superpowers/specs/2026-08-02-harmonyos-i18n-and-verification-design.md`).
 
 ## Required next milestone before store release
 
@@ -65,6 +61,23 @@ Last updated: 2026-08-02
 - HarmonyOS direction is decided (client-only, per-platform UI and core, shared contract fixtures, personal-use minimal loop first); see the Architecture decisions section of the same document. Android/Windows remain open under the bullets above.
 
 ## Completed
+
+### GitHub Actions + Quality CI (2026-08)
+
+- CI workflow (`ci.yml`, macos-14): `swift test`, `scripts/verify-provider-parity.sh`, and ScriptTests including `GitHubActionsTests.sh`, on pull requests and pushes to `main`.
+- Package workflow (`package.yml`): DMG packaging and artifact upload on PRs, pushes to `main`, and manual dispatch.
+- Release workflow (`release.yml`): version-tag DMG packaging and GitHub release publication.
+- HarmonyOS workflow (`harmonyos.yml`, ubuntu + OHOS SDK): contract sync, provider parity check, unsigned HAP build; path filters include `Contracts/**`, `HarmonyOS/**`, and parity scripts.
+- Quality workflow (`quality.yml`, ubuntu): actionlint, zizmor, ShellCheck on `scripts/` and `Tests/**/*.sh`, gitleaks, and a dedicated provider-contract job running `verify-provider-parity.sh` + `ProviderParityTests.sh` on PRs, pushes to `main`, and merge queue.
+- Dependabot for GitHub Actions; workflows pin third-party actions to commit SHAs and use read-only `contents` permissions where applicable.
+
+### HarmonyOS verification loop (2026-08)
+
+- ArkTS contract harness (`Contract.test.ets`) records and asserts full request triples (method, URL, header patterns) with the same semantics as Swift `expectRequests`.
+- `scripts/verify-provider-parity.sh` gates `CONTRACT_CASES` coverage against contract fixture cases and step URL sync with `<case>-requests.json`.
+- `Tests/ScriptTests/ProviderParityTests.sh` includes a red-path case when coverage is incomplete.
+- Device-side ohosTest remains out of CI; local / DevEco runs still required for Hypium contract execution.
+- Implementation plan: `docs/superpowers/plans/2026-08-02-harmonyos-verification-loop.md`.
 
 ### Provider architecture migration to spec-driven engines (2026-08)
 
