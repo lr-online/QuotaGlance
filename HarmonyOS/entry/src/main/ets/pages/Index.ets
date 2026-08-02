@@ -10,7 +10,7 @@ import {
 } from '../services/LaunchRefresh';
 import { Account } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
-import { providerDisplayName } from '../providers/UsageProvider';
+import { providerDisplayName } from '../providers/ProviderCatalog';
 import { QuotaWindow } from '../providers/UsageSnapshot';
 import { friendlyErrorText } from '../utils/ErrorMapping';
 import { formatAmount, formatCompactCount, formatQuotaValue } from '../utils/NumberFormat';
@@ -327,7 +327,7 @@ struct Index {
       let work = workByProvider.get(key);
       if (work === undefined) {
         work = {
-          name: providerDisplayName(account.provider),
+          name: providerDisplayName(getContext(this), account.provider),
           hasEnabled: false,
           balances: new Map<string, number>(),
           todayCosts: new Map<string, number>(),
@@ -675,7 +675,7 @@ struct Index {
   @Builder
   tabBuilder(account: Account, index: number) {
     Column({ space: 6 }) {
-      Text(account.displayName.length > 0 ? account.displayName : providerDisplayName(account.provider))
+      Text(account.displayName.length > 0 ? account.displayName : providerDisplayName(getContext(this), account.provider))
         .fontSize(15)
         .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
         .fontColor(this.currentIndex === index ? $r('app.color.accentTeal') : $r('app.color.textSecondary'))

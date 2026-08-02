@@ -1,0 +1,116 @@
+{
+  "specVersion": 1,
+  "id": "kimi",
+  "displayName": "Kimi",
+  "descriptor": {
+    "supportsLowBalanceThreshold": { "always": true },
+    "profileDescription": {
+      "undetected": { "l10nKey": "notDetected" },
+      "detected": {
+        "byRegion": {
+          "china": { "l10nKey": "chinaCNY" },
+          "international": { "l10nKey": "internationalUSD" },
+          "global": { "l10nKey": "globalCredential", "args": ["credentialKind"] }
+        }
+      }
+    }
+  },
+  "credential": {
+    "trimWhitespace": false
+  },
+  "profiles": {
+    "supported": [
+      { "region": "china", "credentialKind": "standard" },
+      { "region": "international", "credentialKind": "standard" }
+    ]
+  },
+  "detect": {
+    "strategy": "regionFallback",
+    "candidates": [
+      { "region": "china", "credentialKind": "standard" },
+      { "region": "international", "credentialKind": "standard" }
+    ],
+    "fallbackOn": ["invalidCredential"],
+    "exhaustedError": "regionDetectionFailed"
+  },
+  "fetch": {
+    "steps": [
+      {
+        "name": "balance",
+        "request": {
+          "method": "GET",
+          "url": {
+            "byRegion": {
+              "china": "https://api.moonshot.cn/v1/users/me/balance",
+              "international": "https://api.moonshot.ai/v1/users/me/balance"
+            }
+          },
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [401, 403], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "code", "type": "int", "required": true },
+            { "path": "code", "when": { "notEquals": 0 }, "error": "invalidResponse" },
+            { "path": "status", "type": "bool", "required": true },
+            { "path": "status", "when": { "equals": false }, "error": "invalidResponse" },
+            { "path": "data.available_balance", "type": "decimal", "required": true }
+          ],
+          "values": {
+            "currency": {
+              "byRegion": { "china": "CNY", "international": "USD" }
+            }
+          },
+          "snapshot": {
+            "balances": {
+              "fixed": [
+                {
+                  "label": { "literal": "Balance" },
+                  "available": {
+                    "money": {
+                      "amount": { "path": "data.available_balance", "type": "decimal" },
+                      "currency": { "value": "currency" }
+                    }
+                  },
+                  "breakdown": {
+                    "fixed": [
+                      {
+                        "when": { "path": "data.cash_balance", "exists": true },
+                        "label": { "literal": "Cash" },
+                        "value": {
+                          "money": {
+                            "amount": { "path": "data.cash_balance", "type": "decimal" },
+                            "currency": { "value": "currency" }
+                          }
+                        }
+                      },
+                      {
+                        "when": { "path": "data.voucher_balance", "exists": true },
+                        "label": { "literal": "Voucher" },
+                        "value": {
+                          "money": {
+                            "amount": { "path": "data.voucher_balance", "type": "decimal" },
+                            "currency": { "value": "currency" }
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "providerStatus": { "literal": "active" }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "accounts": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "displayName": "Disabled",
+      "isEnabled": false,
+      "lowBalanceThreshold": "100"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "displayName": "No Threshold"
+    }
+  ],
+  "freshSnapshots": [
+    {
+      "accountID": "00000000-0000-0000-0000-000000000001",
+      "health": "healthy",
+      "remaining": { "amount": "10", "currency": "USD" }
+    },
+    {
+      "accountID": "00000000-0000-0000-0000-000000000002",
+      "health": "healthy",
+      "remaining": { "amount": "0", "currency": "USD" }
+    }
+  ]
+}

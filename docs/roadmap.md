@@ -1,6 +1,6 @@
 # QuotaGlance Roadmap
 
-Last updated: 2026-07-27
+Last updated: 2026-08-02
 
 ## Current delivery track
 
@@ -63,3 +63,12 @@ Last updated: 2026-07-27
 - Use that decision to choose the cross-platform architecture.
 - HarmonyOS capability findings and the lightest-integration recommendation: `docs/research/harmonyos-integration.md`.
 - HarmonyOS direction is decided (client-only, per-platform UI and core, shared contract fixtures, personal-use minimal loop first); see the Architecture decisions section of the same document. Android/Windows remain open under the bullets above.
+
+## Completed
+
+### Provider architecture migration to spec-driven engines (2026-08)
+
+- Provider implementations on both platforms are now spec-driven: `Contracts/Providers/<provider>/spec.json` is the single source of truth, executed by one generic engine per platform (Swift `SpecDrivenProvider` + `ProviderSpec`; ArkTS `SpecDrivenProvider` + `SpecEngine`). All hand-written per-provider code was deleted except the named `miniMaxModelRemains` parse strategy; the spec schema in `Contracts/README.md` is now normative.
+- Provider contract fixtures now pin the HTTP request sequence (`<case>-requests.json`) in addition to the parsed snapshot, and the same fixture mechanism was extended to aggregation (`Contracts/Aggregation/`) and alerts (`Contracts/Alerts/`) — currently asserted by the Swift suite only; mirroring them into an ArkTS aggregation/alert engine remains open.
+- The `UsageProvider` interface was narrowed to `id` + `descriptor` + `detect(apiKey:)` + `fetch(apiKey:profile:)`, with provider metadata carried by `ProviderDescriptor` and assembly centralized in `ProviderCatalog` (both platforms build providers from the synced specs).
+- Sync discipline: `scripts/sync-specs-to-core.sh`, `scripts/sync-specs-to-harmonyos.sh`, `scripts/sync-contracts-to-harmonyos.sh`, gated by `scripts/verify-provider-parity.sh`. Working agreements for future agents: `AGENTS.md` (root) and `HarmonyOS/AGENTS.md`.

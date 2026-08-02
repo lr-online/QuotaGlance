@@ -42,14 +42,7 @@ final class AppModel: ObservableObject {
         }
 
         let credentialStore = KeychainStore()
-        let registry = ProviderRegistry(providers: [
-            APIInfoProvider(),
-            DeepSeekProvider(),
-            KimiProvider(),
-            OpenRouterProvider(),
-            MiniMaxProvider(),
-            BioMapCodingProvider(),
-        ])
+        let registry = ProviderRegistry(providers: ProviderCatalog.all)
         let sharedStore = QuotaGlanceShared.snapshotStore()
         let notificationService = NotificationService()
         let launchAtLoginService = LaunchAtLoginService()
@@ -210,7 +203,8 @@ final class AppModel: ObservableObject {
             accounts.first(where: { $0.id == id })?.detectedProfile
         }
         let effectiveProfile = detection?.profile ?? existingProfile
-        validated.lowBalanceThreshold = validated.provider
+        validated.lowBalanceThreshold = ProviderCatalog
+            .descriptor(for: validated.provider)
             .normalizedLowBalanceThreshold(
                 validated.lowBalanceThreshold,
                 profile: effectiveProfile

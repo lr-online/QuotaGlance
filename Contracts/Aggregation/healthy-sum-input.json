@@ -1,0 +1,61 @@
+{
+  "now": "2026-07-22T12:00:00Z",
+  "accounts": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "displayName": "Primary",
+      "sortOrder": 0
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "displayName": "Backup",
+      "sortOrder": 1
+    }
+  ],
+  "snapshots": [
+    {
+      "accountID": "00000000-0000-0000-0000-000000000001",
+      "health": "healthy",
+      "usage": {
+        "balances": [
+          {
+            "label": "Balance",
+            "available": { "amount": "544.05", "currency": "USD" }
+          }
+        ],
+        "today": {
+          "actualCost": { "amount": "12.00", "currency": "USD" },
+          "requests": 40
+        },
+        "dailyUsage": [
+          {
+            "date": "2026-07-22",
+            "actualCost": { "amount": "12.00", "currency": "USD" }
+          }
+        ]
+      }
+    },
+    {
+      "accountID": "00000000-0000-0000-0000-000000000002",
+      "health": "healthy",
+      "usage": {
+        "balances": [
+          {
+            "label": "Balance",
+            "available": { "amount": "100.00", "currency": "USD" }
+          }
+        ],
+        "today": {
+          "actualCost": { "amount": "3.00", "currency": "USD" },
+          "requests": 2
+        },
+        "dailyUsage": [
+          {
+            "date": "2026-07-21",
+            "actualCost": { "amount": "3.00", "currency": "USD" }
+          }
+        ]
+      }
+    }
+  ]
+}

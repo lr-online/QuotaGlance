@@ -11,7 +11,12 @@ let package = Package(
         .library(name: "QuotaGlanceCore", targets: ["QuotaGlanceCore"])
     ],
     targets: [
-        .target(name: "QuotaGlanceCore"),
+        .target(
+            name: "QuotaGlanceCore",
+            resources: [
+                .process("Resources")
+            ]
+        ),
         .testTarget(
             name: "QuotaGlanceCoreTests",
             dependencies: ["QuotaGlanceCore"],

@@ -1,0 +1,10 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.moonshot.cn/v1/users/me/balance",
+    "headers": {
+      "Authorization": "Bearer",
+      "Accept": "application/json"
+    }
+  }
+]

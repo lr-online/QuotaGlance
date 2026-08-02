@@ -32,30 +32,12 @@ public struct ProviderDetection: Equatable, Sendable {
 
 public protocol UsageProvider: Sendable {
     var id: ProviderID { get }
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot
+    var descriptor: ProviderDescriptor { get }
     func detect(apiKey: String) async throws -> ProviderDetection
     func fetch(
         apiKey: String,
         profile: ProviderProfile
     ) async throws -> ProviderUsageSnapshot
-}
-
-public extension UsageProvider {
-    var id: ProviderID { .apiInfo }
-
-    func detect(apiKey: String) async throws -> ProviderDetection {
-        ProviderDetection(
-            profile: .apiInfo,
-            snapshot: try await fetch(apiKey: apiKey)
-        )
-    }
-
-    func fetch(
-        apiKey: String,
-        profile: ProviderProfile
-    ) async throws -> ProviderUsageSnapshot {
-        try await fetch(apiKey: apiKey)
-    }
 }
 
 public struct ProviderRegistry: Sendable {

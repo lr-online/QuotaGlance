@@ -28,6 +28,12 @@ jobs:
       - name: Run Swift tests
         run: swift test
 
+      - name: Verify provider parity
+        run: /bin/bash scripts/verify-provider-parity.sh
+
+      - name: Run provider parity tests
+        run: /bin/bash Tests/ScriptTests/ProviderParityTests.sh
+
       - name: Verify app icon assets
         run: /bin/bash Tests/ScriptTests/AppIconTests.sh
 

@@ -1,0 +1,18 @@
+[
+  {
+    "method": "GET",
+    "url": "https://openrouter.ai/api/v1/key",
+    "headers": {
+      "Authorization": "Bearer",
+      "Accept": "application/json"
+    }
+  },
+  {
+    "method": "GET",
+    "url": "https://openrouter.ai/api/v1/credits",
+    "headers": {
+      "Authorization": "Bearer",
+      "Accept": "application/json"
+    }
+  }
+]

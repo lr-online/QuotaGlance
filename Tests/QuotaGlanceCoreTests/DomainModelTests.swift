@@ -58,30 +58,41 @@ struct DomainModelTests {
     @Test("Provider profiles produce concise account labels")
     func providerProfilesProduceAccountLabels() {
         #expect(
-            ProviderID.kimi.profileDescription(
-                for: ProviderProfile(region: .china, credentialKind: .standard)
+            ProviderCatalog.descriptor(for: .kimi).profileDescription(
+                ProviderProfile(region: .china, credentialKind: .standard),
+                .english
             ) == "China / CNY"
         )
         #expect(
-            ProviderID.kimi.profileDescription(
-                for: ProviderProfile(region: .international, credentialKind: .standard)
+            ProviderCatalog.descriptor(for: .kimi).profileDescription(
+                ProviderProfile(region: .international, credentialKind: .standard),
+                .english
             ) == "International / USD"
         )
         #expect(
-            ProviderID.openRouter.profileDescription(
-                for: ProviderProfile(region: .global, credentialKind: .management)
+            ProviderCatalog.descriptor(for: .openRouter).profileDescription(
+                ProviderProfile(region: .global, credentialKind: .management),
+                .english
             ) == "Management key"
         )
         #expect(
-            ProviderID.miniMax.profileDescription(
-                for: ProviderProfile(region: .international, credentialKind: .tokenPlan)
+            ProviderCatalog.descriptor(for: .miniMax).profileDescription(
+                ProviderProfile(region: .international, credentialKind: .tokenPlan),
+                .english
             ) == "International / Token Plan"
         )
-        #expect(ProviderID.deepSeek.profileDescription(for: nil) == "Not detected")
-        #expect(ProviderID.bioMapCoding.displayName == "BioMap Coding")
         #expect(
-            ProviderID.bioMapCoding.profileDescription(
-                for: ProviderProfile(region: .global, credentialKind: .standard)
+            ProviderCatalog.descriptor(for: .deepSeek)
+                .profileDescription(nil, .english) == "Not detected"
+        )
+        #expect(
+            ProviderCatalog.descriptor(for: .bioMapCoding).displayName
+                == "BioMap Coding"
+        )
+        #expect(
+            ProviderCatalog.descriptor(for: .bioMapCoding).profileDescription(
+                ProviderProfile(region: .global, credentialKind: .standard),
+                .english
             ) == "Global / Standard key"
         )
     }
@@ -92,19 +103,44 @@ struct DomainModelTests {
         let management = ProviderProfile(region: .global, credentialKind: .management)
         let tokenPlan = ProviderProfile(region: .china, credentialKind: .tokenPlan)
 
-        #expect(ProviderID.apiInfo.supportsLowBalanceThreshold(profile: standard))
-        #expect(ProviderID.deepSeek.supportsLowBalanceThreshold(profile: standard))
-        #expect(ProviderID.kimi.supportsLowBalanceThreshold(profile: standard))
-        #expect(ProviderID.openRouter.supportsLowBalanceThreshold(profile: nil))
-        #expect(!ProviderID.openRouter.supportsLowBalanceThreshold(profile: standard))
-        #expect(ProviderID.openRouter.supportsLowBalanceThreshold(profile: management))
-        #expect(!ProviderID.miniMax.supportsLowBalanceThreshold(profile: tokenPlan))
-        #expect(!ProviderID.bioMapCoding.supportsLowBalanceThreshold(profile: standard))
         #expect(
-            ProviderID.miniMax.normalizedLowBalanceThreshold(
-                20,
-                profile: tokenPlan
-            ) == nil
+            ProviderCatalog.descriptor(for: .apiInfo)
+                .supportsLowBalanceThreshold(standard)
+        )
+        #expect(
+            ProviderCatalog.descriptor(for: .deepSeek)
+                .supportsLowBalanceThreshold(standard)
+        )
+        #expect(
+            ProviderCatalog.descriptor(for: .kimi)
+                .supportsLowBalanceThreshold(standard)
+        )
+        #expect(
+            ProviderCatalog.descriptor(for: .openRouter)
+                .supportsLowBalanceThreshold(nil)
+        )
+        #expect(
+            !ProviderCatalog.descriptor(for: .openRouter)
+                .supportsLowBalanceThreshold(standard)
+        )
+        #expect(
+            ProviderCatalog.descriptor(for: .openRouter)
+                .supportsLowBalanceThreshold(management)
+        )
+        #expect(
+            !ProviderCatalog.descriptor(for: .miniMax)
+                .supportsLowBalanceThreshold(tokenPlan)
+        )
+        #expect(
+            !ProviderCatalog.descriptor(for: .bioMapCoding)
+                .supportsLowBalanceThreshold(standard)
+        )
+        #expect(
+            ProviderCatalog.descriptor(for: .miniMax)
+                .normalizedLowBalanceThreshold(
+                    20,
+                    profile: tokenPlan
+                ) == nil
         )
     }
 

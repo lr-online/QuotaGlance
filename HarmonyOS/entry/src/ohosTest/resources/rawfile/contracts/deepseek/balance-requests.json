@@ -1,0 +1,10 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.deepseek.com/user/balance",
+    "headers": {
+      "Authorization": "Bearer",
+      "Accept": "application/json"
+    }
+  }
+]

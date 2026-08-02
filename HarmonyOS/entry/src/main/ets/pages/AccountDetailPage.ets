@@ -3,7 +3,7 @@ import { common } from '@kit.AbilityKit';
 import { AccountService } from '../services/AccountService';
 import { notifyOverviewRefresh } from '../services/LaunchRefresh';
 import { Account, AccountStore } from '../storage/AccountStore';
-import { providerDisplayName } from '../providers/UsageProvider';
+import { providerDisplayName } from '../providers/ProviderCatalog';
 import { friendlyErrorText } from '../utils/ErrorMapping';
 import { AccountDetailView } from '../components/AccountDetailView';
 
@@ -55,7 +55,7 @@ struct AccountDetailPage {
       return;
     }
     this.title = found.displayName;
-    this.providerName = providerDisplayName(found.provider);
+    this.providerName = providerDisplayName(getContext(this), found.provider);
     this.canRefresh = found.isEnabled;
   }
 

@@ -1,13 +1,14 @@
 import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { AccountService, CreateAccountInput } from '../services/AccountService';
-import { ALL_PROVIDER_IDS, ProviderID, providerDisplayName } from '../providers/UsageProvider';
+import { ALL_PROVIDER_IDS, ProviderID } from '../providers/UsageProvider';
+import { providerDescriptor, providerDisplayName } from '../providers/ProviderCatalog';
 import { friendlyErrorText } from '../utils/ErrorMapping';
 
-const THRESHOLD_PROVIDERS: ProviderID[] = ['apiInfo', 'deepSeek', 'kimi', 'openRouter'];
-
-function supportsLowBalanceThreshold(id: ProviderID): boolean {
-  return THRESHOLD_PROVIDERS.indexOf(id) >= 0;
+// Threshold support comes from the provider spec descriptor; pre-detection
+// there is no profile, matching the spec's `undetected` rule.
+function supportsLowBalanceThreshold(context: common.Context, id: ProviderID): boolean {
+  return providerDescriptor(context, id).supportsLowBalanceThreshold(undefined);
 }
 
 function keyPlaceholder(id: ProviderID): string {
@@ -69,7 +70,7 @@ struct AccountEditorPage {
 
   @Builder
   providerChip(id: ProviderID) {
-    Text(providerDisplayName(id))
+    Text(providerDisplayName(getContext(this), id))
       .fontSize(14)
       .fontColor(this.selectedProvider === id ? $r('app.color.accentTeal') : $r('app.color.textSecondary'))
       .padding({ left: 14, right: 14, top: 8, bottom: 8 })
@@ -132,7 +133,7 @@ struct AccountEditorPage {
 
           Column() {
             this.fieldLabel($r('app.string.name_label'))
-            TextInput({ placeholder: providerDisplayName(this.selectedProvider), text: this.name })
+            TextInput({ placeholder: providerDisplayName(getContext(this), this.selectedProvider), text: this.name })
               .placeholderColor($r('app.color.slateSecondary'))
               .fontColor($r('app.color.textPrimary'))
               .backgroundColor($r('app.color.cardBackground'))
@@ -170,7 +171,7 @@ struct AccountEditorPage {
           .alignItems(HorizontalAlign.Start)
           .width('100%')
 
-          if (supportsLowBalanceThreshold(this.selectedProvider)) {
+          if (supportsLowBalanceThreshold(getContext(this), this.selectedProvider)) {
             Column() {
               this.fieldLabel($r('app.string.threshold_label'))
               TextInput({ placeholder: $r('app.string.threshold_placeholder'), text: this.threshold })
