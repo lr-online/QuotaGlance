@@ -357,7 +357,7 @@ final class AppModel: ObservableObject {
         preferences.preferredLanguage = preference
         do {
             try persist()
-            mirrorNCWidgetPreferences()
+            try mirrorNCWidgetPreferences()
             ApplicationMenuInstaller.installMainMenuIfNeeded(
                 language: resolvedLanguage,
                 force: true
