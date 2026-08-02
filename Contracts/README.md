@@ -79,25 +79,21 @@ HTTP request sequence one fetch issues, in order:
 ]
 ```
 
-The Swift harness (`ContractURLStubHTTPClient` records every request) asserts
-count, order, `method` and `url` exactly. Header values are **assertion
-patterns**, not literal values:
+Both Swift and ArkTS harnesses assert count, order, `method`, `url`, and
+header patterns. Header values are **assertion patterns**, not literal values:
 
 - `"Bearer"` asserts the header is present and uses the Bearer scheme
   (`Bearer <key>`). **API key values are never pinned.**
 - Any other string is an exact-value assertion.
 
 Headers not listed in the fixture are unchecked. Fixtures mirror the current
-Swift implementation (they pin what the code does today, not a redesign).
+implementation (they pin what the code does today, not a redesign).
 
 On HarmonyOS the `HttpFetcher` signature is
 `(url, headers) => Promise<RawJsonResponse>`: the spec engine builds the exact
 header table from the spec's `request.headers` list and the shared
 `network/HttpClient.ets` (`getJsonWithStatus`) sends it verbatim, so MiniMax's
-`Content-Type` header is now unified across both platforms. The ArkTS harness
-still asserts only the **URL sequence** and that every pinned `method` is
-`GET`; per-header patterns from the fixture are not asserted on that platform
-(the stub fetcher receives the headers, but the assertions do not cover them).
+`Content-Type` header is unified across both platforms.
 
 When a case has no `<case>-requests.json` yet, both harnesses skip request
 assertions for it.

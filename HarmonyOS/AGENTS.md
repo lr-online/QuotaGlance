@@ -40,10 +40,9 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
    `SpecEngine.ets` 的 `jsonInt` 拒绝非整数和超出 Int64 范围的值，但范围比较
    本身是 double 近似（超过 2^53 即失去整数精度）。fixture 不要钉接近
    2^53 的整数值。
-4. **请求断言粒度。** Swift harness 断言请求数量、顺序、method、url 和 header
-   模式（`"Bearer"` 等）；ArkTS harness（`Contract.test.ets` 的
-   `assertRequestUrls`）只断言 URL 序列和 method 恒为 GET——尽管 stub fetcher
-   现在能收到完整 header 表，逐 header 断言尚未在 ArkTS 侧实现。
+4. **请求断言粒度已对齐。** Swift 与 ArkTS harness（`Contract.test.ets` 的
+   `assertRequests`）均断言请求数量、顺序、method、url 和 header 模式（`"Bearer"`
+   等）。双端语义与 `Contracts/README.md` Requests-fixture schema 一致。
 5. **传输错误形状。** Swift 透传 `URLError`；ArkTS 抛 `network:<BusinessError
    code>`。两者都在 spec 错误模型之外。
 
