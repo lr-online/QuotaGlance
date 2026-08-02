@@ -3,7 +3,9 @@ import { Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AccountService } from '../services/AccountService';
 import { Account } from '../storage/AccountStore';
+import { LanguageStore } from '../storage/LanguageStore';
 import { SnapshotStore, StoredSnapshot, formatSnapshotTexts } from '../storage/SnapshotStore';
+import { applyLanguage } from '../utils/LanguageUtils';
 
 const TAG = 'EntryFormAbility';
 const DOMAIN_NUMBER = 0xFF00;
@@ -16,7 +18,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
       this.refreshForm(formId);
     }
     const placeholder: Record<string, string> = {
-      'balanceText': '加载中…',
+      'balanceText': this.context.resourceManager.getStringSync($r('app.string.widget_loading').id),
       'statusText': '',
       'updatedAtText': ''
     };
@@ -33,6 +35,8 @@ export default class EntryFormAbility extends FormExtensionAbility {
 
   private async refreshForm(formId: string): Promise<void> {
     try {
+      const languageStore = await LanguageStore.create(this.context);
+      applyLanguage(await languageStore.load());
       const service = await AccountService.create(this.context);
       await service.ensureLegacyMigration();
       const accounts = await service.loadAccounts();
@@ -53,7 +57,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
         const store = await SnapshotStore.create(this.context);
         stored = await store.load(firstEnabled.id);
       }
-      const texts = formatSnapshotTexts(stored);
+      const texts = formatSnapshotTexts(this.context, stored);
       const data = formBindingData.createFormBindingData(texts);
       await formProvider.updateForm(formId, data);
     } catch (error) {
