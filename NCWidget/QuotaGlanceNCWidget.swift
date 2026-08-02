@@ -1,4 +1,5 @@
 import Intents
+import SwiftUI
 import WidgetKit
 
 struct QuotaGlanceNCWidget: Widget {

@@ -88,9 +88,13 @@ rg -q 'IntentTimelineProvider' "$ROOT_DIR/NCWidget/NCWidgetTimelineProvider.swif
 rg -q 'NCWidgetAccountIntent\+Generated.swift in Sources' \
   "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj" \
   || fail "NC widget Intent source is missing from the Xcode project"
-rg -q 'INIntentParameterType</key>[[:space:]]*<string>Object' \
-  "$ROOT_DIR/NCWidget/NCWidgetAccountIntent.intentdefinition" \
-  || fail "NC widget Intent parameter is not an object with display metadata"
+INTENT_DEFINITION="$ROOT_DIR/NCWidget/NCWidgetAccountIntent.intentdefinition"
+[[ "$(/usr/bin/plutil -extract INIntents.0.INIntentParameters.0.INIntentParameterType raw \
+  "$INTENT_DEFINITION")" == "Object" ]] \
+  || fail "NC widget Intent parameter is not an object"
+[[ "$(/usr/bin/plutil -extract INIntents.0.INIntentParameters.0.INIntentParameterObjectType raw \
+  "$INTENT_DEFINITION")" == "NCWidgetAccountIntentChoice" ]] \
+  || fail "NC widget Intent parameter lacks account choice display metadata"
 rg -q 'display: "Use App Default"' "$ROOT_DIR/NCIntents/NCWidgetAccountChoiceOptions.swift" \
   || fail "NC widget options do not expose readable default labels"
 rg -q 'display: \$0.displayName' "$ROOT_DIR/NCIntents/NCWidgetAccountChoiceOptions.swift" \
