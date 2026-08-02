@@ -92,28 +92,26 @@ struct ExpectedSnapshot: Decodable {
 // URL-keyed stub: serves the fixture body and status registered for each
 // request URL, so multi-step providers (OpenRouter credits, BioMap Coding
 // fallback) can be driven end to end. Every request is recorded in order so
-// <case>-requests.json fixtures can pin the request sequence; the lock keeps
-// the recording safe even though the tests run single-concurrency.
-final class ContractURLStubHTTPClient: HTTPClient, @unchecked Sendable {
-    let responses: [String: (body: Data, statusCode: Int)]
+// <case>-requests.json fixtures can pin the request sequence; the actor keeps
+// the recording async-safe even though the tests run single-concurrency.
+actor ContractRequestRecorder {
+    private(set) var requests: [URLRequest] = []
 
-    private let lock = NSLock()
-    private var recordedRequests: [URLRequest] = []
-
-    var requests: [URLRequest] {
-        lock.lock()
-        defer { lock.unlock() }
-        return recordedRequests
+    func record(_ request: URLRequest) {
+        requests.append(request)
     }
+}
+
+final class ContractURLStubHTTPClient: HTTPClient {
+    let responses: [String: (body: Data, statusCode: Int)]
+    let recorder = ContractRequestRecorder()
 
     init(responses: [String: (body: Data, statusCode: Int)]) {
         self.responses = responses
     }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        lock.lock()
-        recordedRequests.append(request)
-        lock.unlock()
+        await recorder.record(request)
 
         guard let stub = responses[request.url!.absoluteString] else {
             throw ProviderError.invalidResponse
@@ -359,7 +357,7 @@ struct DeepSeekContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "deepseek", name: "balance"))
         if let expectedRequests = try loadExpectedRequests(provider: "deepseek", name: "balance") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 }
@@ -381,7 +379,7 @@ struct APIInfoContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "apiinfo", name: "usage"))
         if let expectedRequests = try loadExpectedRequests(provider: "apiinfo", name: "usage") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 }
@@ -407,7 +405,7 @@ struct KimiContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "kimi", name: "china"))
         if let expectedRequests = try loadExpectedRequests(provider: "kimi", name: "china") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 }
@@ -429,7 +427,7 @@ struct OpenRouterContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "openrouter", name: "key-standard"))
         if let expectedRequests = try loadExpectedRequests(provider: "openrouter", name: "key-standard") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 
@@ -450,7 +448,7 @@ struct OpenRouterContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "openrouter", name: "key-management"))
         if let expectedRequests = try loadExpectedRequests(provider: "openrouter", name: "key-management") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 }
@@ -476,7 +474,7 @@ struct MiniMaxContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "minimax", name: "remains"))
         if let expectedRequests = try loadExpectedRequests(provider: "minimax", name: "remains") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 }
@@ -498,7 +496,7 @@ struct BioMapCodingContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "biomapcoding", name: "budget"))
         if let expectedRequests = try loadExpectedRequests(provider: "biomapcoding", name: "budget") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 
@@ -519,7 +517,7 @@ struct BioMapCodingContractTests {
 
         expectSnapshot(snapshot, try loadExpected(provider: "biomapcoding", name: "fallback"))
         if let expectedRequests = try loadExpectedRequests(provider: "biomapcoding", name: "fallback") {
-            expectRequests(httpClient.requests, expectedRequests)
+            expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
     }
 }
