@@ -3,13 +3,16 @@
 #   1. Swift ProviderID.allCases == ArkTS ProviderID union members.
 #   2. Contracts/Providers/<dir>/ has spec.json plus complete
 #      <case>-response/-expected/-requests triples.
-#   3. Each spec.json is byte-identical to its copies under
+#   3. Contracts/Aggregation and Contracts/Alerts have complete
+#      <case>-input/-expected pairs.
+#   4. Every provider contract case is registered in ArkTS CONTRACT_CASES.
+#   5. Registered ArkTS step URLs match the requests fixtures.
+#   6. Each spec.json is byte-identical to its copies under
 #      Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json and
 #      HarmonyOS/entry/src/main/resources/rawfile/providerspecs/<id>.json.
-#   4. HarmonyOS ohosTest contract copies match Contracts/Providers
+#   7. HarmonyOS ohosTest contract copies match Contracts/Providers,
+#      Contracts/Aggregation, and Contracts/Alerts
 #      (same scope as scripts/sync-contracts-to-harmonyos.sh).
-#   5. Every provider contract case is registered in ArkTS CONTRACT_CASES.
-#   6. Registered ArkTS step URLs match the requests fixtures.
 # Exits 1 on the first failing section after printing every error it found.
 set -euo pipefail
 
@@ -51,7 +54,6 @@ extract_contract_cases() {
         }
       '
 }
-
 extract_single_quoted_array() {
   local file="$1"
   local marker="$2"
@@ -281,7 +283,46 @@ check_contract_fixtures() {
   done
 }
 
-# --- Check 5: ArkTS CONTRACT_CASES covers provider contract fixtures --------
+# --- Check 5: aggregation and alert fixture pairs are complete --------------
+
+check_paired_contract_fixtures() {
+  local contract_name contract_dir fixture fixture_name cases case_name
+  local -a case_names
+
+  for contract_name in Aggregation Alerts; do
+    contract_dir="$REPO_ROOT/Contracts/$contract_name"
+    if [[ ! -d "$contract_dir" ]]; then
+      fail "missing $contract_dir"
+      continue
+    fi
+
+    case_names=()
+    for fixture in "$contract_dir"/*.json; do
+      [[ -f "$fixture" ]] || continue
+      fixture_name="${fixture##*/}"
+      if [[ "$fixture_name" =~ ^(.+)-(input|expected)\.json$ ]]; then
+        case_names+=("${BASH_REMATCH[1]}")
+      else
+        fail "Contracts/$contract_name: unexpected fixture name '$fixture_name'"
+      fi
+    done
+
+    cases="$(printf '%s\n' "${case_names[@]}" | sort -u)"
+    if [[ -z "$cases" ]]; then
+      fail "Contracts/$contract_name: no <case>-{input,expected}.json fixtures found"
+      continue
+    fi
+
+    for case_name in $cases; do
+      [[ -f "$contract_dir/$case_name-input.json" ]] \
+        || fail "Contracts/$contract_name: case '$case_name' missing $case_name-input.json"
+      [[ -f "$contract_dir/$case_name-expected.json" ]] \
+        || fail "Contracts/$contract_name: case '$case_name' missing $case_name-expected.json"
+    done
+  done
+}
+
+# --- Check 6: ArkTS CONTRACT_CASES covers provider contract fixtures --------
 
 check_contract_case_registration() {
   [[ -f "$CONTRACT_TEST_FILE" ]] || { fail "missing $CONTRACT_TEST_FILE"; return; }
@@ -305,7 +346,7 @@ check_contract_case_registration() {
   done
 }
 
-# --- Check 6: ArkTS CONTRACT_CASES step URLs match requests fixtures --------
+# --- Check 7: ArkTS CONTRACT_CASES step URLs match requests fixtures --------
 
 check_contract_case_step_urls() {
   [[ -f "$CONTRACT_TEST_FILE" ]] || { fail "missing $CONTRACT_TEST_FILE"; return; }
@@ -393,7 +434,7 @@ PY
   fi
 }
 
-# --- Check 7: spec.json copies are byte-identical ----------------------------
+# --- Check 8: spec.json copies are byte-identical ---------------------------
 
 check_spec_copies() {
   [[ -d "$CONTRACTS_DIR" ]] || { fail "missing $CONTRACTS_DIR"; return; }
@@ -435,7 +476,7 @@ check_spec_copies() {
   done
 }
 
-# --- Check 8: ohosTest contract copies match Contracts/Providers ------------
+# --- Check 9: ohosTest contract copies match Contracts/ ---------------------
 
 check_ohostest_contracts() {
   [[ -d "$CONTRACTS_DIR" ]] || { fail "missing $CONTRACTS_DIR"; return; }
@@ -444,16 +485,44 @@ check_ohostest_contracts() {
     return
   fi
 
-  local diff_output
-  if ! diff_output="$(diff -r "$CONTRACTS_DIR" "$OHOSTEST_CONTRACTS_DIR" 2>&1)"; then
-    fail "ohosTest contract copies are out of sync (run scripts/sync-contracts-to-harmonyos.sh):"$'\n'"$diff_output"
-  fi
+  local hint="run scripts/sync-contracts-to-harmonyos.sh"
+  local dir name diff_output
+
+  # Provider trees: contracts/<provider>/ matches Contracts/Providers/<provider>/.
+  for dir in "$CONTRACTS_DIR"/*/; do
+    name="$(basename "$dir")"
+    if ! diff_output="$(diff -r "$dir" "$OHOSTEST_CONTRACTS_DIR/$name" 2>&1)"; then
+      fail "ohosTest contract copies for provider '$name' are out of sync ($hint):"$'\n'"$diff_output"
+    fi
+  done
+
+  # Aggregation and alerts trees: contracts/aggregation|alerts/ match
+  # Contracts/Aggregation|Alerts/.
+  local src_dir dst_name
+  for pair in "Aggregation aggregation" "Alerts alerts"; do
+    src_dir="${pair%% *}"
+    dst_name="${pair##* }"
+    if ! diff_output="$(diff -r "$REPO_ROOT/Contracts/$src_dir" "$OHOSTEST_CONTRACTS_DIR/$dst_name" 2>&1)"; then
+      fail "ohosTest contract copies for Contracts/$src_dir are out of sync ($hint):"$'\n'"$diff_output"
+    fi
+  done
+
+  # No unexpected top-level entries beyond providers and aggregation/alerts.
+  local entry
+  for entry in "$OHOSTEST_CONTRACTS_DIR"/*; do
+    [[ -e "$entry" ]] || continue
+    name="$(basename "$entry")"
+    [[ "$name" == "aggregation" || "$name" == "alerts" ]] && continue
+    [[ -d "$CONTRACTS_DIR/$name" ]] \
+      || fail "ohosTest contract copies have unexpected entry '$name' ($hint)"
+  done
 }
 
 check_provider_id_sets
 check_protocol_allow_lists
 check_usage_provider_interface
 check_contract_fixtures
+check_paired_contract_fixtures
 check_contract_case_registration
 check_contract_case_step_urls
 check_spec_copies
@@ -468,7 +537,8 @@ echo "OK: ProviderID sets match (Swift <-> ArkTS)"
 echo "OK: protocol enums, error tokens, snapshot fields, and spec versions match"
 echo "OK: UsageProvider shared interface members are present on both platforms"
 echo "OK: contract fixture triples complete under Contracts/Providers/"
+echo "OK: aggregation and alert contract fixture pairs are complete"
 echo "OK: every provider contract fixture case is registered in ArkTS CONTRACT_CASES"
 echo "OK: ArkTS CONTRACT_CASES step URLs match requests fixtures"
 echo "OK: spec.json copies byte-identical (Contracts <-> Swift core <-> HarmonyOS)"
-echo "OK: ohosTest contract copies in sync with Contracts/Providers/"
+echo "OK: ohosTest contract copies in sync with Contracts/ (Providers + Aggregation + Alerts)"

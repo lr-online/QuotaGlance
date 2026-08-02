@@ -2,12 +2,11 @@
 
 Shared contract fixtures keep the Swift (macOS) and ArkTS (HarmonyOS) provider
 implementations from drifting. Both platforms parse the same recorded provider
-response and assert the same expected snapshot. The same mechanism covers the
-cross-platform aggregation and alert behavior modules (see "Aggregation
-contract fixtures" and "Alert contract fixtures" below); those two fixture
-sets are currently asserted by the Swift suite only — the HarmonyOS app has
-no aggregation/alert engine yet, and `scripts/sync-contracts-to-harmonyos.sh`
-syncs only `Contracts/Providers/`.
+response and assert the same expected snapshot. The same mechanism also covers
+the cross-platform aggregation and alert behavior modules (see "Aggregation
+contract fixtures" and "Alert contract fixtures" below); those fixture sets
+are synced into HarmonyOS ohosTest rawfiles and consumed by ArkTS contract
+suites as well.
 
 ## Layout
 
@@ -92,8 +91,10 @@ implementation (they pin what the code does today, not a redesign).
 On HarmonyOS the `HttpFetcher` signature is
 `(url, headers) => Promise<RawJsonResponse>`: the spec engine builds the exact
 header table from the spec's `request.headers` list and the shared
-`network/HttpClient.ets` (`getJsonWithStatus`) sends it verbatim, so MiniMax's
-`Content-Type` header is unified across both platforms.
+`network/HttpClient.ets` (`getJsonWithStatus`) sends it verbatim, so
+MiniMax's `Content-Type` header is unified across both platforms. The ArkTS
+harness records the same request triple as Swift — `method`, `url`, and
+header patterns from the fixture.
 
 When a case has no `<case>-requests.json` yet, both harnesses skip request
 assertions for it.

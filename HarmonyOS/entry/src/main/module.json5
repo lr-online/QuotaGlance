@@ -39,6 +39,13 @@
             "resource": "$profile:form_config"
           }
         ]
+      },
+      {
+        "name": "WorkSchedulerAbility",
+        "srcEntry": "./ets/workschedulerability/WorkSchedulerAbility.ets",
+        "label": "$string:EntryAbility_label",
+        "description": "$string:module_desc",
+        "type": "workScheduler"
       }
     ],
     "requestPermissions": [

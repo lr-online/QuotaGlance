@@ -1,0 +1,43 @@
+{
+  "now": "2026-07-22T12:00:00Z",
+  "accounts": [
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "displayName": "Primary",
+      "sortOrder": 0
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "displayName": "Backup",
+      "sortOrder": 1
+    }
+  ],
+  "snapshots": [
+    {
+      "accountID": "00000000-0000-0000-0000-000000000001",
+      "health": "healthy",
+      "usage": {
+        "balances": [
+          {
+            "label": "Balance",
+            "available": { "amount": "10", "currency": "USD" }
+          }
+        ],
+        "today": { "requests": 9223372036854775807 }
+      }
+    },
+    {
+      "accountID": "00000000-0000-0000-0000-000000000002",
+      "health": "healthy",
+      "usage": {
+        "balances": [
+          {
+            "label": "Balance",
+            "available": { "amount": "20", "currency": "USD" }
+          }
+        ],
+        "today": { "requests": 1 }
+      }
+    }
+  ]
+}

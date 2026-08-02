@@ -383,6 +383,30 @@
     {
       "name": "profile_label",
       "value": "配置"
+    },
+    {
+      "name": "widget_choose_account",
+      "value": "卡片账户"
+    },
+    {
+      "name": "widget_show_overview",
+      "value": "显示总览"
+    },
+    {
+      "name": "widget_current_selection",
+      "value": "当前卡片"
+    },
+    {
+      "name": "widget_open_target",
+      "value": "打开目标"
+    },
+    {
+      "name": "widget_updated",
+      "value": "卡片已更新"
+    },
+    {
+      "name": "widget_select_hint",
+      "value": "选择这张卡片默认展示的账户"
     }
   ]
 }

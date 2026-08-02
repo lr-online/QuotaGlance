@@ -101,10 +101,17 @@ interface ExpectedSnapshot {
 }
 
 // Requests-fixture schema: pins the exact request sequence a fetch issues.
-// Header values are assertion patterns ("Bearer" = scheme assertion). Both
-// Swift and ArkTS harnesses assert count, order, method, URL, and header
-// patterns. See Contracts/README.md.
+// Header values are assertion patterns ("Bearer" = scheme assertion rather
+// than a literal API key); other strings are exact header-value assertions.
+// Both Swift and ArkTS harnesses assert count, order, method, URL, and
+// header patterns. See Contracts/README.md.
 interface ExpectedRequest {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+}
+
+interface RecordedRequest {
   method: string;
   url: string;
   headers: Record<string, string>;
@@ -386,21 +393,18 @@ function loadExpectedRequests(dir: string, name: string): ExpectedRequest[] | un
   }
 }
 
-interface RecordedRequest {
-  method: string;
-  url: string;
-  headers: Record<string, string>;
+function assertHeaderPattern(actual: string | undefined, expected: string): void {
+  expect(actual !== undefined).assertTrue();
+  const value = actual as string;
+  if (expected === 'Bearer') {
+    expect(value.startsWith('Bearer ')).assertTrue();
+    expect(value.length > 'Bearer '.length).assertTrue();
+    return;
+  }
+  expect(value).assertEqual(expected);
 }
 
-// Asserts the recorded request sequence against a requests fixture.
-// Semantics match Swift expectRequests in ContractTests.swift:
-// count/order/method/url exact; header values are patterns ("Bearer" =
-// scheme prefix; any other string = exact match). Headers absent from
-// the fixture are unchecked. Missing fixture => no-op.
-function assertRequests(
-  actual: RecordedRequest[],
-  expected: ExpectedRequest[] | undefined
-): void {
+function assertRequests(actual: RecordedRequest[], expected: ExpectedRequest[] | undefined): void {
   if (expected === undefined) {
     return;
   }
@@ -408,17 +412,10 @@ function assertRequests(
   for (let i = 0; i < expected.length; i++) {
     expect(actual[i].method).assertEqual(expected[i].method);
     expect(actual[i].url).assertEqual(expected[i].url);
-    const patterns = expected[i].headers;
-    const keys = Object.keys(patterns);
-    for (let k = 0; k < keys.length; k++) {
-      const field = keys[k];
-      const pattern = patterns[field];
-      const value = actual[i].headers[field];
-      if (pattern === 'Bearer') {
-        expect(value !== undefined && value.indexOf('Bearer ') === 0).assertTrue();
-      } else {
-        expect(value).assertEqual(pattern);
-      }
+    const expectedHeaders = expected[i].headers;
+    const headerNames = Object.keys(expectedHeaders).sort();
+    for (const name of headerNames) {
+      assertHeaderPattern(actual[i].headers[name], expectedHeaders[name]);
     }
   }
 }
@@ -436,10 +433,14 @@ export default function contractTest() {
         for (const step of contractCase.steps) {
           stepsByUrl.set(step.url, step);
         }
-        const recorded: RecordedRequest[] = [];
+        const recordedRequests: RecordedRequest[] = [];
         const fetcher: HttpFetcher =
           (url: string, headers: Record<string, string>): Promise<RawJsonResponse> => {
-            recorded.push({ method: 'GET', url: url, headers: headers });
+            recordedRequests.push({
+              method: 'GET',
+              url: url,
+              headers: headers
+            });
             const step = stepsByUrl.get(url);
             if (step === undefined) {
               return Promise.reject(new Error(`unstubbedUrl:${url}`));
@@ -455,7 +456,7 @@ export default function contractTest() {
         const snapshot = await provider.fetch('redacted-test-key', contractCase.profile);
 
         assertSnapshot(snapshot, expected);
-        assertRequests(recorded, loadExpectedRequests(dir, contractCase.name));
+        assertRequests(recordedRequests, loadExpectedRequests(dir, contractCase.name));
       });
     }
 

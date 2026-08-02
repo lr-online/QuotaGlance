@@ -4,6 +4,7 @@
     "pages/AccountsPage",
     "pages/AccountEditorPage",
     "pages/AccountDetailPage",
+    "pages/FormAccountPickerPage",
     "pages/ScreensaverPage"
   ]
 }

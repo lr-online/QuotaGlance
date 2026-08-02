@@ -1,0 +1,9 @@
+{
+  "balances": [
+    { "amount": "100", "currency": "USD" }
+  ],
+  "accounts": [
+    { "accountID": "00000000-0000-0000-0000-000000000001" }
+  ],
+  "isPartial": false
+}

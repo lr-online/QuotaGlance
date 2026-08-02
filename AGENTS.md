@@ -70,13 +70,14 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
    `bash scripts/sync-specs-to-core.sh`（→ `Sources/QuotaGlanceCore/Resources/ProviderSpecs/`）、
    `bash scripts/sync-specs-to-harmonyos.sh`（→ `HarmonyOS/entry/src/main/resources/rawfile/providerspecs/`）、
    `bash scripts/sync-contracts-to-harmonyos.sh`（→ `HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/`，
-   仅同步 `Contracts/Providers/`）。随后 `bash scripts/verify-provider-parity.sh`
-   必须全绿；该脚本还要求每个 provider fixture case 都在 ArkTS `CONTRACT_CASES`
-   中登记，且各 step URL 与 `*-requests.json` 一致。同步产物禁止手改。
+   同步 `Contracts/Providers/`、`Contracts/Aggregation/`、`Contracts/Alerts/`）。随后
+   `bash scripts/verify-provider-parity.sh` 必须全绿；该脚本还要求每个 provider fixture
+   case 都在 ArkTS `CONTRACT_CASES` 中登记，且各 step URL 与 `*-requests.json`
+   一致。同步产物禁止手改。
 4. **双端语义镜像。** provider / 聚合 / 告警的行为改动必须双端对应提交；确实
    无法一致的，显式登记进 `HarmonyOS/AGENTS.md` 的平台差异白名单，不允许静默
-   漂移。注意现状：聚合/告警契约 fixture 目前只被 Swift 套件消费（ArkTS 尚无
-   对应引擎模块），这是已记录的待办而非镜像破坏。
+   漂移。现状是 ArkTS 已镜像 provider / aggregation / alerts 引擎，并消费对应契约
+   fixture；任何后续共享行为改动都必须双端一起改并附测试。
 5. **错误 token 表是双端契约。** spec 只允许引用 `Contracts/README.md`
    "Error tokens" 一节列出的稳定 token；同一张表镜像在 ArkTS
    `UsageProvider.ets` 头注释与 Swift `ProviderError`（`UsageProvider.swift`）。
@@ -177,6 +178,13 @@ CI 现状：`.github/workflows/ci.yml`（macos-14 + Xcode 16.2）跑 `swift test
 五个 ScriptTests；`.github/workflows/harmonyos.yml`（ubuntu +
 ErBWs/setup-ohos 6.1.1.280）只做契约同步 + 构建 HAP，**不跑 ohosTest**
 （需要模拟器/真机）。
+
+本地验证依赖宿主机工具链：macOS 侧若缺少 Xcode / XCTest，`swift test` 与打包脚本可能
+无法运行；HarmonyOS 侧若缺少 DevEco SDK、`ohpm`、`hvigorw` 或签名环境，
+`bash scripts/build-harmonyos.sh` / ohosTest 也可能无法运行。遇到这类环境缺口时，
+必须在任务或 PR 中明确说明，并以 GitHub Actions 作为构建/打包验证路径：至少查看
+`.github/workflows/ci.yml` 与 `.github/workflows/harmonyos.yml`，涉及安装包/
+发布流程时再补充对应 workflow 的产物与日志。
 
 ## 术语约定
 
