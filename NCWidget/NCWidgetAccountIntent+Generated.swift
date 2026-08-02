@@ -14,7 +14,7 @@ import Intents
 /// `accountChoice` options offered in the widget's configuration UI).
 @objc(NCWidgetAccountIntent)
 final class NCWidgetAccountIntent: INIntent {
-    @objc dynamic var accountChoice: String?
+    @NSManaged var accountChoice: NCWidgetAccountIntentChoice?
 }
 
 /// Minimal hand-written substitute for the `NCWidgetAccountIntentHandling`
@@ -23,6 +23,9 @@ final class NCWidgetAccountIntent: INIntent {
 protocol NCWidgetAccountIntentHandling: NSObjectProtocol {
     @objc optional func provideAccountChoiceOptionsCollection(
         for intent: NCWidgetAccountIntent,
-        with completion: @escaping (INObjectCollection<NSString>?, Error?) -> Void
+        with completion: @escaping (
+            INObjectCollection<NCWidgetAccountIntentChoice>?,
+            Error?
+        ) -> Void
     )
 }

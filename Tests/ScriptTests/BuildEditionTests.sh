@@ -81,6 +81,24 @@ rg -q '^  QuotaGlanceNCWidget:$' "$ROOT_DIR/project.yml" \
   || fail "NC widget target is missing"
 rg -q '^  QuotaGlanceNCIntents:$' "$ROOT_DIR/project.yml" \
   || fail "NC intents target is missing"
+rg -q 'IntentConfiguration\(' "$ROOT_DIR/NCWidget/QuotaGlanceNCWidget.swift" \
+  || fail "NC widget does not use IntentConfiguration"
+rg -q 'IntentTimelineProvider' "$ROOT_DIR/NCWidget/NCWidgetTimelineProvider.swift" \
+  || fail "NC widget does not use an IntentTimelineProvider"
+rg -q 'NCWidgetAccountIntent\+Generated.swift in Sources' \
+  "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj" \
+  || fail "NC widget Intent source is missing from the Xcode project"
+INTENT_DEFINITION="$ROOT_DIR/NCWidget/NCWidgetAccountIntent.intentdefinition"
+[[ "$(/usr/bin/plutil -extract INIntents.0.INIntentParameters.0.INIntentParameterType raw \
+  "$INTENT_DEFINITION")" == "Object" ]] \
+  || fail "NC widget Intent parameter is not an object"
+[[ "$(/usr/bin/plutil -extract INIntents.0.INIntentParameters.0.INIntentParameterObjectType raw \
+  "$INTENT_DEFINITION")" == "NCWidgetAccountIntentChoice" ]] \
+  || fail "NC widget Intent parameter lacks account choice display metadata"
+rg -q 'display: "Use App Default"' "$ROOT_DIR/NCIntents/NCWidgetAccountChoiceOptions.swift" \
+  || fail "NC widget options do not expose readable default labels"
+rg -q 'display: \$0.displayName' "$ROOT_DIR/NCIntents/NCWidgetAccountChoiceOptions.swift" \
+  || fail "NC widget options do not expose account display names"
 
 # XcodeGen stores host→extension links as opaque PBXTargetDependency IDs.
 # Resolve those IDs to target names instead of grepping the native-target block.
