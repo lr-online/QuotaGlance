@@ -2,7 +2,9 @@ import { AbilityConstant, Configuration, UIAbility, Want } from '@kit.AbilityKit
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { AccountService } from '../services/AccountService';
+import { LanguagePreference, LanguageStore } from '../storage/LanguageStore';
 import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
+import { applyLanguage } from '../utils/LanguageUtils';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 
 const DOMAIN = 0x0000;
@@ -24,6 +26,14 @@ export default class EntryAbility extends UIAbility {
       })
       .catch((error: Object) => {
         hilog.warn(DOMAIN, 'QuotaGlance', 'theme restore failed: %{public}s', (error as Error).message);
+      });
+    LanguageStore.create(this.context)
+      .then((store: LanguageStore) => store.load())
+      .then((preference: LanguagePreference) => {
+        applyLanguage(preference);
+      })
+      .catch((error: Object) => {
+        hilog.warn(DOMAIN, 'QuotaGlance', 'language restore failed: %{public}s', (error as Error).message);
       });
   }
 

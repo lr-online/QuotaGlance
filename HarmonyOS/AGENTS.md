@@ -45,6 +45,10 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
    等）。双端语义与 `Contracts/README.md` Requests-fixture schema 一致。
 5. **传输错误形状。** Swift 透传 `URLError`；ArkTS 抛 `network:<BusinessError
    code>`。两者都在 spec 错误模型之外。
+6. **“跟随系统”语言在进程内固定为选择时的系统语言。** 当前 SDK 没有清除
+   app preferred language override 的 API；ArkTS 通过
+   `setAppPreferredLanguage(getSystemLanguage())` 恢复当前系统语言。因此用户
+   随后在系统设置中切换语言时，QuotaGlance 要到下次启动才会跟随。
 
 ## 同步脚本与 rawfile 布局
 
