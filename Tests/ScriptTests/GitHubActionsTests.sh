@@ -6,6 +6,7 @@ CI_WORKFLOW="$ROOT_DIR/.github/workflows/ci.yml"
 PACKAGE_WORKFLOW="$ROOT_DIR/.github/workflows/package.yml"
 RELEASE_WORKFLOW="$ROOT_DIR/.github/workflows/release.yml"
 HARMONYOS_WORKFLOW="$ROOT_DIR/.github/workflows/harmonyos.yml"
+QUALITY_WORKFLOW="$ROOT_DIR/.github/workflows/quality.yml"
 FETCH_SCRIPT="$ROOT_DIR/scripts/fetch-ci-package.sh"
 HARMONYOS_BUILD_SCRIPT="$ROOT_DIR/scripts/build-harmonyos.sh"
 
@@ -18,19 +19,43 @@ fail() {
 [[ -f "$PACKAGE_WORKFLOW" ]] || fail "missing Package workflow"
 [[ -f "$RELEASE_WORKFLOW" ]] || fail "missing release workflow"
 [[ -f "$HARMONYOS_WORKFLOW" ]] || fail "missing HarmonyOS workflow"
+[[ -f "$QUALITY_WORKFLOW" ]] || fail "missing Quality workflow"
 [[ -x "$FETCH_SCRIPT" ]] || fail "CI package fetch script is missing or not executable"
 [[ -x "$HARMONYOS_BUILD_SCRIPT" ]] || fail "HarmonyOS build script is missing or not executable"
+
+assert_pinned_action() {
+  local action="$1"
+  local workflow="$2"
+  rg -q "${action}@[0-9a-f]{40}" "$workflow" \
+    || fail "$workflow does not pin $action to a commit SHA"
+}
+
+assert_read_only_workflow() {
+  local workflow="$1"
+  rg -q '^permissions:$' "$workflow" \
+    || fail "$workflow does not declare permissions"
+  rg -q '^  contents: read$' "$workflow" \
+    || fail "$workflow does not restrict contents permission to read"
+  rg -Fq 'persist-credentials: false' "$workflow" \
+    || fail "$workflow does not disable checkout credential persistence"
+  rg -q '^concurrency:$' "$workflow" \
+    || fail "$workflow does not declare concurrency"
+}
 
 rg -q "^name: CI$" "$CI_WORKFLOW" || fail "CI workflow name changed"
 rg -q "pull_request:" "$CI_WORKFLOW" || fail "CI workflow missing pull_request trigger"
 rg -q "push:" "$CI_WORKFLOW" || fail "CI workflow missing push trigger"
 rg -q "main" "$CI_WORKFLOW" || fail "CI workflow missing main branch trigger"
-rg -Fq "maxim-lobanov/setup-xcode@v1" "$CI_WORKFLOW" || fail "CI workflow does not select Xcode explicitly"
+assert_pinned_action "actions/checkout" "$CI_WORKFLOW"
+assert_pinned_action "maxim-lobanov/setup-xcode" "$CI_WORKFLOW"
+assert_read_only_workflow "$CI_WORKFLOW"
 rg -Fq "xcode-version: '16.2'" "$CI_WORKFLOW" || fail "CI workflow does not pin the supported Xcode version"
 rg -Fq "brew install ripgrep" "$CI_WORKFLOW" || fail "CI workflow does not install ripgrep"
 rg -Fq "swift test" "$CI_WORKFLOW" || fail "CI workflow does not run swift test"
 rg -Fq "/bin/bash scripts/verify-provider-parity.sh" "$CI_WORKFLOW" || fail "CI workflow does not run the provider parity check"
 rg -Fq "Tests/ScriptTests/ProviderParityTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing provider parity tests"
+rg -Fq "Tests/ScriptTests/HarmonyOSStringParityTests.sh" "$CI_WORKFLOW" \
+  || fail "CI workflow missing HarmonyOS string parity test"
 rg -Fq "Tests/ScriptTests/BuildEditionTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing build edition contract test"
 rg -Fq "Tests/ScriptTests/DMGPackagingTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing DMG packaging test"
 rg -Fq "Tests/ScriptTests/LocalInstallSafetyTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing local install safety test"
@@ -38,7 +63,10 @@ rg -Fq "Tests/ScriptTests/LocalInstallSafetyTests.sh" "$CI_WORKFLOW" || fail "CI
 rg -q "^name: Package$" "$PACKAGE_WORKFLOW" || fail "Package workflow name changed"
 rg -q "workflow_dispatch:" "$PACKAGE_WORKFLOW" || fail "Package workflow missing workflow_dispatch"
 rg -q "pull_request:" "$PACKAGE_WORKFLOW" || fail "Package workflow missing pull_request trigger"
-rg -Fq "maxim-lobanov/setup-xcode@v1" "$PACKAGE_WORKFLOW" || fail "Package workflow does not select Xcode explicitly"
+assert_pinned_action "actions/checkout" "$PACKAGE_WORKFLOW"
+assert_pinned_action "maxim-lobanov/setup-xcode" "$PACKAGE_WORKFLOW"
+assert_pinned_action "actions/upload-artifact" "$PACKAGE_WORKFLOW"
+assert_read_only_workflow "$PACKAGE_WORKFLOW"
 rg -Fq "xcode-version: '16.2'" "$PACKAGE_WORKFLOW" || fail "Package workflow does not pin the supported Xcode version"
 rg -Fq "./scripts/package-dmg.sh dist" "$PACKAGE_WORKFLOW" || fail "Package workflow does not package DMGs"
 rg -q "upload-artifact" "$PACKAGE_WORKFLOW" || fail "Package workflow does not upload artifacts"
@@ -49,7 +77,14 @@ rg -q -- "--verify" "$FETCH_SCRIPT" || fail "fetch script missing --verify mode"
 rg -q "^name: Release$" "$RELEASE_WORKFLOW" || fail "release workflow name changed"
 rg -q "tags:" "$RELEASE_WORKFLOW" || fail "release workflow missing tag trigger"
 rg -q "v\*" "$RELEASE_WORKFLOW" || fail "release workflow missing version tag pattern"
-rg -Fq "maxim-lobanov/setup-xcode@v1" "$RELEASE_WORKFLOW" || fail "release workflow does not select Xcode explicitly"
+assert_pinned_action "actions/checkout" "$RELEASE_WORKFLOW"
+assert_pinned_action "maxim-lobanov/setup-xcode" "$RELEASE_WORKFLOW"
+assert_pinned_action "actions/upload-artifact" "$RELEASE_WORKFLOW"
+assert_pinned_action "softprops/action-gh-release" "$RELEASE_WORKFLOW"
+rg -Fq 'persist-credentials: false' "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not disable checkout credential persistence"
+rg -q '^concurrency:$' "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not declare concurrency"
 rg -Fq "xcode-version: '16.2'" "$RELEASE_WORKFLOW" || fail "release workflow does not pin the supported Xcode version"
 rg -Fq "brew install ripgrep" "$RELEASE_WORKFLOW" || fail "release workflow does not install ripgrep"
 rg -Fq 'QUOTAGLANCE_VERSION: ${{ github.ref_name }}' "$RELEASE_WORKFLOW" \
@@ -61,12 +96,20 @@ rg -q "softprops/action-gh-release" "$RELEASE_WORKFLOW" || fail "release workflo
 rg -q "^name: HarmonyOS$" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow name changed"
 rg -q "workflow_dispatch:" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow missing workflow_dispatch"
 rg -q "pull_request:" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow missing pull_request trigger"
-rg -Fq "ErBWs/setup-ohos@v2" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not use ErBWs/setup-ohos@v2"
+rg -Fq '"Contracts/**"' "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not trigger on all shared contracts"
+assert_pinned_action "actions/checkout" "$HARMONYOS_WORKFLOW"
+assert_pinned_action "ErBWs/setup-ohos" "$HARMONYOS_WORKFLOW"
+assert_pinned_action "actions/upload-artifact" "$HARMONYOS_WORKFLOW"
+rg -Fq 'persist-credentials: false' "$HARMONYOS_WORKFLOW" \
+  || fail "HarmonyOS workflow does not disable checkout credential persistence"
+rg -q '^concurrency:$' "$HARMONYOS_WORKFLOW" \
+  || fail "HarmonyOS workflow does not declare concurrency"
 rg -Fq "version: 6.1.1.280" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not pin CLI tools 6.1.1.280"
 rg -Fq "cache: true" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not enable SDK cache"
 rg -Fq "libgl1-mesa-dev" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow missing Linux libGL dependency"
 rg -Fq "scripts/build-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not run build-harmonyos.sh"
 rg -Fq "scripts/sync-contracts-to-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync contract fixtures"
+rg -Fq "scripts/verify-provider-parity.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not verify provider parity"
 rg -q "upload-artifact" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not upload HAP artifacts"
 rg -Fq "HARMONYOS_SKIP_SIGN" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing unsigned CI mode"
 rg -Fq "properties.ignoreSignHap=true" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing ignoreSignHap"
@@ -77,5 +120,30 @@ HARMONYOS_MODULE_JSON5="$ROOT_DIR/HarmonyOS/entry/src/main/module.json5"
 [[ -f "$HARMONYOS_MODULE_JSON5" ]] || fail "missing HarmonyOS entry module.json5"
 rg -Fq '"tablet"' "$HARMONYOS_MODULE_JSON5" || fail "HarmonyOS entry module missing tablet deviceType"
 rg -Fq '"phone"' "$HARMONYOS_MODULE_JSON5" || fail "HarmonyOS entry module missing phone deviceType"
+
+rg -q '^name: Quality$' "$QUALITY_WORKFLOW" || fail "Quality workflow name changed"
+rg -q 'pull_request:' "$QUALITY_WORKFLOW" || fail "Quality workflow missing pull_request trigger"
+rg -q 'push:' "$QUALITY_WORKFLOW" || fail "Quality workflow missing push trigger"
+rg -q 'merge_group:' "$QUALITY_WORKFLOW" || fail "Quality workflow missing merge_group trigger"
+rg -q 'workflow_dispatch:' "$QUALITY_WORKFLOW" || fail "Quality workflow missing workflow_dispatch"
+rg -q '^permissions:$' "$QUALITY_WORKFLOW" || fail "Quality workflow missing permissions"
+rg -q '^  contents: read$' "$QUALITY_WORKFLOW" || fail "Quality workflow is not read-only"
+rg -q '^concurrency:$' "$QUALITY_WORKFLOW" || fail "Quality workflow missing concurrency"
+assert_pinned_action "actions/checkout" "$QUALITY_WORKFLOW"
+rg -Fq 'actionlint' "$QUALITY_WORKFLOW" || fail "Quality workflow missing actionlint"
+rg -Fq 'zizmor' "$QUALITY_WORKFLOW" || fail "Quality workflow missing zizmor"
+rg -Fq 'shellcheck --shell=bash --severity=warning' "$QUALITY_WORKFLOW" \
+  || fail "Quality workflow missing warning-level ShellCheck"
+rg -Fq 'gitleaks git' "$QUALITY_WORKFLOW" || fail "Quality workflow missing Git history secret scan"
+rg -Fq 'gitleaks dir' "$QUALITY_WORKFLOW" || fail "Quality workflow missing working-tree secret scan"
+rg -Fq 'github.com/zricethezav/gitleaks/v8@v8.28.0' "$QUALITY_WORKFLOW" \
+  || fail "Quality workflow uses the wrong gitleaks module path"
+rg -Fq 'scripts/verify-provider-parity.sh' "$QUALITY_WORKFLOW" \
+  || fail "Quality workflow missing provider protocol parity check"
+
+[[ -f "$ROOT_DIR/.github/dependabot.yml" ]] \
+  || fail "missing Dependabot configuration"
+rg -q 'package-ecosystem: github-actions' "$ROOT_DIR/.github/dependabot.yml" \
+  || fail "Dependabot is not configured for GitHub Actions"
 
 echo "GitHub Actions contract tests passed"
