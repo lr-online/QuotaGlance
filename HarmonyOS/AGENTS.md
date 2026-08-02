@@ -70,4 +70,6 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
   `SpecEngine.test.ets` 等）**需要模拟器或真机**，本地经 DevEco 或 hvigor
   测试任务运行。CI（`.github/workflows/harmonyos.yml`，ubuntu-latest +
   ErBWs/setup-ohos 6.1.1.280）目前只做契约同步 + 构建 HAP + 上传产物，
-  不跑 ohosTest——provider 行为改动不能只靠 CI 兜底，本机有条件要跑 ohosTest。
+  不跑 ohosTest；`verify-provider-parity.sh` 提供静态 coverage gate，要求每个
+  provider fixture case 均登记到 `CONTRACT_CASES`，并校验 step URL 与 requests
+  fixture 一致。provider 行为改动仍不能只靠 CI 兜底，本机有条件要跑 ohosTest。

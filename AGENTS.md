@@ -71,7 +71,8 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
    `bash scripts/sync-specs-to-harmonyos.sh`（→ `HarmonyOS/entry/src/main/resources/rawfile/providerspecs/`）、
    `bash scripts/sync-contracts-to-harmonyos.sh`（→ `HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/`，
    仅同步 `Contracts/Providers/`）。随后 `bash scripts/verify-provider-parity.sh`
-   必须全绿。同步产物禁止手改。
+   必须全绿；该脚本还要求每个 provider fixture case 都在 ArkTS `CONTRACT_CASES`
+   中登记，且各 step URL 与 `*-requests.json` 一致。同步产物禁止手改。
 4. **双端语义镜像。** provider / 聚合 / 告警的行为改动必须双端对应提交；确实
    无法一致的，显式登记进 `HarmonyOS/AGENTS.md` 的平台差异白名单，不允许静默
    漂移。注意现状：聚合/告警契约 fixture 目前只被 Swift 套件消费（ArkTS 尚无
@@ -82,6 +83,51 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
    新增/修改 token 必须三处同改。`httpStatus` 携带实际状态码（Swift
    `httpStatus(Int)`，ArkTS `"httpStatus:<code>"`）；`providerUnavailable` 与
    `network:<detail>` 是框架级错误，永不出现在 spec 中。
+6. **新增平台必须做功能缺失检查。** 任何新增或大幅扩展平台支持的改动，都必须逐项
+   对照下方“平台支持功能基线”，在任务/PR 说明中标记每项状态：已实现、平台不适用
+   或已登记平台差异。平台不适用/差异必须写清原因、用户可见降级、测试覆盖和补齐计划；
+   未完成该检查的改动不得视为平台支持完成。若平台没有菜单栏、Widget、后台刷新等同名
+   宿主能力，必须提供等价入口/能力，或登记进对应平台 `AGENTS.md` 的差异白名单。
+
+## 平台支持功能基线（新增平台对照清单）
+
+新增平台不是“能跑 provider”即可完成；必须覆盖 QuotaGlance 的产品能力闭环。后续
+agent 添加平台支持时，按本清单逐项检查功能缺失，除非明确登记为平台差异。
+
+- **Provider / spec 契约**：支持完整 `ProviderID` 集合、provider displayName、
+  credential kind、profile/region 描述、低余额阈值能力声明；从 `Contracts/Providers/`
+  加载 spec，保持 detect/fetch 请求顺序、region fallback、fixed profile、named parse
+  strategy、十进制/日期解析和 error token 映射与 Swift 核心一致。
+- **账户与凭据生命周期**：支持账户列表排序、添加、编辑、删除、启用/停用、最多 20 个账户、
+  display name 去空白与重复校验、API key 空值/替换校验、provider profile 探测与持久化、
+  低余额阈值编辑；凭据必须进入平台安全存储，删除账户时同步清理凭据与快照。
+- **用户偏好**：支持刷新间隔、开机/启动时自动运行的等价设置、首选语言（system / English /
+  Chinese）、通知中心/小组件默认账户或平台等价的快速入口默认选择。
+- **刷新与快照存储**：支持单账户刷新、全部账户刷新、启动/前台进入时刷新、按间隔刷新或平台
+  等价调度；失败账户不得阻断其他账户刷新；持久化最新快照、失败原因、`receivedAt`、
+  `capturedAt`、`lastSuccessAt`，失败时保留可展示的旧数据并标记 stale/unavailable/partial。
+- **聚合与指标语义**：按 `SnapshotAggregator` 语义过滤 disabled 账户并按 `sortOrder` 排序；
+  按币种汇总余额；仅在所有启用账户都有同币种今日花费时汇总 today cost；today requests 要有
+  溢出保护；生成最近 7 天 daily usage；正确处理混合币种、缺失指标、stale/unavailable 与
+  partial 状态。
+- **账户级明细展示**：展示余额及 breakdown、spending limit、spend today/week/month/total、
+  quota windows、today/total counters、daily usage、model usage、providerStatus、
+  metricsUnavailableReason，并保留 provider 不提供某些字段时的空态/降级文案。
+- **告警与通知**：实现低余额阈值批量评估、belowThreshold 状态、episode 去抖、恢复后重置；
+  支持通知权限状态展示（未请求/未允许/已允许或平台等价）、本地通知发送、失败/不可用时不误报。
+- **主界面与快速查看入口**：支持全账户概览和单账户详情；展示 empty/healthy/belowThreshold/
+  partial/stale/unavailable 状态、主指标、今日请求、最近 7 天趋势、账户行、错误文案；
+  macOS 的菜单栏、桌面 Widget、通知中心 Widget 在其他平台必须映射为该平台的等价快速查看入口，
+  不支持时登记差异。
+- **账户编辑与设置体验**：支持 provider 选择、名称、API key 粘贴/输入、启用开关、阈值、
+  刷新间隔、语言、通知、默认快速入口账户、启动项等设置；错误信息必须走统一错误呈现和本地化。
+- **深链路与选择解析**：支持 `quotaglance://all`、`quotaglance://account/<uuid>` 或平台等价
+  路由；快速入口可选择全部账户、指定账户、使用应用默认账户；已删除账户选择必须降级到全账户。
+- **本地化与格式化**：支持 English / Chinese 文案、系统语言解析、Money 大小写币种规范化、
+  金额/数量格式化、日期展示和 provider profile 文案；新增文案不得只落单端。
+- **平台工程与质量门禁**：新增平台必须有构建脚本/CI 路径、资源同步路径、契约 fixture 消费方式、
+  provider parity 校验或等价检查；共享 provider / aggregation / alerts 行为改动必须附平台测试，
+  无法自动化的 UI/通知/后台能力需记录人工验证步骤。
 
 ## 新增一个 provider（操作清单）
 
