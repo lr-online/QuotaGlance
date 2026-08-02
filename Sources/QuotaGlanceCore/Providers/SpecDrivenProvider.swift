@@ -867,7 +867,7 @@ public struct SpecDrivenProvider: UsageProvider {
         self.descriptor = Self.makeDescriptor(id: id, spec: spec)
     }
 
-    public convenience init(
+    public init(
         specData: Data,
         httpClient: any HTTPClient = URLSessionHTTPClient(),
         preferredRegion: ProviderRegion? = nil,
