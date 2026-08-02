@@ -28,8 +28,10 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
 1. **`profileDescription` 返回 L10n key token 而非文案。** Swift 侧
    `(profile?, AppLanguage) -> String` 直接查 L10n 表返回本地化文案；ArkTS 侧
    `(profile?) -> string` 返回稳定 key token（需要参数时以冒号分隔附加
-   region/credentialKind），因为 ArkTS UI 尚未渲染 profile 描述、也没有这些
-   key 的 L10n 表（见 `UsageProvider.ets` 中 `ProviderDescriptor` 的注释）。
+   region/credentialKind），UI 再通过 `utils/ProfileDescriptionL10n.ets` 与
+   string resource 解析。双端使用相同 key 集合并保持相同可见语义；差异只在
+   Swift 于 descriptor 内解析、ArkTS 于 UI seam 解析（见 `UsageProvider.ets`
+   中 `ProviderDescriptor` 的注释）。
 2. **decimal 归一化的实现差异。** 规则是共享的（`Contracts/README.md`
    "Decimal and Money canonicalization"），但实现不同：Swift 用 `Decimal`
    数值比较；ArkTS 的 `SpecDecimal` 额外携带 `canonical` 字符串——JSON string

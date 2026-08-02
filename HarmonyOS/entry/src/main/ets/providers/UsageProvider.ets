@@ -46,9 +46,10 @@ export interface ProviderDetection {
 
 // Static provider capabilities, built from spec.descriptor by the engine.
 // profileDescription returns stable L10n key tokens (with colon-separated
-// region/credential-kind args where the spec declares them); the ArkTS UI
-// does not render profile descriptions yet and has no L10n tables for these
-// keys. See Contracts/README.md ("descriptor").
+// region/credential-kind args where the spec declares them). UI surfaces
+// resolve the tokens through ProfileDescriptionL10n and string resources,
+// keeping localization outside the provider interface. See
+// Contracts/README.md ("descriptor").
 export interface ProviderDescriptor {
   id: ProviderID;
   displayName: string;

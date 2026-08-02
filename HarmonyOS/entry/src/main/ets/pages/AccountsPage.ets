@@ -2,8 +2,9 @@ import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { AccountService } from '../services/AccountService';
 import { Account, AccountStore } from '../storage/AccountStore';
-import { providerDisplayName } from '../providers/ProviderCatalog';
+import { providerDescriptor, providerDisplayName } from '../providers/ProviderCatalog';
 import { friendlyErrorText } from '../utils/ErrorMapping';
+import { resolveProfileDescription } from '../utils/ProfileDescriptionL10n';
 
 // Row gap mirrors List({ space: 12 }). Used with the measured row height to
 // convert pan offsets into whole-row steps. The estimate is only a fallback
@@ -200,12 +201,26 @@ struct AccountsPage {
           .fontColor($r('app.color.textPrimary'))
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(providerDisplayName(getContext(this), account.provider))
-          .fontSize(11)
-          .fontColor($r('app.color.accentTeal'))
-          .backgroundColor($r('app.color.accentTealTint'))
-          .borderRadius(6)
-          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+        Row({ space: 8 }) {
+          Text(providerDisplayName(getContext(this), account.provider))
+            .fontSize(11)
+            .fontColor($r('app.color.accentTeal'))
+            .backgroundColor($r('app.color.accentTealTint'))
+            .borderRadius(6)
+            .padding({ left: 8, right: 8, top: 2, bottom: 2 })
+          if (account.detectedProfile !== undefined) {
+            Text(resolveProfileDescription(
+              getContext(this) as common.Context,
+              providerDescriptor(getContext(this), account.provider).profileDescription(account.detectedProfile)
+            ))
+              .fontSize(11)
+              .fontColor($r('app.color.textSecondary'))
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .layoutWeight(1)
+          }
+        }
+        .width('100%')
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
