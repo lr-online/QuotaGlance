@@ -2,6 +2,9 @@ import Foundation
 import Testing
 @testable import QuotaGlanceCore
 
+private let bioMapKeyInfoURL = URL(string: "https://coding.biomap-int.com/key/info")!
+private let bioMapModelsURL = URL(string: "https://coding.biomap-int.com/v1/models")!
+
 @Suite("BioMap Coding provider")
 struct BioMapCodingProviderTests {
     @Test("Key info maps cumulative spend and budget without a cash balance")
@@ -14,7 +17,8 @@ struct BioMapCodingProviderTests {
                 200
             ),
         ])
-        let provider = BioMapCodingProvider(
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: client,
             now: { Date(timeIntervalSince1970: 123) }
         )
@@ -45,7 +49,7 @@ struct BioMapCodingProviderTests {
         #expect(detection.snapshot.providerStatus == "active")
         #expect(detection.snapshot.metricsUnavailableReason == nil)
         #expect(detection.snapshot.receivedAt == Date(timeIntervalSince1970: 123))
-        #expect(request.url == BioMapCodingProvider.keyInfoEndpoint)
+        #expect(request.url == bioMapKeyInfoURL)
         #expect(request.url?.query == nil)
         #expect(request.httpMethod == "GET")
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer secret")
@@ -54,7 +58,8 @@ struct BioMapCodingProviderTests {
 
     @Test("A key without quantitative fields remains a clear connection snapshot")
     func missingMetricsRemainAbsent() async throws {
-        let provider = BioMapCodingProvider(
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: BioMapRecordingHTTPClient(steps: [
                 .response(
                     Data(
@@ -65,7 +70,10 @@ struct BioMapCodingProviderTests {
             ])
         )
 
-        let snapshot = try await provider.fetch(apiKey: "redacted-test-key")
+        let snapshot = try await provider.fetch(
+            apiKey: "redacted-test-key",
+            profile: ProviderProfile(region: .global, credentialKind: .standard)
+        )
 
         #expect(snapshot.balances.isEmpty)
         #expect(snapshot.spendingLimit == nil)
@@ -77,8 +85,9 @@ struct BioMapCodingProviderTests {
     }
 
     @Test("A blocked virtual key is inactive")
-    func blockedKeyIsInactive() async {
-        let provider = BioMapCodingProvider(
+    func blockedKeyIsInactive() async throws {
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: BioMapRecordingHTTPClient(steps: [
                 .response(
                     Data(
@@ -99,8 +108,9 @@ struct BioMapCodingProviderTests {
         (429, ProviderError.rateLimited),
         (503, ProviderError.httpStatus(503)),
     ])
-    func httpFailuresStayTyped(statusCode: Int, expected: ProviderError) async {
-        let provider = BioMapCodingProvider(
+    func httpFailuresStayTyped(statusCode: Int, expected: ProviderError) async throws {
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: BioMapRecordingHTTPClient(steps: [
                 .response(Data(), statusCode),
             ])
@@ -111,14 +121,19 @@ struct BioMapCodingProviderTests {
         }
     }
 
+    // Note: the spec's `strict` check on `info.spend` restores the retired
+    // hand-written provider's behavior for `{"info":{"spend":"bad",...}}` —
+    // a present-but-unparseable optional rejects the payload, while an absent
+    // or null `spend` stays a clear-connection snapshot.
     @Test("Malformed key info is rejected", arguments: [
         #"{}"#,
         #"{"info":null}"#,
-        #"{"info":{"spend":"bad","max_budget":10}}"#,
         #"{"info":{"spend":1,"max_budget":-1}}"#,
+        #"{"info":{"spend":"bad","max_budget":10}}"#,
     ])
-    func malformedKeyInfoIsRejected(payload: String) async {
-        let provider = BioMapCodingProvider(
+    func malformedKeyInfoIsRejected(payload: String) async throws {
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: BioMapRecordingHTTPClient(steps: [
                 .response(Data(payload.utf8), 200),
             ])
@@ -130,8 +145,9 @@ struct BioMapCodingProviderTests {
     }
 
     @Test("Stored profiles must stay global standard keys")
-    func storedProfileMustMatch() async {
-        let provider = BioMapCodingProvider(
+    func storedProfileMustMatch() async throws {
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: BioMapRecordingHTTPClient(steps: [])
         )
 
@@ -161,17 +177,21 @@ struct BioMapCodingProviderTests {
                 200
             ),
         ])
-        let provider = BioMapCodingProvider(
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: client,
             now: { Date(timeIntervalSince1970: 456) }
         )
 
-        let snapshot = try await provider.fetch(apiKey: "secret")
+        let snapshot = try await provider.fetch(
+            apiKey: "secret",
+            profile: ProviderProfile(region: .global, credentialKind: .standard)
+        )
         let requests = await client.requests
 
         #expect(requests.map(\.url) == [
-            BioMapCodingProvider.keyInfoEndpoint,
-            BioMapCodingProvider.modelsEndpoint,
+            bioMapKeyInfoURL,
+            bioMapModelsURL,
         ])
         #expect(
             requests.allSatisfy {
@@ -193,14 +213,17 @@ struct BioMapCodingProviderTests {
         (429, ProviderError.rateLimited),
         (503, ProviderError.httpStatus(503)),
     ])
-    func otherErrorsDoNotFallBack(statusCode: Int, expected: ProviderError) async {
+    func otherErrorsDoNotFallBack(statusCode: Int, expected: ProviderError) async throws {
         let client = BioMapRecordingHTTPClient(steps: [
             .response(Data(), statusCode),
         ])
-        let provider = BioMapCodingProvider(httpClient: client)
+        let provider = try contractProvider(provider: "biomapcoding", httpClient: client)
 
         await #expect(throws: expected) {
-            try await provider.fetch(apiKey: "redacted-test-key")
+            try await provider.fetch(
+                apiKey: "redacted-test-key",
+                profile: ProviderProfile(region: .global, credentialKind: .standard)
+            )
         }
         #expect(await client.requests.count == 1)
     }
@@ -210,8 +233,9 @@ struct BioMapCodingProviderTests {
         #"{"object":"list","data":[]}"#,
         #"{"object":"list","data":[{"id":""}]}"#,
     ])
-    func malformedFallbackModelListIsRejected(payload: String) async {
-        let provider = BioMapCodingProvider(
+    func malformedFallbackModelListIsRejected(payload: String) async throws {
+        let provider = try contractProvider(
+            provider: "biomapcoding",
             httpClient: BioMapRecordingHTTPClient(steps: [
                 .response(Data(), 403),
                 .response(Data(payload.utf8), 200),
@@ -219,7 +243,10 @@ struct BioMapCodingProviderTests {
         )
 
         await #expect(throws: ProviderError.invalidResponse) {
-            try await provider.fetch(apiKey: "redacted-test-key")
+            try await provider.fetch(
+                apiKey: "redacted-test-key",
+                profile: ProviderProfile(region: .global, credentialKind: .standard)
+            )
         }
     }
 }

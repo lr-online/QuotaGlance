@@ -9,7 +9,8 @@ struct KimiProviderTests {
         let client = KimiSequencedHTTPClient(steps: [
             .response(kimiPayload(available: "12.50", cash: "10", voucher: "2.50"), 200),
         ])
-        let provider = KimiProvider(
+        let provider = try contractProvider(
+            provider: "kimi",
             httpClient: client,
             preferredRegion: .china,
             now: { Date(timeIntervalSince1970: 456) }
@@ -54,7 +55,8 @@ struct KimiProviderTests {
             .response(Data(), 401),
             .response(kimiPayload(available: "8.75", cash: "8", voucher: "0.75"), 200),
         ])
-        let provider = KimiProvider(
+        let provider = try contractProvider(
+            provider: "kimi",
             httpClient: client,
             preferredRegion: .china
         )
@@ -81,7 +83,8 @@ struct KimiProviderTests {
             .response(Data(), 403),
             .response(kimiPayload(available: "20", cash: "15", voucher: "5"), 200),
         ])
-        let provider = KimiProvider(
+        let provider = try contractProvider(
+            provider: "kimi",
             httpClient: client,
             preferredRegion: .international
         )
@@ -97,12 +100,16 @@ struct KimiProviderTests {
     }
 
     @Test("Two regional authentication rejections produce one detection error")
-    func twoAuthenticationRejectionsProduceDetectionError() async {
+    func twoAuthenticationRejectionsProduceDetectionError() async throws {
         let client = KimiSequencedHTTPClient(steps: [
             .response(Data(), 401),
             .response(Data(), 403),
         ])
-        let provider = KimiProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "kimi",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.regionDetectionFailed) {
             try await provider.detect(apiKey: "redacted-test-key")
@@ -114,11 +121,15 @@ struct KimiProviderTests {
         (429, ProviderError.rateLimited),
         (503, ProviderError.httpStatus(503)),
     ])
-    func transientFailuresDoNotFallback(statusCode: Int, expected: ProviderError) async {
+    func transientFailuresDoNotFallback(statusCode: Int, expected: ProviderError) async throws {
         let client = KimiSequencedHTTPClient(steps: [
             .response(Data(), statusCode),
         ])
-        let provider = KimiProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "kimi",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: expected) {
             try await provider.detect(apiKey: "redacted-test-key")
@@ -127,11 +138,15 @@ struct KimiProviderTests {
     }
 
     @Test("Transport failures do not probe the other region")
-    func transportFailuresDoNotFallback() async {
+    func transportFailuresDoNotFallback() async throws {
         let client = KimiSequencedHTTPClient(steps: [
             .failure(URLError(.notConnectedToInternet)),
         ])
-        let provider = KimiProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "kimi",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: URLError.self) {
             try await provider.detect(apiKey: "redacted-test-key")
@@ -140,11 +155,15 @@ struct KimiProviderTests {
     }
 
     @Test("Refresh uses only the persisted region")
-    func refreshUsesOnlyPersistedRegion() async {
+    func refreshUsesOnlyPersistedRegion() async throws {
         let client = KimiSequencedHTTPClient(steps: [
             .response(Data(), 401),
         ])
-        let provider = KimiProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "kimi",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.invalidCredential) {
             try await provider.fetch(
@@ -165,7 +184,11 @@ struct KimiProviderTests {
         let client = KimiSequencedHTTPClient(steps: [
             .response(kimiPayload(available: "1", cash: "1", voucher: "0"), 200),
         ])
-        let provider = KimiProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "kimi",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         _ = try await provider.detect(apiKey: "secret")
         let request = try #require(await client.requests.first)
@@ -180,11 +203,15 @@ struct KimiProviderTests {
         #"{"code":0,"status":true}"#,
         #"{"code":0,"status":true,"data":{"available_balance":"bad"}}"#,
     ])
-    func unsuccessfulAndMalformedPayloadsAreRejected(payload: String) async {
+    func unsuccessfulAndMalformedPayloadsAreRejected(payload: String) async throws {
         let client = KimiSequencedHTTPClient(steps: [
             .response(Data(payload.utf8), 200),
         ])
-        let provider = KimiProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "kimi",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.invalidResponse) {
             try await provider.detect(apiKey: "redacted-test-key")
@@ -193,9 +220,13 @@ struct KimiProviderTests {
     }
 
     @Test("Stored profiles reject unsupported regions and credential kinds")
-    func storedProfilesRejectUnsupportedVariants() async {
+    func storedProfilesRejectUnsupportedVariants() async throws {
         let client = KimiSequencedHTTPClient(steps: [])
-        let provider = KimiProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "kimi",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.profileMismatch) {
             try await provider.fetch(

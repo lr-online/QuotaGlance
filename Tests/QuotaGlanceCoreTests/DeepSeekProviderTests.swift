@@ -9,7 +9,8 @@ struct DeepSeekProviderTests {
         let data = Data(
             #"{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"12.34","granted_balance":"2.34","topped_up_balance":"10.00"},{"currency":"USD","total_balance":"5.67","granted_balance":"0.67","topped_up_balance":"5.00"}]}"#.utf8
         )
-        let provider = DeepSeekProvider(
+        let provider = try contractProvider(
+            provider: "deepseek",
             httpClient: DeepSeekStubHTTPClient(data: data, statusCode: 200),
             now: { Date(timeIntervalSince1970: 123) }
         )
@@ -51,7 +52,7 @@ struct DeepSeekProviderTests {
             ),
             statusCode: 200
         )
-        let provider = DeepSeekProvider(httpClient: client)
+        let provider = try contractProvider(provider: "deepseek", httpClient: client)
 
         _ = try await provider.fetch(
             apiKey: "secret",
@@ -70,7 +71,8 @@ struct DeepSeekProviderTests {
         let data = Data(
             #"{"is_available":false,"balance_infos":[{"currency":"CNY","total_balance":"0","granted_balance":"0","topped_up_balance":"0"}]}"#.utf8
         )
-        let provider = DeepSeekProvider(
+        let provider = try contractProvider(
+            provider: "deepseek",
             httpClient: DeepSeekStubHTTPClient(data: data, statusCode: 200)
         )
 
@@ -89,8 +91,9 @@ struct DeepSeekProviderTests {
         (429, ProviderError.rateLimited),
         (503, ProviderError.httpStatus(503)),
     ])
-    func httpFailuresStayTyped(statusCode: Int, expected: ProviderError) async {
-        let provider = DeepSeekProvider(
+    func httpFailuresStayTyped(statusCode: Int, expected: ProviderError) async throws {
+        let provider = try contractProvider(
+            provider: "deepseek",
             httpClient: DeepSeekStubHTTPClient(data: Data(), statusCode: statusCode)
         )
 
@@ -105,8 +108,9 @@ struct DeepSeekProviderTests {
         #"{"is_available":true,"balance_infos":[{"currency":"","total_balance":"1"}]}"#,
         #"{"is_available":true,"balance_infos":[{"currency":"CNY","total_balance":"not-a-number"}]}"#,
     ])
-    func malformedOrEmptyPayloadsAreRejected(payload: String) async {
-        let provider = DeepSeekProvider(
+    func malformedOrEmptyPayloadsAreRejected(payload: String) async throws {
+        let provider = try contractProvider(
+            provider: "deepseek",
             httpClient: DeepSeekStubHTTPClient(
                 data: Data(payload.utf8),
                 statusCode: 200
@@ -119,8 +123,9 @@ struct DeepSeekProviderTests {
     }
 
     @Test("Stored profiles must match DeepSeek's global standard credential")
-    func storedProfilesMustMatch() async {
-        let provider = DeepSeekProvider(
+    func storedProfilesMustMatch() async throws {
+        let provider = try contractProvider(
+            provider: "deepseek",
             httpClient: DeepSeekStubHTTPClient(data: Data(), statusCode: 200)
         )
 

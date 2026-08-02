@@ -17,7 +17,8 @@ struct OpenRouterProviderTests {
                 monthly: "10"
             ), 200),
         ])
-        let provider = OpenRouterProvider(
+        let provider = try contractProvider(
+            provider: "openrouter",
             httpClient: client,
             now: { Date(timeIntervalSince1970: 789) }
         )
@@ -56,7 +57,7 @@ struct OpenRouterProviderTests {
             #"{"data":{"is_management_key":false,"usage":4,"usage_daily":1,"usage_weekly":2,"usage_monthly":3,"limit":null,"limit_remaining":null,"rate_limit":{"requests":999999}}}"#.utf8
         )
         let client = OpenRouterSequencedHTTPClient(steps: [.response(data, 200)])
-        let provider = OpenRouterProvider(httpClient: client)
+        let provider = try contractProvider(provider: "openrouter", httpClient: client)
 
         let detection = try await provider.detect(apiKey: "redacted-test-key")
 
@@ -81,7 +82,7 @@ struct OpenRouterProviderTests {
             ), 200),
             .response(Data(#"{"data":{"total_credits":100,"total_usage":25.25}}"#.utf8), 200),
         ])
-        let provider = OpenRouterProvider(httpClient: client)
+        let provider = try contractProvider(provider: "openrouter", httpClient: client)
 
         let detection = try await provider.detect(apiKey: "redacted-management-key")
 
@@ -111,7 +112,7 @@ struct OpenRouterProviderTests {
             ), 200),
             .response(Data(#"{"data":{"total_credits":"10","total_usage":"12.5"}}"#.utf8), 200),
         ])
-        let provider = OpenRouterProvider(httpClient: client)
+        let provider = try contractProvider(provider: "openrouter", httpClient: client)
 
         let detection = try await provider.detect(apiKey: "redacted-management-key")
 
@@ -122,7 +123,7 @@ struct OpenRouterProviderTests {
     }
 
     @Test("Stored profiles require the observed credential kind")
-    func storedProfilesRequireObservedKind() async {
+    func storedProfilesRequireObservedKind() async throws {
         let client = OpenRouterSequencedHTTPClient(steps: [
             .response(openRouterKeyPayload(
                 isManagement: true,
@@ -134,7 +135,7 @@ struct OpenRouterProviderTests {
                 monthly: nil
             ), 200),
         ])
-        let provider = OpenRouterProvider(httpClient: client)
+        let provider = try contractProvider(provider: "openrouter", httpClient: client)
 
         await #expect(throws: ProviderError.profileMismatch) {
             try await provider.fetch(
@@ -146,9 +147,9 @@ struct OpenRouterProviderTests {
     }
 
     @Test("Unsupported profile regions are rejected before requests")
-    func unsupportedProfileRegionsAreRejected() async {
+    func unsupportedProfileRegionsAreRejected() async throws {
         let client = OpenRouterSequencedHTTPClient(steps: [])
-        let provider = OpenRouterProvider(httpClient: client)
+        let provider = try contractProvider(provider: "openrouter", httpClient: client)
 
         await #expect(throws: ProviderError.profileMismatch) {
             try await provider.fetch(
@@ -173,7 +174,7 @@ struct OpenRouterProviderTests {
             ), 200),
             .response(Data(#"{"data":{"total_credits":1,"total_usage":0}}"#.utf8), 200),
         ])
-        let provider = OpenRouterProvider(httpClient: client)
+        let provider = try contractProvider(provider: "openrouter", httpClient: client)
 
         _ = try await provider.detect(apiKey: "secret")
         let requests = await client.requests
@@ -189,12 +190,12 @@ struct OpenRouterProviderTests {
     }
 
     @Test("HTTP errors from either endpoint remain typed")
-    func httpErrorsRemainTyped() async {
+    func httpErrorsRemainTyped() async throws {
         let keyFailureClient = OpenRouterSequencedHTTPClient(steps: [
             .response(Data(), 429),
         ])
         await #expect(throws: ProviderError.rateLimited) {
-            try await OpenRouterProvider(httpClient: keyFailureClient)
+            try await contractProvider(provider: "openrouter", httpClient: keyFailureClient)
                 .detect(apiKey: "redacted-test-key")
         }
 
@@ -211,18 +212,18 @@ struct OpenRouterProviderTests {
             .response(Data(), 403),
         ])
         await #expect(throws: ProviderError.invalidCredential) {
-            try await OpenRouterProvider(httpClient: creditsFailureClient)
+            try await contractProvider(provider: "openrouter", httpClient: creditsFailureClient)
                 .detect(apiKey: "redacted-management-key")
         }
     }
 
     @Test("Malformed key and credits payloads are rejected")
-    func malformedPayloadsAreRejected() async {
+    func malformedPayloadsAreRejected() async throws {
         let malformedKeyClient = OpenRouterSequencedHTTPClient(steps: [
             .response(Data(#"{"data":{"usage":1}}"#.utf8), 200),
         ])
         await #expect(throws: ProviderError.invalidResponse) {
-            try await OpenRouterProvider(httpClient: malformedKeyClient)
+            try await contractProvider(provider: "openrouter", httpClient: malformedKeyClient)
                 .detect(apiKey: "redacted-test-key")
         }
 
@@ -239,7 +240,7 @@ struct OpenRouterProviderTests {
             .response(Data(#"{"data":{"total_credits":10}}"#.utf8), 200),
         ])
         await #expect(throws: ProviderError.invalidResponse) {
-            try await OpenRouterProvider(httpClient: malformedCreditsClient)
+            try await contractProvider(provider: "openrouter", httpClient: malformedCreditsClient)
                 .detect(apiKey: "redacted-management-key")
         }
     }

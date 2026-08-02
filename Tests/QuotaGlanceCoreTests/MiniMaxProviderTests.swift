@@ -5,9 +5,13 @@ import Testing
 @Suite("MiniMax provider")
 struct MiniMaxProviderTests {
     @Test("Pay-as-you-go keys are rejected before any regional probe")
-    func payAsYouGoKeysAreRejectedImmediately() async {
+    func payAsYouGoKeysAreRejectedImmediately() async throws {
         let client = MiniMaxSequencedHTTPClient(steps: [])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.unsupportedCredential) {
             try await provider.detect(apiKey: "  sk-api-redacted  ")
@@ -21,7 +25,8 @@ struct MiniMaxProviderTests {
             #"{"model_remains":[{"model_name":"MiniMax-M2","remains":"900","total":1000,"reset_time":1800000000,"unit":"requests"}],"base_resp":{"status_code":0,"status_msg":"success"}}"#.utf8
         )
         let client = MiniMaxSequencedHTTPClient(steps: [.response(payload, 200)])
-        let provider = MiniMaxProvider(
+        let provider = try contractProvider(
+            provider: "minimax",
             httpClient: client,
             preferredRegion: .china,
             now: { Date(timeIntervalSince1970: 321) }
@@ -61,7 +66,11 @@ struct MiniMaxProviderTests {
             """.utf8
         )
         let client = MiniMaxSequencedHTTPClient(steps: [.response(payload, 200)])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .international)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .international
+        )
 
         let detection = try await provider.detect(apiKey: "redacted-plan-key")
 
@@ -95,7 +104,11 @@ struct MiniMaxProviderTests {
             #"{"model_remains":[{"model_name":"general","end_time":1800018000000,"current_interval_status":1,"current_interval_remaining_percent":"98","current_weekly_status":1,"current_weekly_remaining_percent":67,"weekly_end_time":1800604800000}],"base_resp":{"status_code":0}}"#.utf8
         )
         let client = MiniMaxSequencedHTTPClient(steps: [.response(payload, 200)])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .international)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .international
+        )
 
         let snapshot = try await provider.detect(apiKey: "redacted-plan-key").snapshot
 
@@ -113,7 +126,11 @@ struct MiniMaxProviderTests {
             .response(Data(), 401),
             .response(miniMaxQuotaPayload(), 200),
         ])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         let detection = try await provider.detect(apiKey: "redacted-plan-key")
 
@@ -130,7 +147,11 @@ struct MiniMaxProviderTests {
             .response(Data(#"{"base_resp":{"status_code":1004,"status_msg":"invalid api key"}}"#.utf8), 200),
             .response(miniMaxQuotaPayload(), 200),
         ])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .international)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .international
+        )
 
         let detection = try await provider.detect(apiKey: "redacted-plan-key")
 
@@ -139,12 +160,16 @@ struct MiniMaxProviderTests {
     }
 
     @Test("Two regional authentication rejections produce a detection error")
-    func twoAuthenticationRejectionsProduceDetectionError() async {
+    func twoAuthenticationRejectionsProduceDetectionError() async throws {
         let client = MiniMaxSequencedHTTPClient(steps: [
             .response(Data(), 403),
             .response(Data(#"{"base_resp":{"status_code":"1004"}}"#.utf8), 200),
         ])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.regionDetectionFailed) {
             try await provider.detect(apiKey: "redacted-plan-key")
@@ -153,12 +178,13 @@ struct MiniMaxProviderTests {
     }
 
     @Test("Transient and embedded provider failures do not probe another region")
-    func transientAndEmbeddedFailuresDoNotFallback() async {
+    func transientAndEmbeddedFailuresDoNotFallback() async throws {
         let rateLimitClient = MiniMaxSequencedHTTPClient(steps: [
             .response(Data(), 429),
         ])
         await #expect(throws: ProviderError.rateLimited) {
-            try await MiniMaxProvider(
+            try await contractProvider(
+                provider: "minimax",
                 httpClient: rateLimitClient,
                 preferredRegion: .china
             ).detect(apiKey: "redacted-plan-key")
@@ -169,7 +195,8 @@ struct MiniMaxProviderTests {
             .response(Data(#"{"base_resp":{"status_code":1234,"status_msg":"temporary failure"}}"#.utf8), 200),
         ])
         await #expect(throws: ProviderError.invalidResponse) {
-            try await MiniMaxProvider(
+            try await contractProvider(
+                provider: "minimax",
                 httpClient: embeddedFailureClient,
                 preferredRegion: .china
             ).detect(apiKey: "redacted-plan-key")
@@ -178,9 +205,13 @@ struct MiniMaxProviderTests {
     }
 
     @Test("Refresh uses only the persisted region")
-    func refreshUsesOnlyPersistedRegion() async {
+    func refreshUsesOnlyPersistedRegion() async throws {
         let client = MiniMaxSequencedHTTPClient(steps: [.response(Data(), 401)])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.invalidCredential) {
             try await provider.fetch(
@@ -197,7 +228,7 @@ struct MiniMaxProviderTests {
     }
 
     @Test("Successful payloads without recognizable quota windows are rejected")
-    func payloadWithoutQuotaWindowsIsRejected() async {
+    func payloadWithoutQuotaWindowsIsRejected() async throws {
         let payloads = [
             #"{"model_remains":[],"base_resp":{"status_code":0}}"#,
             #"{"model_remains":[{"model_name":"general"}],"base_resp":{"status_code":0}}"#,
@@ -209,7 +240,8 @@ struct MiniMaxProviderTests {
                 .response(Data(payload.utf8), 200),
             ])
             await #expect(throws: ProviderError.invalidResponse) {
-                try await MiniMaxProvider(
+                try await contractProvider(
+                    provider: "minimax",
                     httpClient: client,
                     preferredRegion: .china
                 ).detect(apiKey: "redacted-plan-key")
@@ -222,7 +254,11 @@ struct MiniMaxProviderTests {
         let client = MiniMaxSequencedHTTPClient(steps: [
             .response(miniMaxQuotaPayload(), 200),
         ])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         _ = try await provider.detect(apiKey: "secret")
         let request = try #require(await client.requests.first)
@@ -234,9 +270,13 @@ struct MiniMaxProviderTests {
     }
 
     @Test("Stored profiles reject unsupported regions and credential kinds")
-    func storedProfilesRejectUnsupportedVariants() async {
+    func storedProfilesRejectUnsupportedVariants() async throws {
         let client = MiniMaxSequencedHTTPClient(steps: [])
-        let provider = MiniMaxProvider(httpClient: client, preferredRegion: .china)
+        let provider = try contractProvider(
+            provider: "minimax",
+            httpClient: client,
+            preferredRegion: .china
+        )
 
         await #expect(throws: ProviderError.profileMismatch) {
             try await provider.fetch(

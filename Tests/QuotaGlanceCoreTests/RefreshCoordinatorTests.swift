@@ -465,17 +465,32 @@ private actor InteractionRequiredCredentialStore: CredentialStore {
 }
 
 private actor BlockingUsageProvider: UsageProvider {
+    nonisolated let id = ProviderID.apiInfo
     private let snapshot: ProviderUsageSnapshot
     private var isReleased = false
     private var blocked: [CheckedContinuation<Void, Never>] = []
     private var callWaiters: [(Int, CheckedContinuation<Void, Never>)] = []
     private(set) var callCount = 0
 
+    nonisolated var descriptor: ProviderDescriptor {
+        ProviderCatalog.descriptor(for: id)
+    }
+
     init(snapshot: ProviderUsageSnapshot) {
         self.snapshot = snapshot
     }
 
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: try await fetch(apiKey: apiKey, profile: .apiInfo)
+        )
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
         callCount += 1
         resumeSatisfiedCallWaiters()
         if !isReleased {
@@ -518,16 +533,31 @@ private actor BlockingUsageProvider: UsageProvider {
 }
 
 private actor BlockingThenFailingUsageProvider: UsageProvider {
+    nonisolated let id = ProviderID.apiInfo
     private let firstSnapshot: ProviderUsageSnapshot
     private var firstCallContinuation: CheckedContinuation<Void, Never>?
     private var firstCallWaiters: [CheckedContinuation<Void, Never>] = []
     private var callCount = 0
 
+    nonisolated var descriptor: ProviderDescriptor {
+        ProviderCatalog.descriptor(for: id)
+    }
+
     init(firstSnapshot: ProviderUsageSnapshot) {
         self.firstSnapshot = firstSnapshot
     }
 
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: try await fetch(apiKey: apiKey, profile: .apiInfo)
+        )
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
         callCount += 1
         if callCount == 1 {
             let waiters = firstCallWaiters
@@ -555,8 +585,13 @@ private actor BlockingThenFailingUsageProvider: UsageProvider {
 }
 
 private actor ScriptedUsageProvider: UsageProvider {
+    nonisolated let id = ProviderID.apiInfo
     private let successes: [String: ProviderUsageSnapshot]
     private let failures: [String: ProviderError]
+
+    nonisolated var descriptor: ProviderDescriptor {
+        ProviderCatalog.descriptor(for: id)
+    }
 
     init(
         successes: [String: ProviderUsageSnapshot],
@@ -566,7 +601,17 @@ private actor ScriptedUsageProvider: UsageProvider {
         self.failures = failures
     }
 
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: try await fetch(apiKey: apiKey, profile: .apiInfo)
+        )
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
         if let failure = failures[apiKey] {
             throw failure
         }
@@ -578,16 +623,42 @@ private struct FailingUsageProvider: UsageProvider {
     let id: ProviderID
     let error: ProviderError
 
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+    var descriptor: ProviderDescriptor {
+        ProviderCatalog.descriptor(for: id)
+    }
+
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        throw error
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
         throw error
     }
 }
 
 private struct DelayedUsageProvider: UsageProvider {
+    let id = ProviderID.apiInfo
     let delayNanoseconds: UInt64
     let snapshot: ProviderUsageSnapshot
 
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+    var descriptor: ProviderDescriptor {
+        ProviderCatalog.descriptor(for: id)
+    }
+
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: try await fetch(apiKey: apiKey, profile: .apiInfo)
+        )
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
         try await Task.sleep(nanoseconds: delayNanoseconds)
         return snapshot
     }
@@ -611,13 +682,20 @@ private actor RoutingUsageProvider: UsageProvider {
     private let snapshot: ProviderUsageSnapshot
     private(set) var calls: [ProviderFetchCall] = []
 
+    nonisolated var descriptor: ProviderDescriptor {
+        ProviderCatalog.descriptor(for: id)
+    }
+
     init(id: ProviderID, snapshot: ProviderUsageSnapshot) {
         self.id = id
         self.snapshot = snapshot
     }
 
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
-        snapshot
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: snapshot
+        )
     }
 
     func fetch(

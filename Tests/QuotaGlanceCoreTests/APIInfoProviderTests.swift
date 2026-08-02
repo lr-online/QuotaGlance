@@ -6,7 +6,8 @@ import Testing
 struct APIInfoProviderTests {
     @Test("Detection returns the fixed API Info profile")
     func detectionReturnsFixedProfile() async throws {
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(
                 data: try Fixture.data(named: "api-info-complete"),
                 statusCode: 200
@@ -26,7 +27,8 @@ struct APIInfoProviderTests {
 
     @Test("Top-level remaining is authoritative")
     func topLevelRemainingIsAuthoritative() async throws {
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(
                 data: try Fixture.data(named: "api-info-complete"),
                 statusCode: 200
@@ -34,7 +36,10 @@ struct APIInfoProviderTests {
             now: { Date(timeIntervalSince1970: 100) }
         )
 
-        let snapshot = try await provider.fetch(apiKey: "redacted-test-key")
+        let snapshot = try await provider.fetch(
+            apiKey: "redacted-test-key",
+            profile: .apiInfo
+        )
 
         let remaining = try #require(snapshot.remaining)
         #expect(remaining.amount == Decimal(string: "544.045471"))
@@ -52,7 +57,10 @@ struct APIInfoProviderTests {
             statusCode: 200
         )
 
-        _ = try await APIInfoProvider(httpClient: client).fetch(apiKey: "secret")
+        _ = try await contractProvider(provider: "apiinfo", httpClient: client).fetch(
+            apiKey: "secret",
+            profile: .apiInfo
+        )
         let request = await client.lastRequest
 
         #expect(request?.url?.absoluteString == "https://www.api-info.net/v1/usage")
@@ -63,34 +71,46 @@ struct APIInfoProviderTests {
 
     @Test("HTTP 401 and 403 identify invalid credentials", arguments: [401, 403])
     func authenticationFailuresAreTyped(statusCode: Int) async throws {
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(data: Data(), statusCode: statusCode)
         )
 
         await #expect(throws: ProviderError.invalidCredential) {
-            try await provider.fetch(apiKey: "redacted-test-key")
+            try await provider.fetch(
+                apiKey: "redacted-test-key",
+                profile: .apiInfo
+            )
         }
     }
 
     @Test("HTTP 429 identifies rate limiting")
     func rateLimitFailureIsTyped() async throws {
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(data: Data(), statusCode: 429)
         )
 
         await #expect(throws: ProviderError.rateLimited) {
-            try await provider.fetch(apiKey: "redacted-test-key")
+            try await provider.fetch(
+                apiKey: "redacted-test-key",
+                profile: .apiInfo
+            )
         }
     }
 
     @Test("Other HTTP failures preserve their status code")
     func otherHTTPFailurePreservesStatusCode() async throws {
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(data: Data(), statusCode: 503)
         )
 
         await #expect(throws: ProviderError.httpStatus(503)) {
-            try await provider.fetch(apiKey: "redacted-test-key")
+            try await provider.fetch(
+                apiKey: "redacted-test-key",
+                profile: .apiInfo
+            )
         }
     }
 
@@ -99,18 +119,23 @@ struct APIInfoProviderTests {
         let data = Data(
             #"{"isValid":false,"status":"inactive"}"#.utf8
         )
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(data: data, statusCode: 200)
         )
 
         await #expect(throws: ProviderError.providerInactive) {
-            try await provider.fetch(apiKey: "redacted-test-key")
+            try await provider.fetch(
+                apiKey: "redacted-test-key",
+                profile: .apiInfo
+            )
         }
     }
 
     @Test("A complete response maps all supported usage metrics")
     func completeResponseMapsSupportedMetrics() async throws {
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(
                 data: try Fixture.data(named: "api-info-complete"),
                 statusCode: 200
@@ -118,7 +143,10 @@ struct APIInfoProviderTests {
             now: { Date(timeIntervalSince1970: 100) }
         )
 
-        let snapshot = try await provider.fetch(apiKey: "redacted-test-key")
+        let snapshot = try await provider.fetch(
+            apiKey: "redacted-test-key",
+            profile: .apiInfo
+        )
 
         #expect(snapshot.providerStatus == "active")
         #expect(snapshot.balances.count == 1)
@@ -170,12 +198,16 @@ struct APIInfoProviderTests {
     @Test("A valid response without currency is rejected")
     func missingCurrencyIsRejected() async throws {
         let data = Data(#"{"isValid":true,"remaining":10}"#.utf8)
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(data: data, statusCode: 200)
         )
 
         await #expect(throws: ProviderError.invalidResponse) {
-            try await provider.fetch(apiKey: "redacted-test-key")
+            try await provider.fetch(
+                apiKey: "redacted-test-key",
+                profile: .apiInfo
+            )
         }
     }
 
@@ -184,11 +216,15 @@ struct APIInfoProviderTests {
         let data = Data(
             #"{"isValid":true,"remaining":10.25,"unit":"USD"}"#.utf8
         )
-        let provider = APIInfoProvider(
+        let provider = try contractProvider(
+            provider: "apiinfo",
             httpClient: StubHTTPClient(data: data, statusCode: 200)
         )
 
-        let snapshot = try await provider.fetch(apiKey: "redacted-test-key")
+        let snapshot = try await provider.fetch(
+            apiKey: "redacted-test-key",
+            profile: .apiInfo
+        )
 
         #expect(snapshot.remaining == Money(amount: Decimal(string: "10.25")!, currency: "USD"))
         #expect(snapshot.quotaLimit == nil)

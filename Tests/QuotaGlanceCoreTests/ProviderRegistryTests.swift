@@ -26,7 +26,21 @@ struct ProviderRegistryTests {
 private struct RegistryStubProvider: UsageProvider {
     let id: ProviderID
 
-    func fetch(apiKey: String) async throws -> ProviderUsageSnapshot {
+    var descriptor: ProviderDescriptor {
+        ProviderCatalog.descriptor(for: id)
+    }
+
+    func detect(apiKey: String) async throws -> ProviderDetection {
+        ProviderDetection(
+            profile: .apiInfo,
+            snapshot: ProviderUsageSnapshot(receivedAt: .now)
+        )
+    }
+
+    func fetch(
+        apiKey: String,
+        profile: ProviderProfile
+    ) async throws -> ProviderUsageSnapshot {
         ProviderUsageSnapshot(receivedAt: .now)
     }
 }
