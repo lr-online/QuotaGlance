@@ -169,6 +169,14 @@
       "value": "Tokens"
     },
     {
+      "name": "stat_input_short",
+      "value": "入"
+    },
+    {
+      "name": "stat_output_short",
+      "value": "出"
+    },
+    {
       "name": "used_label",
       "value": "已用"
     },

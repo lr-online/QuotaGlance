@@ -3,6 +3,7 @@ import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { batteryInfo } from '@kit.BasicServicesKit';
+import { i18n, intl } from '@kit.LocalizationKit';
 import { AccountService } from '../services/AccountService';
 import { Account } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
@@ -239,8 +240,12 @@ struct ScreensaverPage {
   private updateClock(): void {
     const now = new Date();
     this.clockText = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-    const weekdays: string[] = ['日', '一', '二', '三', '四', '五', '六'];
-    this.dateText = `${now.getMonth() + 1}月${now.getDate()}日 周${weekdays[now.getDay()]}`;
+    const formatter = new intl.DateTimeFormat(i18n.System.getAppPreferredLanguage(), {
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short'
+    });
+    this.dateText = formatter.format(now);
   }
 
   // Burn-in mitigation: glide the whole content block a few vp every minute

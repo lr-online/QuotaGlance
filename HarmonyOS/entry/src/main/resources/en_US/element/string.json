@@ -169,6 +169,14 @@
       "value": "Tokens"
     },
     {
+      "name": "stat_input_short",
+      "value": "In"
+    },
+    {
+      "name": "stat_output_short",
+      "value": "Out"
+    },
+    {
       "name": "used_label",
       "value": "Used"
     },
