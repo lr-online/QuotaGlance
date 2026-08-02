@@ -23,7 +23,7 @@ QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小�
 - 📊 **一个菜单栏，看遍所有额度** — 最多 20 个具名账户，余额、消费上限、周期支出、配额窗口与趋势一屏汇总。
 - 💱 **真实余额，不做假** — 只显示 provider 官方可查询的数据，按 CNY / USD 等币种分别呈现，绝不把配额伪装成现金。
 - 🖥️ **菜单栏 + 桌面 Widget** — macOS 14 支持小 / 中 / 大三档桌面组件；失败重试、过期标记、低余额提醒一应俱全。
-- 🌏 **跨平台在路上** — 在 macOS 之外，鸿蒙（HarmonyOS NEXT）适配已在评估中。
+- 🌏 **跨平台** — macOS 与鸿蒙（HarmonyOS NEXT）客户端均已可用，双端共享契约 fixtures 保持行为一致。
 
 ## 🔌 支持的 AI 平台
 
@@ -44,7 +44,7 @@ QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小�
 | --- | --- | --- |
 | **macOS 14 完整版** | macOS 14+ · Apple Silicon | 菜单栏 + 桌面 Widget（小 / 中 / 大）+ 开机启动 + 通知中心 |
 | **macOS 12 兼容版** | macOS 12+ · Apple Silicon | 菜单栏核心功能 + 通知中心中号 Widget |
-| **鸿蒙** | HarmonyOS NEXT（评估中） | ArkTS 卡片化适配，参考 [`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md) |
+| **鸿蒙** | HarmonyOS NEXT 6.1+ | ArkTS 客户端（账户、卡片、System/English/简体中文），参考 [`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md) |
 
 ## 🏗️ 架构
 

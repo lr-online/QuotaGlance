@@ -9,58 +9,52 @@ Last updated: 2026-08-02
 - Add a production macOS app icon asset set.
 - Keep the visual direction quiet and utility-focused rather than mascot or marketing-led.
 
-### 2. HarmonyOS internationalization
-
-- Add System / English / 简体中文 language preference on HarmonyOS, mirroring macOS `AppLanguage`.
-- Localize pages, service-card widget copy, error toasts, and provider profile descriptions via resource qualifiers.
-- Implementation plan: `docs/superpowers/plans/2026-08-02-harmonyos-i18n.md` (Part A of `docs/superpowers/specs/2026-08-02-harmonyos-i18n-and-verification-design.md`).
-
-## Required next milestone before store release
-
-### 3. Internationalization foundation
-
-- Support three language modes in Settings:
-  - `Follow System`
-  - `简体中文`
-  - `English`
-- Default to `Follow System`.
-- Localize App, Widget, notifications, and App Intent strings together.
-- Treat localization as a prerequisite for both macOS and iOS store release work.
-
 ## Store release track
 
-### 4. Mac App Store release
+### 2. Mac App Store release
 
 - Prepare a Mac App Store-compatible signing and entitlement path.
 - Add release metadata, screenshots, privacy disclosures, and review notes.
 - Keep this separate from direct DMG distribution.
 
-### 5. iOS product definition
+### 3. iOS product definition
 
 - Define the first iOS scope before implementation.
 - Reuse `QuotaGlanceCore` where practical, but design an iOS-specific UI and storage model explicitly.
 
-### 6. iOS App Store release
+### 4. iOS App Store release
 
 - Treat iOS store delivery as its own release track.
 - Prepare iPhone/iPad screenshots, review notes, privacy answers, and distribution settings separately from macOS.
 
 ## Multi-platform expansion
 
-### 7. watchOS companion
+### 5. watchOS companion
 
 - Revisit after iOS exists.
 - Prefer a companion design over an independent first release.
 
-### 8. Android / Windows / HarmonyOS evaluation
+### 6. Android / Windows evaluation
 
 - Do not commit to a direct port yet.
 - First decide whether the product should remain client-only or move provider refresh to a shared backend service.
 - Use that decision to choose the cross-platform architecture.
-- HarmonyOS capability findings and the lightest-integration recommendation: `docs/research/harmonyos-integration.md`.
-- HarmonyOS direction is decided (client-only, per-platform UI and core, shared contract fixtures, personal-use minimal loop first); see the Architecture decisions section of the same document. Android/Windows remain open under the bullets above.
+- Android/Windows remain open under the bullets above.
 
 ## Completed
+
+### macOS internationalization foundation (2026-08)
+
+- Settings language preference: Follow System / 简体中文 / English (default Follow System).
+- Localized App, Widget, notifications, and App Intent strings via `L10n` / `AppLanguage`.
+
+### HarmonyOS full i18n (2026-08)
+
+- System / English / 简体中文 language preference via `LanguageStore` and `LanguageUtils`, mirroring macOS `AppLanguage`.
+- Localized pages, service-card widget copy, error toasts, and provider profile descriptions (`ProfileDescriptionL10n` resolves descriptor tokens at UI).
+- `base` / `en_US` string key parity gated by `Tests/ScriptTests/HarmonyOSStringParityTests.sh`.
+- Implementation plan: `docs/superpowers/plans/2026-08-02-harmonyos-i18n.md` (Part A of `docs/superpowers/specs/2026-08-02-harmonyos-i18n-and-verification-design.md`).
+- Open: mirroring aggregation and alerts contract fixtures into an ArkTS aggregation/alert engine (Swift-only today; see Provider architecture migration below).
 
 ### GitHub Actions + Quality CI (2026-08)
 
