@@ -29,6 +29,8 @@ rg -Fq "maxim-lobanov/setup-xcode@v1" "$CI_WORKFLOW" || fail "CI workflow does n
 rg -Fq "xcode-version: '16.2'" "$CI_WORKFLOW" || fail "CI workflow does not pin the supported Xcode version"
 rg -Fq "brew install ripgrep" "$CI_WORKFLOW" || fail "CI workflow does not install ripgrep"
 rg -Fq "swift test" "$CI_WORKFLOW" || fail "CI workflow does not run swift test"
+rg -Fq "/bin/bash scripts/verify-provider-parity.sh" "$CI_WORKFLOW" || fail "CI workflow does not run the provider parity check"
+rg -Fq "Tests/ScriptTests/ProviderParityTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing provider parity tests"
 rg -Fq "Tests/ScriptTests/BuildEditionTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing build edition contract test"
 rg -Fq "Tests/ScriptTests/DMGPackagingTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing DMG packaging test"
 rg -Fq "Tests/ScriptTests/LocalInstallSafetyTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing local install safety test"
