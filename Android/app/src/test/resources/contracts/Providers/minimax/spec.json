@@ -1,0 +1,87 @@
+{
+  "specVersion": 1,
+  "id": "miniMax",
+  "displayName": "MiniMax",
+  "descriptor": {
+    "supportsLowBalanceThreshold": { "always": false },
+    "profileDescription": {
+      "undetected": { "l10nKey": "notDetected" },
+      "detected": { "style": "regionCredential" }
+    }
+  },
+  "credential": {
+    "trimWhitespace": true,
+    "reject": [
+      {
+        "prefix": "sk-api-",
+        "caseInsensitive": true,
+        "error": "unsupportedCredential"
+      }
+    ]
+  },
+  "profiles": {
+    "supported": [
+      { "region": "china", "credentialKind": "tokenPlan" },
+      { "region": "international", "credentialKind": "tokenPlan" }
+    ]
+  },
+  "detect": {
+    "strategy": "regionFallback",
+    "candidates": [
+      { "region": "china", "credentialKind": "tokenPlan" },
+      { "region": "international", "credentialKind": "tokenPlan" }
+    ],
+    "fallbackOn": ["invalidCredential"],
+    "exhaustedError": "regionDetectionFailed"
+  },
+  "fetch": {
+    "steps": [
+      {
+        "name": "remains",
+        "request": {
+          "method": "GET",
+          "url": {
+            "byRegion": {
+              "china": "https://www.minimaxi.com/v1/token_plan/remains",
+              "international": "https://www.minimax.io/v1/token_plan/remains"
+            }
+          },
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [401, 403], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "base_resp.status_code", "type": "decimal", "required": true },
+            {
+              "path": "base_resp.status_code",
+              "when": { "equals": 1004 },
+              "error": "invalidCredential"
+            },
+            {
+              "path": "base_resp.status_code",
+              "when": { "notEquals": 0 },
+              "error": "invalidResponse"
+            }
+          ],
+          "snapshot": {
+            "quotaWindows": {
+              "strategy": "miniMaxModelRemains",
+              "path": "model_remains",
+              "requireNonEmpty": true
+            },
+            "providerStatus": { "literal": "active" }
+          }
+        }
+      }
+    ]
+  }
+}

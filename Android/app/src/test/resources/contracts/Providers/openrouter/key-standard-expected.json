@@ -1,0 +1,16 @@
+{
+  "balances": [],
+  "spendingLimit": {
+    "label": "Key limit",
+    "used": { "amount": "3.75", "currency": "USD" },
+    "limit": { "amount": "10", "currency": "USD" },
+    "remaining": { "amount": "6.25", "currency": "USD" }
+  },
+  "spend": {
+    "today": { "amount": "0.5", "currency": "USD" },
+    "week": { "amount": "1.25", "currency": "USD" },
+    "month": { "amount": "2.5", "currency": "USD" },
+    "total": { "amount": "3.75", "currency": "USD" }
+  },
+  "providerStatus": "active"
+}

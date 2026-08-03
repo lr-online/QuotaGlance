@@ -1,0 +1,182 @@
+{
+  "specVersion": 1,
+  "id": "apiInfo",
+  "displayName": "API Info",
+  "descriptor": {
+    "supportsLowBalanceThreshold": { "always": true },
+    "profileDescription": {
+      "undetected": { "l10nKey": "notDetected" },
+      "detected": { "style": "regionCredential" }
+    }
+  },
+  "credential": {
+    "trimWhitespace": false
+  },
+  "profiles": {
+    "supported": [
+      { "region": "global", "credentialKind": "standard" }
+    ]
+  },
+  "detect": {
+    "strategy": "fixedProfile",
+    "profile": { "region": "global", "credentialKind": "standard" }
+  },
+  "fetch": {
+    "steps": [
+      {
+        "name": "usage",
+        "request": {
+          "method": "GET",
+          "url": "https://www.api-info.net/v1/usage",
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [401, 403], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "isValid", "type": "bool", "required": true },
+            { "path": "isValid", "when": { "equals": false }, "error": "providerInactive" },
+            { "path": "remaining", "type": "decimal", "required": true },
+            { "path": "unit", "type": "string", "required": true, "nonEmpty": true }
+          ],
+          "values": {
+            "currency": { "path": "unit", "type": "string" }
+          },
+          "snapshot": {
+            "balances": {
+              "fixed": [
+                {
+                  "label": { "literal": "Balance" },
+                  "available": {
+                    "money": {
+                      "amount": { "path": "remaining", "type": "decimal" },
+                      "currency": { "value": "currency" }
+                    }
+                  },
+                  "breakdown": { "fixed": [] }
+                }
+              ]
+            },
+            "spendingLimit": {
+              "when": {
+                "any": [
+                  { "path": "quota.limit", "exists": true },
+                  { "path": "quota.used", "exists": true },
+                  { "path": "quota.remaining", "exists": true }
+                ]
+              },
+              "object": {
+                "label": { "literal": "Quota" },
+                "used": {
+                  "money": {
+                    "amount": { "path": "quota.used", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "limit": {
+                  "money": {
+                    "amount": { "path": "quota.limit", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "remaining": {
+                  "money": {
+                    "amount": { "path": "quota.remaining", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                }
+              }
+            },
+            "spend": {
+              "object": {
+                "today": {
+                  "money": {
+                    "amount": { "path": "usage.today.actual_cost", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "total": {
+                  "money": {
+                    "amount": { "path": "usage.total.actual_cost", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                }
+              }
+            },
+            "today": {
+              "when": { "path": "usage.today", "exists": true },
+              "object": {
+                "actualCost": {
+                  "money": {
+                    "amount": { "path": "usage.today.actual_cost", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "requests": { "path": "usage.today.requests", "type": "int" },
+                "inputTokens": { "path": "usage.today.input_tokens", "type": "int" },
+                "outputTokens": { "path": "usage.today.output_tokens", "type": "int" },
+                "cacheReadTokens": { "path": "usage.today.cache_read_tokens", "type": "int" },
+                "cacheCreationTokens": { "path": "usage.today.cache_creation_tokens", "type": "int" },
+                "totalTokens": { "path": "usage.today.total_tokens", "type": "int" }
+              }
+            },
+            "total": {
+              "when": { "path": "usage.total", "exists": true },
+              "object": {
+                "actualCost": {
+                  "money": {
+                    "amount": { "path": "usage.total.actual_cost", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "requests": { "path": "usage.total.requests", "type": "int" },
+                "inputTokens": { "path": "usage.total.input_tokens", "type": "int" },
+                "outputTokens": { "path": "usage.total.output_tokens", "type": "int" },
+                "cacheReadTokens": { "path": "usage.total.cache_read_tokens", "type": "int" },
+                "cacheCreationTokens": { "path": "usage.total.cache_creation_tokens", "type": "int" },
+                "totalTokens": { "path": "usage.total.total_tokens", "type": "int" }
+              }
+            },
+            "dailyUsage": {
+              "fromArray": "daily_usage",
+              "skipItemWhen": { "path": "actual_cost", "exists": false },
+              "item": {
+                "date": { "path": "date", "type": "string", "required": true },
+                "actualCost": {
+                  "money": {
+                    "amount": { "path": "actual_cost", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "requests": { "path": "requests", "type": "int" },
+                "totalTokens": { "path": "total_tokens", "type": "int" }
+              }
+            },
+            "modelUsage": {
+              "fromArray": "model_stats",
+              "item": {
+                "model": { "path": "model", "type": "string", "required": true },
+                "actualCost": {
+                  "money": {
+                    "amount": { "path": "actual_cost", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "requests": { "path": "requests", "type": "int" },
+                "totalTokens": { "path": "total_tokens", "type": "int" }
+              }
+            },
+            "providerStatus": { "path": "status", "type": "string" }
+          }
+        }
+      }
+    ]
+  }
+}

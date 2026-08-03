@@ -1,0 +1,13 @@
+{
+  "balances": [
+    {
+      "label": "Balance",
+      "available": { "amount": "55.80", "currency": "CNY" },
+      "breakdown": [
+        { "label": "Cash", "value": { "amount": "50.00", "currency": "CNY" } },
+        { "label": "Voucher", "value": { "amount": "5.80", "currency": "CNY" } }
+      ]
+    }
+  ],
+  "providerStatus": "active"
+}

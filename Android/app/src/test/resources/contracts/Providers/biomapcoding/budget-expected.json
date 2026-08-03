@@ -1,0 +1,13 @@
+{
+  "spendingLimit": {
+    "label": "Key budget",
+    "used": { "amount": "3.25", "currency": "USD" },
+    "limit": { "amount": "25", "currency": "USD" },
+    "remaining": { "amount": "21.75", "currency": "USD" },
+    "resetDescription": "Budget period: 30d"
+  },
+  "spend": {
+    "total": { "amount": "3.25", "currency": "USD" }
+  },
+  "providerStatus": "active"
+}

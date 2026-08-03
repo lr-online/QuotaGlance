@@ -3,6 +3,12 @@
 .superpowers/
 .worktrees/
 
+# Android local SDK and build output
+Android/.gradle/
+Android/build/
+Android/app/build/
+Android/local.properties
+
 # Xcode
 DerivedData/
 *.xcuserstate

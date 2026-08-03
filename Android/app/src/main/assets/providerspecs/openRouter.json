@@ -1,0 +1,163 @@
+{
+  "specVersion": 1,
+  "id": "openRouter",
+  "displayName": "OpenRouter",
+  "descriptor": {
+    "supportsLowBalanceThreshold": {
+      "undetected": true,
+      "credentialKinds": ["management"]
+    },
+    "profileDescription": {
+      "undetected": { "l10nKey": "notDetected" },
+      "detected": { "style": "credentialKind" }
+    }
+  },
+  "credential": {
+    "trimWhitespace": false
+  },
+  "profiles": {
+    "supported": [
+      { "region": "global", "credentialKind": "standard" },
+      { "region": "global", "credentialKind": "management" }
+    ]
+  },
+  "detect": {
+    "strategy": "fixedProfile",
+    "profile": { "region": "global", "credentialKind": "detected" }
+  },
+  "fetch": {
+    "steps": [
+      {
+        "name": "key",
+        "request": {
+          "method": "GET",
+          "url": "https://openrouter.ai/api/v1/key",
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [401, 403], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "data.is_management_key", "type": "bool", "required": true }
+          ],
+          "credentialKindDetection": {
+            "path": "data.is_management_key",
+            "map": { "true": "management", "false": "standard" }
+          },
+          "values": {
+            "currency": { "literal": "USD" }
+          },
+          "snapshot": {
+            "spendingLimit": {
+              "when": { "path": "data.limit", "exists": true },
+              "object": {
+                "label": { "literal": "Key limit" },
+                "used": {
+                  "money": {
+                    "amount": { "path": "data.usage", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "limit": {
+                  "money": {
+                    "amount": { "path": "data.limit", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "remaining": {
+                  "money": {
+                    "amount": { "path": "data.limit_remaining", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                }
+              }
+            },
+            "spend": {
+              "object": {
+                "today": {
+                  "money": {
+                    "amount": { "path": "data.usage_daily", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "week": {
+                  "money": {
+                    "amount": { "path": "data.usage_weekly", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "month": {
+                  "money": {
+                    "amount": { "path": "data.usage_monthly", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "total": {
+                  "money": {
+                    "amount": { "path": "data.usage", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                }
+              }
+            },
+            "providerStatus": { "literal": "active" }
+          }
+        }
+      },
+      {
+        "name": "credits",
+        "when": { "step": "key", "path": "data.is_management_key", "equals": true },
+        "request": {
+          "method": "GET",
+          "url": "https://openrouter.ai/api/v1/credits",
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [401, 403], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "data.total_credits", "type": "decimal", "required": true },
+            { "path": "data.total_usage", "type": "decimal", "required": true }
+          ],
+          "values": {
+            "currency": { "literal": "USD" }
+          },
+          "snapshot": {
+            "balances": {
+              "fixed": [
+                {
+                  "label": { "literal": "Credits" },
+                  "available": {
+                    "money": {
+                      "amount": {
+                        "op": "subtract",
+                        "a": { "path": "data.total_credits", "type": "decimal" },
+                        "b": { "path": "data.total_usage", "type": "decimal" }
+                      },
+                      "currency": { "value": "currency" }
+                    }
+                  },
+                  "breakdown": { "fixed": [] }
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}

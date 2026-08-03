@@ -1,0 +1,11 @@
+{
+  "balances": [
+    { "amount": "20", "currency": "CNY" },
+    { "amount": "10", "currency": "USD" }
+  ],
+  "accounts": [
+    { "accountID": "00000000-0000-0000-0000-000000000001" },
+    { "accountID": "00000000-0000-0000-0000-000000000002" }
+  ],
+  "isPartial": false
+}

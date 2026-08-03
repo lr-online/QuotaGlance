@@ -1,0 +1,15 @@
+{
+  "didChange": true,
+  "notifications": [
+    {
+      "accountID": "00000000-0000-0000-0000-000000000001",
+      "remaining": { "amount": "5", "currency": "USD" }
+    }
+  ],
+  "accounts": [
+    {
+      "accountID": "00000000-0000-0000-0000-000000000001",
+      "alertEpisodeActive": true
+    }
+  ]
+}
