@@ -369,17 +369,6 @@ struct ScreensaverPage {
       });
   }
 
-  private openMessage(message: ScreensaverMessage): void {
-    if (message.accountId === undefined || message.accountId.length === 0) {
-      return;
-    }
-    this.openAccount(message.accountId);
-  }
-
-  private openAccount(accountId: string): void {
-    router.pushUrl({ url: 'pages/AccountDetailPage', params: { accountId: accountId } });
-  }
-
   private clockFontSize(): number {
     if (this.displayHeight < 600) {
       return 64;
@@ -404,7 +393,7 @@ struct ScreensaverPage {
   @Builder
   clockBody() {
     // Content stays one bounded block so the burn-in drift has black room to
-    // move into. Message rows, account rows and the exit hint own tap targets.
+    // move into. Every tap exits screensaver mode; rows are display-only here.
     Column({ space: 0 }) {
       Text(this.clockText)
         .fontSize(this.clockFontSize())
@@ -453,7 +442,7 @@ struct ScreensaverPage {
             .padding({ left: 10, right: 10, top: 7, bottom: 7 })
             .backgroundColor('#121923')
             .borderRadius(8)
-            .onClick(() => this.openMessage(item))
+            .onClick(() => this.exitScreensaver())
           }, (item: ScreensaverMessage) => item.id)
         }
       }
@@ -485,7 +474,7 @@ struct ScreensaverPage {
           }
           .width('100%')
           .alignItems(VerticalAlign.Center)
-          .onClick(() => this.openAccount(row.accountId))
+          .onClick(() => this.exitScreensaver())
         }, (row: SaverRow) => row.accountId)
       }
       .width('100%')
@@ -533,5 +522,10 @@ struct ScreensaverPage {
     .height('100%')
     .alignContent(Alignment.Center)
     .backgroundColor('#000000')
+    .onClick(() => this.exitScreensaver())
+    .priorityGesture(
+      TapGesture()
+        .onAction(() => this.exitScreensaver())
+    )
   }
 }

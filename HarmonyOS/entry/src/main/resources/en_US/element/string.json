@@ -33,6 +33,10 @@
       "value": "Add Account"
     },
     {
+      "name": "edit_account",
+      "value": "Edit Account"
+    },
+    {
       "name": "onboarding_tagline",
       "value": "See all your AI quotas in one place"
     },
@@ -51,6 +55,10 @@
     {
       "name": "delete",
       "value": "Delete"
+    },
+    {
+      "name": "edit",
+      "value": "Edit"
     },
     {
       "name": "cancel",
@@ -73,6 +81,10 @@
       "value": "Added"
     },
     {
+      "name": "account_updated",
+      "value": "Updated"
+    },
+    {
       "name": "provider_label",
       "value": "Provider"
     },
@@ -83,6 +95,18 @@
     {
       "name": "api_key_label",
       "value": "API Key"
+    },
+    {
+      "name": "replacement_api_key_label",
+      "value": "Replacement API Key"
+    },
+    {
+      "name": "replacement_api_key_placeholder",
+      "value": "Leave blank to keep the saved key"
+    },
+    {
+      "name": "enabled_label",
+      "value": "Account enabled"
     },
     {
       "name": "threshold_label",
