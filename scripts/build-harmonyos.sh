@@ -4,12 +4,23 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HARMONY_DIR="$ROOT_DIR/HarmonyOS"
+BUILD_PROFILE="$HARMONY_DIR/build-profile.json5"
+BUILD_PROFILE_TEMPLATE="$HARMONY_DIR/build-profile.template.json5"
 BUILD_MODE="${HARMONYOS_BUILD_MODE:-debug}"
 SKIP_SIGN="${HARMONYOS_SKIP_SIGN:-0}"
 
 if [[ ! -d "$HARMONY_DIR" ]]; then
   echo "error: HarmonyOS project not found at $HARMONY_DIR" >&2
   exit 1
+fi
+
+if [[ ! -f "$BUILD_PROFILE" ]]; then
+  if [[ ! -f "$BUILD_PROFILE_TEMPLATE" ]]; then
+    echo "error: HarmonyOS build profile template not found at $BUILD_PROFILE_TEMPLATE" >&2
+    exit 1
+  fi
+  cp "$BUILD_PROFILE_TEMPLATE" "$BUILD_PROFILE"
+  echo "Initialized ignored HarmonyOS/build-profile.json5 from the tracked template"
 fi
 
 cd "$HARMONY_DIR"

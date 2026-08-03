@@ -73,7 +73,9 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
 
 ## 构建与测试前提
 
-- 构建：`bash scripts/build-harmonyos.sh`。需要 `DEVECO_SDK_HOME`（或 CI 的
+- 构建：`bash scripts/build-harmonyos.sh`。顶层 `build-profile.json5` 是忽略的
+  DevEco 本机配置；脚本在缺失时从受控的 `build-profile.template.json5` 初始化，
+  禁止把签名路径、证书或口令写回模板。需要 `DEVECO_SDK_HOME`（或 CI 的
   `HOS_SDK_HOME`，脚本会据此派生 `DEVECO_SDK_HOME` 与 `local.properties`）、
   `ohpm` 和 `hvigorw` 在 PATH；DevEco Studio 本地安装时另需 `JAVA_HOME` 指向
   DevEco 自带 JBR。脚本强制 `entry/src/main/module.json5` 的 deviceTypes 含

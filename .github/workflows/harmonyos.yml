@@ -47,7 +47,7 @@ jobs:
         id: setup-ohos
         uses: ErBWs/setup-ohos@4dbb63025116eb6165ceac58a4bf47cbdc5ac721 # v2
         with:
-          # Matches HarmonyOS/build-profile.json5 targetSdkVersion 6.1.1(24)
+          # Matches HarmonyOS/build-profile.template.json5 targetSdkVersion 6.1.1(24)
           # and ErBWs/ohos-sdk release tags (command-line-tools + SDK mirror).
           version: 6.1.1.280
           cache: true
