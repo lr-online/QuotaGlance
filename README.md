@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.1.3-blue" alt="version" />
+  <img src="https://img.shields.io/badge/version-v0.1.5-blue" alt="version" />
   <img src="https://img.shields.io/badge/platforms-macOS%2012%2B%20%7C%2014%2B%20%7C%20HarmonyOS-success" alt="platforms" />
   <img src="https://img.shields.io/badge/Swift-6%20%7C%20SwiftUI%20%7C%20WidgetKit-orange" alt="stack" />
   <img src="https://img.shields.io/badge/AI%20providers-6%2B-brightgreen" alt="providers" />
