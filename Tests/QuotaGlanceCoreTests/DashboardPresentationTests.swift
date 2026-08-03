@@ -25,7 +25,7 @@ struct DashboardPresentationTests {
 
     @Test("All Accounts reports low balance when enabled accounts are below threshold")
     func aggregateSelectionUsesBelowThresholdState() {
-        let account = Account(id: UUID(), displayName: "Low", provider: .openAI)
+        let account = Account(id: UUID(), displayName: "Low", provider: .apiInfo)
         let snapshot = AccountSnapshot(
             accountID: account.id,
             displayName: account.displayName,
