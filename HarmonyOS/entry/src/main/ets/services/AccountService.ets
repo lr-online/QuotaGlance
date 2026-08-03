@@ -94,12 +94,12 @@ export class AccountService {
     if (!account.isEnabled) {
       return;
     }
-    const apiKey = await KeyRepository.load(account.id);
-    if (apiKey === null) {
-      throw new Error('missingCredential');
-    }
-    const provider = this.registry.provider(account.provider);
     try {
+      const apiKey = await KeyRepository.load(account.id);
+      if (apiKey === null) {
+        throw new Error('missingCredential');
+      }
+      const provider = this.registry.provider(account.provider);
       const profile = account.detectedProfile;
       // No stored profile cannot be refreshed through the narrowed provider
       // interface (Swift's RefreshCoordinator fails the same way).
@@ -111,7 +111,8 @@ export class AccountService {
       this.afterSuccessfulRefresh([account.id]);
     } catch (error) {
       hilog.warn(DOMAIN, TAG, 'refreshAccount failed: %{public}s %{public}s', account.id, (error as Error).message);
-      await this.snapshotStore.markStale(account.id);
+      await this.snapshotStore.markStale(account.id, (error as Error).message);
+      this.afterFailedRefresh();
       throw error as Error;
     }
   }
@@ -130,6 +131,13 @@ export class AccountService {
     });
     evaluateAndNotifyAlerts(this.context, refreshedIds).catch((error: Object) => {
       hilog.warn(DOMAIN, TAG, 'alert evaluation failed: %{public}s', (error as Error).message);
+    });
+  }
+
+  private afterFailedRefresh(): void {
+    notifyOverviewRefresh();
+    updateAllCards(this.context).catch((error: Object) => {
+      hilog.warn(DOMAIN, TAG, 'failed-refresh card update failed: %{public}s', (error as Error).message);
     });
   }
 

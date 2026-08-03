@@ -1,5 +1,5 @@
 import { router } from '@kit.ArkUI';
-import { window } from '@kit.ArkUI';
+import { display, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { batteryInfo } from '@kit.BasicServicesKit';
@@ -10,6 +10,12 @@ import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import { UsageSnapshot } from '../providers/UsageSnapshot';
 import { formatAmount, formatQuotaValue } from '../utils/NumberFormat';
 import { AccountDetailView } from '../components/AccountDetailView';
+import {
+  buildScreensaverMessages,
+  messageColor,
+  ScreensaverMessage,
+  ScreensaverMessageSource
+} from '../utils/ScreensaverMessages';
 
 const DOMAIN = 0x0000;
 const TAG = 'QuotaGlanceScreensaver';
@@ -20,14 +26,15 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 // Brightness policy (window override; -1 on exit hands it back to the
 // system). 0.08 proved invisible in practice, so the floor is a visible-dim
 // 0.25. Charging (ENABLE/FULL — the docked-screensaver scenario) runs
-// brighter at 0.30; on battery it drops to 0.18 to save power. The charging
+// brighter at 0.32; on battery it stays at 0.25 so status text remains legible.
+// The charging
 // state is re-read on every 60s drift tick (batteryInfo needs no
 // permission); read failures fall back to the 0.25 default.
 // Note: keep-screen-on may still be overridden by the system for
 // non-interactive surfaces — this mode tolerates that by design.
 const BRIGHTNESS_DEFAULT = 0.25;
-const BRIGHTNESS_CHARGING = 0.3;
-const BRIGHTNESS_ON_BATTERY = 0.18;
+const BRIGHTNESS_CHARGING = 0.32;
+const BRIGHTNESS_ON_BATTERY = 0.25;
 
 interface SaverRow {
   accountId: string;
@@ -76,10 +83,13 @@ struct ScreensaverPage {
   @State clockText: string = '';
   @State dateText: string = '';
   @State rows: SaverRow[] = [];
+  @State messages: ScreensaverMessage[] = [];
   @State offsetX: number = 0;
   @State offsetY: number = 0;
   @State detailAccountId: string = '';
   @State syncTick: number = 0;
+  @State displayWidth: number = 720;
+  @State displayHeight: number = 1280;
 
   private mainWindow: window.Window | null = null;
   private windowStateApplied: boolean = false;
@@ -89,12 +99,20 @@ struct ScreensaverPage {
   private driftCounter: number = 0;
   private exiting: boolean = false;
   private appliedBrightness: number = -1;
+  private refreshing: boolean = false;
 
   aboutToAppear(): void {
     const params = router.getParams() as ScreensaverParams;
     if (params !== undefined && params !== null && typeof params.accountId === 'string'
       && params.accountId.length > 0) {
       this.detailAccountId = params.accountId;
+    }
+    try {
+      const currentDisplay = display.getDefaultDisplaySync();
+      this.displayWidth = currentDisplay.width;
+      this.displayHeight = currentDisplay.height;
+    } catch (error) {
+      hilog.warn(DOMAIN, TAG, 'display metrics unavailable: %{public}s', (error as Error).message);
     }
     this.updateClock();
     this.applyWindowState();
@@ -110,7 +128,9 @@ struct ScreensaverPage {
     if (this.detailAccountId.length > 0) {
       // AccountDetailView self-refreshes once per launch; ensure the 5-minute
       // poll also refreshes this single account going forward.
-      this.pollRefresh();
+      this.loadCached().then(() => this.pollRefresh()).catch((error: Object) => {
+        hilog.warn(DOMAIN, TAG, 'detail initial load failed: %{public}s', (error as Error).message);
+      });
     } else {
       this.loadCached().then((hasEnabled: boolean) => {
         if (hasEnabled) {
@@ -269,9 +289,15 @@ struct ScreensaverPage {
     const context = getContext(this) as common.UIAbilityContext;
     const service = await AccountService.create(context);
     const accounts = await service.loadAccounts();
-    const enabled = accounts.filter((account: Account) => account.isEnabled).slice(0, MAX_ROWS);
+    const visibleRowLimit = this.displayHeight < 600 ? 2 : MAX_ROWS;
+    const enabled = accounts.filter((account: Account) => account.isEnabled).slice(0, visibleRowLimit);
     const store = await SnapshotStore.create(context);
     const rows: SaverRow[] = [];
+    const sources: ScreensaverMessageSource[] = [];
+    const enabledAccounts = accounts.filter((account: Account) => account.isEnabled);
+    for (const account of enabledAccounts) {
+      sources.push({ account: account, stored: await store.load(account.id) });
+    }
     for (const account of enabled) {
       const stored: StoredSnapshot | null = await store.load(account.id);
       rows.push({
@@ -282,28 +308,41 @@ struct ScreensaverPage {
       });
     }
     this.rows = rows;
+    const messageLimit = this.displayHeight < 600 ? 1 : 3;
+    this.messages = buildScreensaverMessages(context, sources).slice(0, messageLimit);
     return enabled.length > 0;
   }
 
   // Fire-and-forget refresh: per-account failures only mark the snapshot
   // stale inside AccountService, then we reload the cached view.
   private refreshSnapshots(): void {
+    if (this.refreshing) {
+      return;
+    }
+    this.refreshing = true;
     const context = getContext(this) as common.UIAbilityContext;
     AccountService.create(context)
       .then((service: AccountService) => service.refreshAllEnabled())
       .then(() => this.loadCached())
       .catch((error: Object) => {
         hilog.warn(DOMAIN, TAG, 'refresh failed: %{public}s', (error as Error).message);
+      })
+      .finally(() => {
+        this.refreshing = false;
       });
   }
 
   // Detail mode: poll only the source account, then tell the embedded view
   // to re-read its snapshot via syncTick.
   private pollRefresh(): void {
+    if (this.refreshing) {
+      return;
+    }
     if (this.detailAccountId.length === 0) {
       this.refreshSnapshots();
       return;
     }
+    this.refreshing = true;
     const context = getContext(this) as common.UIAbilityContext;
     AccountService.create(context)
       .then((service: AccountService) => {
@@ -324,7 +363,32 @@ struct ScreensaverPage {
       })
       .catch((error: Object) => {
         hilog.warn(DOMAIN, TAG, 'detail refresh failed: %{public}s', (error as Error).message);
+      })
+      .finally(() => {
+        this.refreshing = false;
       });
+  }
+
+  private openMessage(message: ScreensaverMessage): void {
+    if (message.accountId === undefined || message.accountId.length === 0) {
+      return;
+    }
+    this.openAccount(message.accountId);
+  }
+
+  private openAccount(accountId: string): void {
+    router.pushUrl({ url: 'pages/AccountDetailPage', params: { accountId: accountId } });
+  }
+
+  private clockFontSize(): number {
+    if (this.displayHeight < 600) {
+      return 64;
+    }
+    return this.displayWidth >= 1000 ? 120 : 96;
+  }
+
+  private bodyWidth(): string {
+    return this.displayWidth >= 1000 ? '58%' : '82%';
   }
 
   private exitScreensaver(): void {
@@ -339,20 +403,62 @@ struct ScreensaverPage {
 
   @Builder
   clockBody() {
-    // Content stays one bounded block (~60% width, content height) so the
-    // burn-in drift has black room to move into; tap target is the outer
-    // full-screen Stack, unaffected by the inner drift offset.
+    // Content stays one bounded block so the burn-in drift has black room to
+    // move into. Message rows, account rows and the exit hint own tap targets.
     Column({ space: 0 }) {
       Text(this.clockText)
-        .fontSize(96)
+        .fontSize(this.clockFontSize())
         .fontWeight(FontWeight.Medium)
         .fontColor($r('app.color.screensaverClock'))
 
       Text(this.dateText)
         .fontSize(16)
         .fontColor($r('app.color.textSecondary'))
-        .opacity(0.6)
+        .opacity(0.9)
         .margin({ top: 8 })
+
+      Column({ space: 8 }) {
+        Text($r('app.string.screensaver_messages'))
+          .fontSize(12)
+          .fontColor($r('app.color.textSecondary'))
+        if (this.messages.length === 0) {
+          Text(this.rows.length === 0
+            ? $r('app.string.screensaver_no_accounts')
+            : $r('app.string.screensaver_all_healthy'))
+            .fontSize(14)
+            .fontColor(this.rows.length === 0 ? '#C9D1DC' : '#8FE8DF')
+            .maxLines(1)
+        } else {
+          ForEach(this.messages, (item: ScreensaverMessage) => {
+            Row({ space: 8 }) {
+              Text(item.severity === 'error' ? '!' : (item.severity === 'warning' ? '·' : '•'))
+                .fontSize(18)
+                .fontWeight(FontWeight.Bold)
+                .fontColor(messageColor(item.severity))
+              Column({ space: 2 }) {
+                Text(item.title)
+                  .fontSize(13)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(messageColor(item.severity))
+                  .maxLines(1)
+                Text(item.detail)
+                  .fontSize(11)
+                  .fontColor('#C9D1DC')
+                  .maxLines(2)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+              }
+              .layoutWeight(1)
+            }
+            .width('100%')
+            .padding({ left: 10, right: 10, top: 7, bottom: 7 })
+            .backgroundColor('#121923')
+            .borderRadius(8)
+            .onClick(() => this.openMessage(item))
+          }, (item: ScreensaverMessage) => item.id)
+        }
+      }
+      .width('100%')
+      .margin({ top: 24 })
 
       Column({ space: 14 }) {
         ForEach(this.rows, (row: SaverRow) => {
@@ -360,14 +466,14 @@ struct ScreensaverPage {
             Text(row.displayName)
               .fontSize(13)
               .fontColor($r('app.color.textSecondary'))
-              .opacity(0.85)
+              .opacity(1)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .layoutWeight(1)
             Text(row.metricText)
               .fontSize(16)
               .fontColor($r('app.color.accentTeal'))
-              .opacity(0.9)
+              .opacity(1)
               .maxLines(1)
             if (row.isStale) {
               Text($r('app.string.stale_hint_short'))
@@ -379,6 +485,7 @@ struct ScreensaverPage {
           }
           .width('100%')
           .alignItems(VerticalAlign.Center)
+          .onClick(() => this.openAccount(row.accountId))
         }, (row: SaverRow) => row.accountId)
       }
       .width('100%')
@@ -387,10 +494,11 @@ struct ScreensaverPage {
       Text($r('app.string.screensaver_exit_hint'))
         .fontSize(11)
         .fontColor($r('app.color.textSecondary'))
-        .opacity(0.25)
+        .opacity(0.8)
         .margin({ top: 64 })
+        .onClick(() => this.exitScreensaver())
     }
-    .width('60%')
+    .width(this.bodyWidth())
     .offset({ x: this.offsetX, y: this.offsetY })
   }
 
@@ -400,6 +508,13 @@ struct ScreensaverPage {
     // for long details, bounded so the drift keeps black room around it.
     Column() {
       AccountDetailView({ accountId: this.detailAccountId, dim: true, syncTick: this.syncTick })
+        .layoutWeight(1)
+      Text($r('app.string.screensaver_exit_hint'))
+        .fontSize(11)
+        .fontColor('#C9D1DC')
+        .opacity(0.8)
+        .margin({ top: 8, bottom: 8 })
+        .onClick(() => this.exitScreensaver())
     }
     .width('70%')
     .height('85%')
@@ -418,8 +533,5 @@ struct ScreensaverPage {
     .height('100%')
     .alignContent(Alignment.Center)
     .backgroundColor('#000000')
-    .onClick(() => {
-      this.exitScreensaver();
-    })
   }
 }
