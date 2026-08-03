@@ -394,7 +394,14 @@ final class AppModel: ObservableObject {
             knownAccountIDs: Set(accounts.map(\.id))
         )
         guard let destination else { return nil }
-        let resolved = selectDashboard(destination)
+        let selection: DashboardSelection
+        switch destination {
+        case .allAccounts:
+            selection = .allAccounts
+        case let .account(accountID):
+            selection = .account(accountID)
+        }
+        let resolved = selectDashboard(selection)
         NSApp.activate(ignoringOtherApps: true)
         return resolved
     }
