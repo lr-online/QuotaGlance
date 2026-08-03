@@ -52,5 +52,7 @@ class ForegroundRefreshSchedulerTest {
         advanceTimeBy(1)
         runCurrent()
         assertEquals(1, refreshes)
+
+        scheduler.stop()
     }
 }
