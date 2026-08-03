@@ -176,15 +176,15 @@ public enum ProviderOverviewPresenter {
         snapshotsByID: [UUID: AccountSnapshot]
     ) -> ProviderOverviewStatus {
         guard !accounts.isEmpty else { return .disabled }
-        let snapshots = accounts.map { snapshotsByID[$0.id] }
+        let snapshots = accounts.compactMap { snapshotsByID[$0.id] }
+        guard !snapshots.isEmpty else { return .partial }
         let unavailableCount = snapshots.filter { snapshot in
-            guard let snapshot = snapshot else { return true }
             if case .unavailable = snapshot.health { return true }
             return false
         }.count
-        if unavailableCount == accounts.count { return .unavailable }
+        if unavailableCount == snapshots.count { return .unavailable }
         if snapshots.contains(where: { snapshot in
-            guard let snapshot = snapshot, snapshot.usage != nil else { return true }
+            guard snapshot.usage != nil else { return true }
             switch snapshot.health {
             case .stale, .unavailable:
                 return true
@@ -194,7 +194,10 @@ public enum ProviderOverviewPresenter {
         }) {
             return .partial
         }
-        if snapshots.contains(where: { $0?.health == .belowThreshold }) {
+        if snapshots.count != accounts.count {
+            return .partial
+        }
+        if snapshots.contains(where: { $0.health == .belowThreshold }) {
             return .belowThreshold
         }
         return .healthy

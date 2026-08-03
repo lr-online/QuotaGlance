@@ -104,6 +104,28 @@ struct ProviderOverviewPresentationTests {
         #expect(presentation.rows.allSatisfy { $0.requestShare == nil })
     }
 
+    @Test("Missing snapshots stay neutral until the first refresh arrives")
+    func missingSnapshotsUsePartialState() {
+        let deepSeek = account(1, provider: .deepSeek, sortOrder: 1)
+        let disabledKimi = account(
+            2,
+            provider: .kimi,
+            sortOrder: 0,
+            isEnabled: false
+        )
+        let presentation = ProviderOverviewPresenter.make(
+            accounts: [deepSeek, disabledKimi],
+            envelope: nil
+        )
+
+        #expect(presentation.rows.map(\.provider) == [.kimi, .deepSeek])
+        #expect(presentation.rows[0].status == .disabled)
+        #expect(presentation.rows[1].status == .partial)
+        #expect(presentation.rows[1].balances.isEmpty)
+        #expect(presentation.rows[1].todayActualCosts.isEmpty)
+        #expect(presentation.totalRequests == nil)
+    }
+
     @Test("Request shares require fresh complete provider totals")
     func requestSharesRequireCompleteFreshTotals() throws {
         let deepSeek = account(1, provider: .deepSeek, sortOrder: 0)

@@ -208,9 +208,7 @@ public enum DashboardPresenter {
                 metricsUnavailableReason: aggregate.accounts.compactMap {
                     $0.usage?.metricsUnavailableReason
                 }.first,
-                status: aggregate.accounts.isEmpty
-                    ? .empty
-                    : aggregate.isPartial ? .partial : .healthy,
+                status: aggregateStatus(for: aggregate.accounts),
                 lastSuccessAt: aggregate.accounts.compactMap(\.lastSuccessAt).max()
             )
 
@@ -312,6 +310,23 @@ public enum DashboardPresenter {
             )
         }
         return nil
+    }
+
+    private static func aggregateStatus(
+        for accounts: [AccountSnapshot]
+    ) -> DashboardStatus {
+        guard !accounts.isEmpty else { return .empty }
+        if accounts.contains(where: {
+            if case .stale = $0.health { return true }
+            if case .unavailable = $0.health { return true }
+            return $0.usage == nil
+        }) {
+            return .partial
+        }
+        if accounts.contains(where: { $0.health == .belowThreshold }) {
+            return .belowThreshold
+        }
+        return .healthy
     }
 }
 

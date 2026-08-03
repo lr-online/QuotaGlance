@@ -23,6 +23,37 @@ struct DashboardPresentationTests {
         #expect(presentation.accountRows.count == 2)
     }
 
+    @Test("All Accounts reports low balance when enabled accounts are below threshold")
+    func aggregateSelectionUsesBelowThresholdState() {
+        let account = Account(id: UUID(), displayName: "Low", provider: .openAI)
+        let snapshot = AccountSnapshot(
+            accountID: account.id,
+            displayName: account.displayName,
+            provider: account.provider,
+            detectedProfile: account.detectedProfile,
+            lowBalanceThreshold: account.lowBalanceThreshold,
+            usage: ProviderUsageSnapshot(
+                balances: [
+                    MonetaryBalance(label: "Credits", available: usd("9"))
+                ],
+                receivedAt: Date(timeIntervalSince1970: 100)
+            ),
+            health: .belowThreshold,
+            lastSuccessAt: Date(timeIntervalSince1970: 100)
+        )
+        let presentation = DashboardPresenter.make(
+            selection: .allAccounts,
+            accounts: [account],
+            envelope: WidgetSnapshotEnvelope(
+                capturedAt: Date(timeIntervalSince1970: 100),
+                aggregate: AggregateSnapshot(accounts: [snapshot]),
+                accounts: [snapshot]
+            )
+        )
+
+        #expect(presentation.status == .belowThreshold)
+    }
+
     @Test("Primary metrics follow balance limit quota then spend precedence")
     func primaryMetricsFollowCapabilityPrecedence() throws {
         let balance = ProviderUsageSnapshot(
