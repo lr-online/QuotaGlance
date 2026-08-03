@@ -362,20 +362,48 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func handle(url: URL) {
-        let destination = DeepLinkRouter.destination(
-            for: url,
-            knownAccountIDs: Set(accounts.map(\.id))
-        )
-        switch destination {
+    func setPreferredTheme(_ preference: AppThemePreference) {
+        preferences.preferredTheme = preference
+        persistReportingErrors()
+    }
+
+    @discardableResult
+    func selectDashboard(_ selection: DashboardSelection) -> DashboardSelection {
+        let resolved: DashboardSelection
+        switch selection {
+        case .allAccounts:
+            resolved = .allAccounts
+        case let .account(accountID):
+            resolved = accounts.contains { $0.id == accountID }
+                ? selection
+                : .allAccounts
+        }
+        switch resolved {
         case .allAccounts:
             selectedAccountID = nil
         case let .account(accountID):
             selectedAccountID = accountID
-        case nil:
-            return
         }
+        return resolved
+    }
+
+    @discardableResult
+    func handle(url: URL) -> DashboardSelection? {
+        let destination = DeepLinkRouter.destination(
+            for: url,
+            knownAccountIDs: Set(accounts.map(\.id))
+        )
+        guard let destination else { return nil }
+        let selection: DashboardSelection
+        switch destination {
+        case .allAccounts:
+            selection = .allAccounts
+        case let .account(accountID):
+            selection = .account(accountID)
+        }
+        let resolved = selectDashboard(selection)
         NSApp.activate(ignoringOtherApps: true)
+        return resolved
     }
 
     func message(for error: any Error) -> String {

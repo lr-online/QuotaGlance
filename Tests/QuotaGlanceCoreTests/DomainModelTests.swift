@@ -215,6 +215,7 @@ struct DomainModelTests {
     func notificationCenterDefaultAccountStartsUnset() {
         #expect(AppPreferences.default.notificationCenterDefaultAccountID == nil)
         #expect(AppPreferences.default.preferredLanguage == .system)
+        #expect(AppPreferences.default.preferredTheme == .system)
     }
 
     @Test("Widget snapshot envelope preserves schema version")

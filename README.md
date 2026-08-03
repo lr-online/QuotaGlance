@@ -23,7 +23,7 @@ QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小�
 - 📊 **一个菜单栏，看遍所有额度** — 最多 20 个具名账户，余额、消费上限、周期支出、配额窗口与趋势一屏汇总。
 - 💱 **真实余额，不做假** — 只显示 provider 官方可查询的数据，按 CNY / USD 等币种分别呈现，绝不把配额伪装成现金。
 - 🖥️ **菜单栏 + 桌面 Widget** — macOS 14 支持小 / 中 / 大三档桌面组件；失败重试、过期标记、低余额提醒一应俱全。
-- 🌏 **跨平台** — macOS 与鸿蒙（HarmonyOS NEXT）客户端均已可用，双端共享契约 fixtures 保持行为一致。
+- 🌏 **跨平台** — macOS 与鸿蒙（HarmonyOS NEXT）客户端均已可用；Provider、Aggregation 和 Alerts 通过共享契约 fixtures 保持语义一致，产品入口与平台体验差异见[平台能力矩阵](docs/platform-capability-matrix.md)。
 
 ## 🔌 支持的 AI 平台
 
@@ -42,8 +42,8 @@ QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小�
 
 | 版本 | 系统要求 | 能力 |
 | --- | --- | --- |
-| **macOS 14 完整版** | macOS 14+ · Apple Silicon | 菜单栏 + 桌面 Widget（小 / 中 / 大）+ 开机启动 + 通知中心 |
-| **macOS 12 兼容版** | macOS 12+ · Apple Silicon | 菜单栏核心功能 + 通知中心中号 Widget |
+| **macOS 14 完整版** | macOS 14+ · Apple Silicon | 菜单栏 + 独立仪表盘 + 桌面 Widget（小 / 中 / 大）+ 开机启动 + 通知中心 |
+| **macOS 12 兼容版** | macOS 12+ · Apple Silicon | 菜单栏 + 独立仪表盘 + 通知中心中号 Widget |
 | **鸿蒙** | HarmonyOS NEXT 6.1+ | ArkTS 客户端（账户、卡片、System/English/简体中文），参考 [`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md) |
 
 ## 🏗️ 架构
@@ -79,7 +79,7 @@ flowchart LR
 
 ## HarmonyOS 版本
 
-`HarmonyOS/` 目录是鸿蒙（HarmonyOS NEXT，手机/平板）版本，与 macOS 版能力对齐：同一套六家 provider、同样的快照数据模型、同样的品牌图标与配色。账户 key 保存在系统 Asset Store（按账户独立 alias，首次解锁后可读），不会以明文落盘，也不会进入快照或日志。
+`HarmonyOS/` 目录是鸿蒙（HarmonyOS NEXT，手机/平板）版本。双端对齐的是 Provider、Aggregation 和 Alerts 的共享契约语义，不代表窗口、卡片、账户编辑、后台调度等产品能力完全一致；当前状态与补齐计划见[平台能力矩阵](docs/platform-capability-matrix.md)。账户 key 保存在系统 Asset Store（按账户独立 alias，首次解锁后可读），不会以明文落盘，也不会进入快照或日志。
 
 - 双端解析逻辑通过共享契约 fixtures 防止漂移：`Contracts/Providers/` 是唯一事实来源，Swift 与 ArkTS 的契约测试各自跑同一份文件（鸿蒙侧由 `scripts/sync-contracts-to-harmonyos.sh` 同步进 ohosTest rawfile）。新增或修改 provider 时必须同时更新 fixtures 与两端测试，详见 [`Contracts/README.md`](Contracts/README.md)。
 - 构建：`scripts/build-harmonyos.sh`（本机需 DevEco Studio，CI 用 `ErBWs/setup-ohos`）；脚本会在首次构建时从受控的 `HarmonyOS/build-profile.template.json5` 初始化被忽略的本机 `build-profile.json5`。若先用 DevEco 打开新检出的工程，先执行 `cp HarmonyOS/build-profile.template.json5 HarmonyOS/build-profile.json5`，再由 DevEco 写入本机签名设置。图标由 `scripts/generate-harmonyos-icon.swift` 生成，与 macOS 图标同一设计。
@@ -91,6 +91,8 @@ flowchart LR
 - 管理最多 20 个具名 provider 账户，key 只保存在 macOS Keychain。
 - 添加 key 时选择 provider；Kimi 和 MiniMax 自动识别中国站或国际站，OpenRouter 自动识别标准 key 或 Management Key，BioMap Coding 使用固定的公司 LiteLLM 地址。
 - 菜单栏按账户实际能力显示余额明细、消费上限、周期支出、配额窗口、近期趋势和模型用量。
+- 独立仪表盘提供全账户、Provider 分组总览和完整账户明细；菜单栏继续作为紧凑主入口。
+- 主应用支持跟随系统、浅色和深色主题；桌面与通知中心 Widget 始终跟随系统外观。
 - All Accounts 只汇总真实余额，并按 `CNY`（人民币）和 `USD`（美元）等币种分别显示，不做汇率换算。
 - 刷新间隔可选 1、5、15、30 或 60 分钟，默认 5 分钟。
 - macOS 14 完整版支持小、中、大三种 Widget，并可配置为全部账户或指定账户。

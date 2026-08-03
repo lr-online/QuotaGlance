@@ -49,7 +49,7 @@ struct StorageTests {
         try store.save(accounts: accounts, preferences: .default)
         let loaded = try store.load()
 
-        #expect(loaded.schemaVersion == 2)
+        #expect(loaded.schemaVersion == 3)
         #expect(loaded.accounts == accounts)
         #expect(loaded.preferences == .default)
     }
@@ -163,6 +163,60 @@ struct StorageTests {
         try store.save(accounts: [], preferences: preferences)
         let reloaded = try store.load()
         #expect(reloaded.preferences.preferredLanguage == .chinese)
+    }
+
+    @Test("Version 2 preferences migrate to version 3 with the system theme")
+    func version2PreferencesMigrateToSystemTheme() throws {
+        let suiteName = "QuotaGlanceTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = AccountPreferencesStore(defaults: defaults)
+        let payload = Data(#"""
+        {
+          "schemaVersion": 2,
+          "accounts": [],
+          "preferences": {
+            "refreshInterval": 300,
+            "launchAtLogin": false,
+            "preferredLanguage": "english"
+          }
+        }
+        """#.utf8)
+        defaults.set(payload, forKey: AccountPreferencesStore.storageKey)
+
+        let loaded = try store.load()
+
+        #expect(loaded.schemaVersion == 3)
+        #expect(loaded.preferences.preferredTheme == .system)
+        let persistedData = try #require(
+            defaults.data(forKey: AccountPreferencesStore.storageKey)
+        )
+        let persisted = try JSONDecoder.quotaGlance.decode(
+            StoredAccountPreferences.self,
+            from: persistedData
+        )
+        #expect(persisted.schemaVersion == 3)
+        #expect(persisted.preferences.preferredTheme == .system)
+    }
+
+    @Test("All theme preferences round-trip")
+    func themePreferencesRoundTrip() throws {
+        for theme in AppThemePreference.allCases {
+            let suiteName = "QuotaGlanceTests.\(UUID().uuidString)"
+            let defaults = try #require(UserDefaults(suiteName: suiteName))
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+            let store = AccountPreferencesStore(defaults: defaults)
+            let preferences = AppPreferences(
+                refreshInterval: .fiveMinutes,
+                launchAtLogin: false,
+                preferredTheme: theme
+            )
+
+            try store.save(accounts: [], preferences: preferences)
+            let reloaded = try store.load()
+
+            #expect(reloaded.preferences.preferredTheme == theme)
+        }
     }
 
     @Test("Credential storage identifies same-name accounts by UUID")

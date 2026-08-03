@@ -23,6 +23,37 @@ struct DashboardPresentationTests {
         #expect(presentation.accountRows.count == 2)
     }
 
+    @Test("All Accounts reports low balance when enabled accounts are below threshold")
+    func aggregateSelectionUsesBelowThresholdState() {
+        let account = Account(id: UUID(), displayName: "Low", provider: .apiInfo)
+        let snapshot = AccountSnapshot(
+            accountID: account.id,
+            displayName: account.displayName,
+            provider: account.provider,
+            detectedProfile: account.detectedProfile,
+            lowBalanceThreshold: account.lowBalanceThreshold,
+            usage: ProviderUsageSnapshot(
+                balances: [
+                    MonetaryBalance(label: "Credits", available: usd("9"))
+                ],
+                receivedAt: Date(timeIntervalSince1970: 100)
+            ),
+            health: .belowThreshold,
+            lastSuccessAt: Date(timeIntervalSince1970: 100)
+        )
+        let presentation = DashboardPresenter.make(
+            selection: .allAccounts,
+            accounts: [account],
+            envelope: WidgetSnapshotEnvelope(
+                capturedAt: Date(timeIntervalSince1970: 100),
+                aggregate: AggregateSnapshot(accounts: [snapshot]),
+                accounts: [snapshot]
+            )
+        )
+
+        #expect(presentation.status == .belowThreshold)
+    }
+
     @Test("Primary metrics follow balance limit quota then spend precedence")
     func primaryMetricsFollowCapabilityPrecedence() throws {
         let balance = ProviderUsageSnapshot(
@@ -127,6 +158,68 @@ struct DashboardPresentationTests {
         #expect(presentation.usage?.quotaLimit == usd("100"))
         #expect(presentation.usage?.modelUsage.map(\.model) == ["gpt-test"])
         #expect(presentation.accountRows.isEmpty)
+    }
+
+    @Test("The app presentation retains every model row")
+    func appPresentationRetainsEveryModelRow() {
+        let accountID = UUID()
+        let account = Account(id: accountID, displayName: "Models")
+        let models = [
+            ModelUsage(model: "first", requests: 10),
+            ModelUsage(model: "second", requests: 20),
+            ModelUsage(model: "third", requests: 30),
+        ]
+        let usage = ProviderUsageSnapshot(
+            modelUsage: models,
+            receivedAt: Date(timeIntervalSince1970: 100)
+        )
+        let snapshot = AccountSnapshot(
+            accountID: accountID,
+            displayName: account.displayName,
+            usage: usage,
+            health: .unavailable(.providerError),
+            lastSuccessAt: usage.receivedAt
+        )
+        let presentation = DashboardPresenter.make(
+            selection: .account(accountID),
+            accounts: [account],
+            envelope: WidgetSnapshotEnvelope(
+                capturedAt: usage.receivedAt,
+                aggregate: AggregateSnapshot(accounts: [snapshot]),
+                accounts: [snapshot]
+            )
+        )
+
+        #expect(presentation.status == .unavailable(.providerError))
+        #expect(presentation.modelRows == models)
+    }
+
+    @Test("Known accounts without snapshots produce an empty detail")
+    func knownAccountWithoutSnapshotProducesEmptyDetail() {
+        let account = Account(displayName: "Waiting")
+        let presentation = DashboardPresenter.make(
+            selection: .account(account.id),
+            accounts: [account],
+            envelope: nil
+        )
+
+        #expect(presentation.title == "Waiting")
+        #expect(presentation.status == .empty)
+        #expect(presentation.usage == nil)
+        #expect(presentation.modelRows.isEmpty)
+    }
+
+    @Test("Deleted account selections fall back to All Accounts")
+    func deletedAccountSelectionFallsBackToAllAccounts() {
+        let presentation = DashboardPresenter.make(
+            selection: .account(UUID()),
+            accounts: [],
+            envelope: nil
+        )
+
+        #expect(presentation.title == "All Accounts")
+        #expect(presentation.status == .empty)
+        #expect(presentation.providerOverview?.rows.isEmpty == true)
     }
 
     @Test("Seven daily buckets remain stable across selection mapping")

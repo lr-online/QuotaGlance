@@ -4,13 +4,16 @@ import SwiftUI
 
 struct MenuBarDashboardView: View {
     @ObservedObject var model: AppModel
+    let openDashboard: () -> Void
     let openSettings: () -> Void
 
     init(
         model: AppModel,
+        openDashboard: @escaping () -> Void = {},
         openSettings: @escaping () -> Void = {}
     ) {
         self.model = model
+        self.openDashboard = openDashboard
         self.openSettings = openSettings
     }
 
@@ -73,8 +76,11 @@ struct MenuBarDashboardView: View {
         )
         .environment(\.locale, language.locale)
         .id(language)
+        .preferredColorScheme(model.preferences.preferredTheme.colorScheme)
         .onOpenURL { url in
-            model.handle(url: url)
+            if model.handle(url: url) != nil {
+                openDashboard()
+            }
         }
     }
 
@@ -541,8 +547,11 @@ struct MenuBarDashboardView: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
-            Button(action: openSettings) {
-                Label(L10n.string(.settings, language: language), systemImage: "gearshape")
+            Button(action: openDashboard) {
+                Label(
+                    L10n.string(.openDashboard, language: language),
+                    systemImage: "macwindow"
+                )
             }
             Spacer(minLength: 6)
             if let lastSuccessAt = presentation?.lastSuccessAt {
@@ -555,6 +564,11 @@ struct MenuBarDashboardView: View {
                 .lineLimit(1)
             }
             Spacer(minLength: 6)
+            Button(action: openSettings) {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            .help(L10n.string(.settings, language: language))
             Button(L10n.string(.quit, language: language)) {
                 NSApplication.shared.terminate(nil)
             }

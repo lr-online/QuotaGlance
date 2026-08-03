@@ -14,6 +14,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 languageSection
+                appearanceSection
                 accountsSection
                 refreshSection
                 notificationCenterWidgetSection
@@ -31,7 +32,15 @@ struct SettingsView: View {
         .frame(minWidth: 560, minHeight: 460)
         .environment(\.locale, language.locale)
         .id(language)
-        .background(WindowTitleUpdater(title: L10n.string(.settingsWindowTitle, language: language)))
+        .preferredColorScheme(model.preferences.preferredTheme.colorScheme)
+        .background(
+            WindowTitleUpdater(
+                title: L10n.string(
+                    model.accounts.isEmpty ? .setupWindowTitle : .settingsWindowTitle,
+                    language: language
+                )
+            )
+        )
         .sheet(item: $editorContext) { context in
             AccountEditorView(model: model, account: context.account)
         }
@@ -49,6 +58,34 @@ struct SettingsView: View {
             Button(L10n.string(.cancel, language: language), role: .cancel) {}
         } message: { account in
             Text(account.displayName)
+        }
+    }
+
+    private var appearanceSection: some View {
+        settingsSection(
+            title: L10n.string(.appearanceSection, language: language),
+            footer: L10n.string(.appearanceFooter, language: language)
+        ) {
+            settingsRow {
+                Text(L10n.string(.appearance, language: language))
+                Spacer(minLength: 12)
+                Picker(
+                    "",
+                    selection: Binding(
+                        get: { model.preferences.preferredTheme },
+                        set: { model.setPreferredTheme($0) }
+                    )
+                ) {
+                    ForEach(AppThemePreference.allCases) { preference in
+                        Text(
+                            L10n.themePreferenceTitle(preference, language: language)
+                        ).tag(preference)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 240)
+            }
         }
     }
 
