@@ -1,0 +1,102 @@
+{
+  "specVersion": 1,
+  "id": "deepSeek",
+  "displayName": "DeepSeek",
+  "descriptor": {
+    "supportsLowBalanceThreshold": { "always": true },
+    "profileDescription": {
+      "undetected": { "l10nKey": "notDetected" },
+      "detected": { "style": "regionCredential" }
+    }
+  },
+  "credential": {
+    "trimWhitespace": false
+  },
+  "profiles": {
+    "supported": [
+      { "region": "global", "credentialKind": "standard" }
+    ]
+  },
+  "detect": {
+    "strategy": "fixedProfile",
+    "profile": { "region": "global", "credentialKind": "standard" }
+  },
+  "fetch": {
+    "steps": [
+      {
+        "name": "balance",
+        "request": {
+          "method": "GET",
+          "url": "https://api.deepseek.com/user/balance",
+          "headers": [
+            { "name": "Authorization", "value": "Bearer ${apiKey}" },
+            { "name": "Accept", "value": "application/json" }
+          ]
+        },
+        "onStatus": [
+          { "match": "2xx", "action": "parse" },
+          { "match": [401, 403], "action": "error", "error": "invalidCredential" },
+          { "match": [429], "action": "error", "error": "rateLimited" },
+          { "match": "default", "action": "error", "error": "httpStatus" }
+        ],
+        "parse": {
+          "checks": [
+            { "path": "is_available", "type": "bool", "required": true },
+            { "path": "balance_infos", "required": true, "nonEmpty": true }
+          ],
+          "snapshot": {
+            "balances": {
+              "fromArray": "balance_infos",
+              "itemValues": {
+                "currency": {
+                  "path": "currency",
+                  "type": "string",
+                  "transforms": ["trim", "uppercase"],
+                  "required": true,
+                  "nonEmpty": true
+                }
+              },
+              "item": {
+                "label": { "literal": "Balance" },
+                "available": {
+                  "money": {
+                    "amount": { "path": "total_balance", "type": "decimal", "required": true },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "breakdown": {
+                  "fixed": [
+                    {
+                      "when": { "path": "granted_balance", "exists": true },
+                      "label": { "literal": "Granted" },
+                      "value": {
+                        "money": {
+                          "amount": { "path": "granted_balance", "type": "decimal" },
+                          "currency": { "value": "currency" }
+                        }
+                      }
+                    },
+                    {
+                      "when": { "path": "topped_up_balance", "exists": true },
+                      "label": { "literal": "Topped up" },
+                      "value": {
+                        "money": {
+                          "amount": { "path": "topped_up_balance", "type": "decimal" },
+                          "currency": { "value": "currency" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "providerStatus": {
+              "path": "is_available",
+              "map": { "true": "active", "false": "unavailable" }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

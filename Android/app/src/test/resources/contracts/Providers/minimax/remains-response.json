@@ -1,0 +1,40 @@
+{
+  "base_resp": {
+    "status_code": 0,
+    "status_msg": "success"
+  },
+  "model_remains": [
+    {
+      "model_name": "MiniMax-M2",
+      "start_time": 1753221600,
+      "end_time": 1753239600,
+      "current_interval_status": 1,
+      "current_interval_total_count": 3000,
+      "current_interval_usage_count": 450,
+      "current_interval_remaining_percent": 85,
+      "current_weekly_status": 1,
+      "current_weekly_total_count": 15000,
+      "current_weekly_usage_count": 2250,
+      "current_weekly_remaining_percent": 85,
+      "weekly_end_time": 1753714800000
+    },
+    {
+      "model_name": "MiniMax-Text-01",
+      "start_time": 1753221600,
+      "end_time": 1753239600,
+      "current_interval_status": 1,
+      "current_interval_total_count": 0,
+      "current_interval_usage_count": 0,
+      "current_interval_remaining_percent": 42.5,
+      "current_weekly_status": 0
+    },
+    {
+      "model_name": "speech-01",
+      "label": "Speech quota",
+      "unit": "calls",
+      "total": 100,
+      "remains": 30,
+      "reset_time": 1753227600
+    }
+  ]
+}

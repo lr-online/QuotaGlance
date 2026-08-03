@@ -1,0 +1,21 @@
+{
+  "balances": [
+    {
+      "label": "Balance",
+      "available": { "amount": "12.34", "currency": "CNY" },
+      "breakdown": [
+        { "label": "Granted", "value": { "amount": "2.34", "currency": "CNY" } },
+        { "label": "Topped up", "value": { "amount": "10.00", "currency": "CNY" } }
+      ]
+    },
+    {
+      "label": "Balance",
+      "available": { "amount": "5.67", "currency": "USD" },
+      "breakdown": [
+        { "label": "Granted", "value": { "amount": "0", "currency": "USD" } },
+        { "label": "Topped up", "value": { "amount": "5.67", "currency": "USD" } }
+      ]
+    }
+  ],
+  "providerStatus": "active"
+}

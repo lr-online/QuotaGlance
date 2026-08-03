@@ -1,0 +1,66 @@
+{
+  "balances": [
+    {
+      "label": "Balance",
+      "available": { "amount": "544.045471", "currency": "USD" },
+      "breakdown": []
+    }
+  ],
+  "spendingLimit": {
+    "label": "Quota",
+    "used": { "amount": "6655.9", "currency": "USD" },
+    "limit": { "amount": "7200", "currency": "USD" },
+    "remaining": { "amount": "544.045471", "currency": "USD" }
+  },
+  "spend": {
+    "today": { "amount": "12.34", "currency": "USD" },
+    "total": { "amount": "6650.22", "currency": "USD" }
+  },
+  "today": {
+    "actualCost": { "amount": "12.34", "currency": "USD" },
+    "requests": 42,
+    "inputTokens": 1000,
+    "outputTokens": 50,
+    "cacheReadTokens": 5000,
+    "cacheCreationTokens": 0,
+    "totalTokens": 6050
+  },
+  "total": {
+    "actualCost": { "amount": "6650.22", "currency": "USD" },
+    "requests": 37194,
+    "inputTokens": 730313533,
+    "outputTokens": 20860183,
+    "cacheReadTokens": 4666258113,
+    "cacheCreationTokens": 6765568,
+    "totalTokens": 5424197397
+  },
+  "dailyUsage": [
+    {
+      "date": "2026-07-22",
+      "actualCost": { "amount": "12.34", "currency": "USD" },
+      "requests": 42,
+      "totalTokens": 6050
+    },
+    {
+      "date": "2026-07-21",
+      "actualCost": { "amount": "8.5", "currency": "USD" },
+      "requests": 17,
+      "totalTokens": 3200
+    }
+  ],
+  "modelUsage": [
+    {
+      "model": "gpt-test",
+      "actualCost": { "amount": "10", "currency": "USD" },
+      "requests": 40,
+      "totalTokens": 6000
+    },
+    {
+      "model": "claude-test",
+      "actualCost": { "amount": "2.34", "currency": "USD" },
+      "requests": 2,
+      "totalTokens": 50
+    }
+  ],
+  "providerStatus": "active"
+}

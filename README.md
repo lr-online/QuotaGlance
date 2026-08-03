@@ -8,22 +8,22 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.1.5-blue" alt="version" />
-  <img src="https://img.shields.io/badge/platforms-macOS%2012%2B%20%7C%2014%2B%20%7C%20HarmonyOS-success" alt="platforms" />
-  <img src="https://img.shields.io/badge/Swift-6%20%7C%20SwiftUI%20%7C%20WidgetKit-orange" alt="stack" />
+  <img src="https://img.shields.io/badge/version-v0.1.6-blue" alt="version" />
+  <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Android%20%7C%20HarmonyOS-success" alt="platforms" />
+  <img src="https://img.shields.io/badge/Swift%20%7C%20Kotlin%20%7C%20ArkTS-orange" alt="stack" />
   <img src="https://img.shields.io/badge/AI%20providers-6%2B-brightgreen" alt="providers" />
   <img src="https://img.shields.io/badge/privacy-local--first%20%7C%20zero--telemetry-red" alt="privacy" />
 </p>
 
-QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小组件，用于集中查看多个 AI API provider 的余额、消费上限、支出或订阅配额。
+QuotaGlance 是一个个人使用的 macOS、Android 与 HarmonyOS 本地优先客户端，用于集中查看多个 AI API provider 的余额、消费上限、支出或订阅配额。
 
 ## ✨ 为什么选 QuotaGlance
 
-- 🔐 **本地优先，零遥测** — 所有 API key 只存系统 Keychain，永不上传；没有任何第三方分析或崩溃上报。
+- 🔐 **本地优先，零遥测** — 所有 API key 只存平台安全存储（Keychain / Android Keystore / Asset Store），永不上传；没有任何第三方分析或崩溃上报。
 - 📊 **一个菜单栏，看遍所有额度** — 最多 20 个具名账户，余额、消费上限、周期支出、配额窗口与趋势一屏汇总。
 - 💱 **真实余额，不做假** — 只显示 provider 官方可查询的数据，按 CNY / USD 等币种分别呈现，绝不把配额伪装成现金。
 - 🖥️ **菜单栏 + 桌面 Widget** — macOS 14 支持小 / 中 / 大三档桌面组件；失败重试、过期标记、低余额提醒一应俱全。
-- 🌏 **跨平台** — macOS 与鸿蒙（HarmonyOS NEXT）客户端均已可用；Provider、Aggregation 和 Alerts 通过共享契约 fixtures 保持语义一致，产品入口与平台体验差异见[平台能力矩阵](docs/platform-capability-matrix.md)。
+- 🌏 **跨平台** — macOS、Android 与鸿蒙（HarmonyOS NEXT）客户端均已可用；Provider、Aggregation 和 Alerts 通过共享契约 fixtures 保持语义一致，产品入口与平台体验差异见[平台能力矩阵](docs/platform-capability-matrix.md)。
 
 ## 🔌 支持的 AI 平台
 
@@ -44,6 +44,7 @@ QuotaGlance 是一个个人使用的 macOS / 鸿蒙菜单栏应用和桌面小�
 | --- | --- | --- |
 | **macOS 14 完整版** | macOS 14+ · Apple Silicon | 菜单栏 + 独立仪表盘 + 桌面 Widget（小 / 中 / 大）+ 开机启动 + 通知中心 |
 | **macOS 12 兼容版** | macOS 12+ · Apple Silicon | 菜单栏 + 独立仪表盘 + 通知中心中号 Widget |
+| **Android** | Android 8.0+（API 26） | Compose 概览与账户编辑 + Glance 小组件 + 通知 + 深链接 |
 | **鸿蒙** | HarmonyOS NEXT 6.1+ | ArkTS 客户端（账户、卡片、System/English/简体中文），参考 [`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md) |
 
 ## 🏗️ 架构
@@ -67,7 +68,7 @@ flowchart LR
 
 ## 🚀 快速开始
 
-1. **获取应用** — 下载 Release 中的 DMG（`dist/QuotaGlance-<version>-macOS14-arm64.dmg`），或本地打包：`./scripts/package-dmg.sh`。
+1. **获取应用** — macOS 下载 Release 中的 DMG（`dist/QuotaGlance-<version>-macOS14-arm64.dmg`）；Android 下载 `QuotaGlance-<version>-android-universal.apk` 与同名 `.sha256`，或在 PR 的 Actions artifact 中下载测试包。
 2. **安装** — 拖入 `Applications`，首次启动时按住 Control 点击应用选择「打开」。
 3. **添加账户** — 点击菜单栏图标 → Settings → 选择 provider、填写 key 保存，菜单栏即刻显示余额。
 
@@ -85,10 +86,23 @@ flowchart LR
 - 构建：`scripts/build-harmonyos.sh`（本机需 DevEco Studio，CI 用 `ErBWs/setup-ohos`）；脚本会在首次构建时从受控的 `HarmonyOS/build-profile.template.json5` 初始化被忽略的本机 `build-profile.json5`。若先用 DevEco 打开新检出的工程，先执行 `cp HarmonyOS/build-profile.template.json5 HarmonyOS/build-profile.json5`，再由 DevEco 写入本机签名设置。图标由 `scripts/generate-harmonyos-icon.swift` 生成，与 macOS 图标同一设计。
 - 平台调研、密钥方案选型与实现状态：[`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md)。
 
+## Android 版本
+
+`Android/` 是 Android 8.0+（API 26）版本。它以 Kotlin/Jetpack Compose 实现账户、概览、明细、刷新设置、本地通知和 Glance 小组件；API key 存放在 Android Keystore-backed encrypted preferences，不会写入 DataStore、快照、日志或 Git。Provider、Aggregation 和 Alerts 的契约与 Swift/ArkTS 使用同一份 `Contracts/` fixture，Android 专项约束和能力基线见 [`Android/AGENTS.md`](Android/AGENTS.md)。
+
+本地编译需要 JDK 17 和 Android SDK API 35 / Build Tools 35。配置 `Android/local.properties` 的 `sdk.dir` 后运行：
+
+```bash
+cd Android
+./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleRelease
+```
+
+release APK 位于 `Android/app/build/outputs/apk/release/app-release.apk`。GitHub Actions 在每个 PR 上传 debug/release APK artifact；推送 `v*` tag 后会将 `QuotaGlance-<version>-android-universal.apk` 和 SHA-256 添加到 GitHub Release。开源下载版使用 Android debug 证书以避免在仓库保存私钥，适合测试和侧载安装，不适用于 Play Store 或长期生产签名。
+
 
 ## 功能
 
-- 管理最多 20 个具名 provider 账户，key 只保存在 macOS Keychain。
+- 管理最多 20 个具名 provider 账户，key 只保存在平台安全存储。
 - 添加 key 时选择 provider；Kimi 和 MiniMax 自动识别中国站或国际站，OpenRouter 自动识别标准 key 或 Management Key，BioMap Coding 使用固定的公司 LiteLLM 地址。
 - 菜单栏按账户实际能力显示余额明细、消费上限、周期支出、配额窗口、近期趋势和模型用量。
 - 独立仪表盘提供全账户、Provider 分组总览和完整账户明细；菜单栏继续作为紧凑主入口。
@@ -175,6 +189,7 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 
 - `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test`、版本构建约束、DMG 打包约束和本地安装安全检查。
 - `Release` 会在推送 `v*` tag 时自动打包 DMG，并把 `dist/*.dmg` 与对应的 `.sha256` 发布到 GitHub Release。
+- `Android` 会在 Android/Contracts 相关 PR 上同步契约、执行 JVM 测试和 lint，并构建 debug/release APK；同一 `v*` tag 将 Android universal APK 与 SHA-256 附加到 GitHub Release。
 
 示例：
 

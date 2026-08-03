@@ -34,3 +34,32 @@ contract parity as complete product parity.
   and matching Swift/ArkTS implementation and tests.
 - Presentation-only additions may stay platform-specific when they do not alter shared
   domain or contract behavior. Their visible differences must remain recorded here.
+
+## Android Baseline
+
+Android is a third native client, not a wrapper around either existing host. The table
+below records the required new-platform capability audit for `Android/`. “Implemented”
+means the current Kotlin source and listed automated coverage support the behavior;
+device-only items remain an explicit manual-verification gap rather than an implied
+equivalence claim.
+
+| Capability | Android status | Evidence / user-visible difference |
+| --- | --- | --- |
+| Provider / spec contract | Implemented | Kotlin spec engine loads synced assets; every provider, aggregation, and alert fixture is exercised by JVM tests and `verify-android-parity.sh`. |
+| Accounts and credentials | Implemented | Ordered 20-account DataStore metadata, trimmed duplicate-name checks, provider-change key requirement, Keystore-backed key vault, detect-before-save, and delete cascade. |
+| Preferences | Implemented / platform N/A | Refresh interval, language, and default quick view persist. Android has no launch-at-login; launch and foreground resume are its equivalent entry points. |
+| Refresh and snapshots | Implemented | Manual, launch, foreground interval, and WorkManager refresh; failure retains old usage and records stale/unavailable state, timestamps, and reason. |
+| Aggregation and metric semantics | Implemented | Kotlin mirrors currency grouping, all-or-nothing today metrics, overflow behavior, disabled filtering, and seven-day output from shared fixtures. |
+| Account-level details | Implemented | Balances/breakdown, limit, spend, quota windows, counters, daily/model usage, provider status, unavailable reason, and update time are rendered when supplied. |
+| Alerts and local notifications | Implemented | Shared episode fixtures, persisted episodes, permission status/action, and Android notification dispatch. Device permission dialogs require manual verification. |
+| Main and quick-view surfaces | Implemented | Compose all-account/account detail states and Glance widget support All, Default, and explicit account with deleted selection fallback. |
+| Editing and settings | Implemented | Provider/name/key/enabled/threshold editing; interval, language, notification, and default-quick-view preferences; English/Chinese validation errors. |
+| Deep links and quick-view selection | Implemented | `quotaglance://all` and `quotaglance://account/<uuid>` parse into a route; missing accounts resolve to All Accounts. |
+| Localization and formatting | Implemented | System/English/Chinese main UI and widget labels; monetary values preserve canonical amount/currency form. |
+| Build and quality gates | Implemented with device-test gap | `android.yml` syncs contracts, runs parity/JVM/lint, builds both APKs, uploads artifacts, and attaches tag-release APKs. Emulator/physical-device checks for Glance, notification, deep links, WorkManager, and encrypted storage remain manual until device CI is added. |
+
+Android background refresh is intentionally different from macOS' application timer:
+the selected 1/5/15/30/60 minute interval runs only while an Activity is visible.
+WorkManager background requests require a network and non-low battery, and Android can
+defer periodic work beyond its 15-minute minimum. The app states this in Settings so a
+short interval is not presented as a guaranteed background service level.
