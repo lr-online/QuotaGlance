@@ -1,0 +1,93 @@
+package com.liangrui.quotaglance.refresh
+
+import com.liangrui.quotaglance.core.ProviderFailure as CoreProviderFailure
+import com.liangrui.quotaglance.core.QuotaAccount
+import com.liangrui.quotaglance.data.AccountMutationService
+import com.liangrui.quotaglance.data.AccountRepository
+import com.liangrui.quotaglance.data.AccountValidator
+import com.liangrui.quotaglance.data.CredentialVault
+
+sealed interface AccountSaveResult {
+    data object Saved : AccountSaveResult
+    data class ValidationFailure(val error: AccountValidator.Error) : AccountSaveResult
+    data class ProviderFailure(val token: String) : AccountSaveResult
+}
+
+/** Validates keys against their provider before a new or replacement credential is persisted. */
+class AccountSaveCoordinator(
+    private val providers: ProviderRegistry,
+    private val accounts: AccountRepository,
+    private val credentials: CredentialVault,
+    private val mutationService: AccountMutationService,
+    private val refreshCoordinator: RefreshCoordinator,
+) {
+    suspend fun save(account: QuotaAccount, apiKeyText: String): AccountSaveResult {
+        val existing = accounts.list()
+        val previous = existing.firstOrNull { it.id == account.id }
+        val replacementKey = apiKeyText.trim().takeIf { it.isNotEmpty() }
+        val validation = AccountValidator.validate(
+            existing = existing,
+            editingId = previous?.id,
+            displayName = account.displayName,
+            replacementApiKey = replacementKey,
+        )
+        validation.error?.let { return AccountSaveResult.ValidationFailure(it) }
+        if (previous == null && replacementKey == null) {
+            return AccountSaveResult.ValidationFailure(AccountValidator.Error.EmptyApiKey)
+        }
+        if (previous != null && previous.provider != account.provider && replacementKey == null) {
+            return AccountSaveResult.ValidationFailure(AccountValidator.Error.EmptyApiKey)
+        }
+
+        val normalized = account.copy(displayName = checkNotNull(validation.normalizedDisplayName))
+        val requiresDetection = previous == null || previous.provider != normalized.provider || replacementKey != null
+        return try {
+            val provider = providers.provider(normalized.provider)
+            if (requiresDetection) {
+                val key = replacementKey ?: credentials.read(normalized.id)
+                    ?: return AccountSaveResult.ValidationFailure(AccountValidator.Error.EmptyApiKey)
+                val detection = provider.detect(key)
+                val detected = normalized.copy(
+                    detectedProfile = detection.profile,
+                    lowBalanceThreshold = normalized.lowBalanceThreshold.takeIf {
+                        provider.descriptor.supportsLowBalanceThreshold(detection.profile)
+                    },
+                )
+                persist(previous, detected, key, replacementKey)?.let { return it }
+                refreshCoordinator.recordSuccessfulSnapshot(detected.id, detection.snapshot)
+            } else {
+                val profile = normalized.detectedProfile ?: previous?.detectedProfile
+                val updated = normalized.copy(
+                    detectedProfile = profile,
+                    lowBalanceThreshold = normalized.lowBalanceThreshold.takeIf {
+                        provider.descriptor.supportsLowBalanceThreshold(profile)
+                    },
+                )
+                persist(previous, updated, null, null)?.let { return it }
+                if (updated.isEnabled) refreshCoordinator.refreshAccount(updated.id)
+            }
+            AccountSaveResult.Saved
+        } catch (error: Throwable) {
+            AccountSaveResult.ProviderFailure(error.token())
+        }
+    }
+
+    private suspend fun persist(
+        previous: QuotaAccount?,
+        account: QuotaAccount,
+        newAccountKey: String?,
+        replacementKey: String?,
+    ): AccountSaveResult.ValidationFailure? {
+        val result = if (previous == null) {
+            mutationService.create(account, checkNotNull(newAccountKey))
+        } else {
+            mutationService.save(account, replacementKey)
+        }
+        return result.error?.let(AccountSaveResult::ValidationFailure)
+    }
+
+    private fun Throwable.token(): String = when (this) {
+        is CoreProviderFailure -> token
+        else -> "offline"
+    }
+}

@@ -47,14 +47,27 @@ Alerts contract parity remains a hard constraint; the following experience gaps 
 - Revisit after iOS exists.
 - Prefer a companion design over an independent first release.
 
-### 6. Android / Windows evaluation
+### 6. Windows evaluation
 
-- Do not commit to a direct port yet.
+- Do not commit to a Windows port yet.
 - First decide whether the product should remain client-only or move provider refresh to a shared backend service.
 - Use that decision to choose the cross-platform architecture.
-- Android/Windows remain open under the bullets above.
 
 ## Completed
+
+### Android native client (2026-08)
+
+- Kotlin/Jetpack Compose app for Android 8.0+ with Keystore-backed credentials,
+  account management, provider detection before persistence, refresh/snapshot
+  retention, low-balance notifications, deep links, and Glance quick view.
+- Kotlin mirrors the shared provider, aggregation, and alert contracts through
+  synced assets/fixtures and exact decimal arithmetic; Android additions do not
+  modify the macOS or HarmonyOS source modules.
+- `android.yml` installs API 35, runs sync/parity/JVM/lint/debug+release builds,
+  uploads PR artifacts, and attaches an APK plus SHA-256 to version-tag releases.
+- Android device/emulator verification for notification permission, WorkManager,
+  Glance, encrypted storage, and external links remains a manual gate until
+  device CI is available. See `Android/AGENTS.md` and the platform matrix.
 
 ### macOS internationalization foundation (2026-08)
 

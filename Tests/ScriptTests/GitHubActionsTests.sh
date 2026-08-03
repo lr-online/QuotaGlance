@@ -6,6 +6,7 @@ CI_WORKFLOW="$ROOT_DIR/.github/workflows/ci.yml"
 PACKAGE_WORKFLOW="$ROOT_DIR/.github/workflows/package.yml"
 RELEASE_WORKFLOW="$ROOT_DIR/.github/workflows/release.yml"
 HARMONYOS_WORKFLOW="$ROOT_DIR/.github/workflows/harmonyos.yml"
+ANDROID_WORKFLOW="$ROOT_DIR/.github/workflows/android.yml"
 QUALITY_WORKFLOW="$ROOT_DIR/.github/workflows/quality.yml"
 FETCH_SCRIPT="$ROOT_DIR/scripts/fetch-ci-package.sh"
 HARMONYOS_BUILD_SCRIPT="$ROOT_DIR/scripts/build-harmonyos.sh"
@@ -19,6 +20,7 @@ fail() {
 [[ -f "$PACKAGE_WORKFLOW" ]] || fail "missing Package workflow"
 [[ -f "$RELEASE_WORKFLOW" ]] || fail "missing release workflow"
 [[ -f "$HARMONYOS_WORKFLOW" ]] || fail "missing HarmonyOS workflow"
+[[ -f "$ANDROID_WORKFLOW" ]] || fail "missing Android workflow"
 [[ -f "$QUALITY_WORKFLOW" ]] || fail "missing Quality workflow"
 [[ -x "$FETCH_SCRIPT" ]] || fail "CI package fetch script is missing or not executable"
 [[ -x "$HARMONYOS_BUILD_SCRIPT" ]] || fail "HarmonyOS build script is missing or not executable"
@@ -151,6 +153,35 @@ rg -Fq 'github.com/zricethezav/gitleaks/v8@v8.28.0' "$QUALITY_WORKFLOW" \
   || fail "Quality workflow uses the wrong gitleaks module path"
 rg -Fq 'scripts/verify-provider-parity.sh' "$QUALITY_WORKFLOW" \
   || fail "Quality workflow missing provider protocol parity check"
+
+rg -q '^name: Android$' "$ANDROID_WORKFLOW" || fail "Android workflow name changed"
+rg -q 'workflow_dispatch:' "$ANDROID_WORKFLOW" || fail "Android workflow missing workflow_dispatch"
+rg -q 'pull_request:' "$ANDROID_WORKFLOW" || fail "Android workflow missing pull_request trigger"
+rg -q 'tags:' "$ANDROID_WORKFLOW" || fail "Android workflow missing tag trigger"
+rg -q 'v\*' "$ANDROID_WORKFLOW" || fail "Android workflow missing version tag pattern"
+assert_pinned_action "actions/checkout" "$ANDROID_WORKFLOW"
+assert_pinned_action "actions/setup-java" "$ANDROID_WORKFLOW"
+assert_pinned_action "android-actions/setup-android" "$ANDROID_WORKFLOW"
+assert_pinned_action "actions/upload-artifact" "$ANDROID_WORKFLOW"
+assert_pinned_action "softprops/action-gh-release" "$ANDROID_WORKFLOW"
+rg -Fq 'persist-credentials: false' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not disable checkout credential persistence"
+rg -q '^concurrency:$' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not declare concurrency"
+rg -Fq 'java-version: "17"' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not use JDK 17"
+rg -Fq 'sdkmanager "platforms;android-35" "build-tools;35.0.0"' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not install the required SDK inputs"
+rg -Fq 'scripts/sync-specs-to-android.sh' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not sync provider specs"
+rg -Fq 'scripts/sync-contracts-to-android.sh' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not sync contract fixtures"
+rg -Fq 'scripts/verify-android-parity.sh' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not verify Android parity"
+rg -Fq ':app:testDebugUnitTest :app:lint :app:assembleDebug :app:assembleRelease' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not test, lint, and build both APK variants"
+rg -Fq '*-android-universal.apk' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not publish a release APK"
 
 [[ -f "$ROOT_DIR/.github/dependabot.yml" ]] \
   || fail "missing Dependabot configuration"

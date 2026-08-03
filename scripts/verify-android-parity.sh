@@ -7,6 +7,7 @@ ANDROID_DIR="$REPO_ROOT/Android"
 SPEC_TARGET="$ANDROID_DIR/app/src/main/assets/providerspecs"
 FIXTURE_TARGET="$ANDROID_DIR/app/src/test/resources/contracts"
 PROVIDER_SOURCE="$ANDROID_DIR/app/src/main/java/com/liangrui/quotaglance/core/ProviderId.kt"
+PROVIDER_TEST_SOURCE="$ANDROID_DIR/app/src/test/java/com/liangrui/quotaglance/core/ProviderContractTest.kt"
 SWIFT_PROVIDER_SOURCE="$REPO_ROOT/Sources/QuotaGlanceCore/Domain/Provider.swift"
 
 errors=0
@@ -17,6 +18,7 @@ fail() {
 }
 
 [[ -f "$PROVIDER_SOURCE" ]] || fail "missing Kotlin ProviderId declaration"
+[[ -f "$PROVIDER_TEST_SOURCE" ]] || fail "missing Kotlin provider contract test"
 [[ -d "$SPEC_TARGET" ]] || fail "missing Android provider spec sync output"
 [[ -d "$FIXTURE_TARGET" ]] || fail "missing Android contract fixture sync output"
 
@@ -47,6 +49,38 @@ for provider_dir in "$CONTRACTS_DIR"/Providers/*; do
     [[ -f "$provider_dir/$case_name-requests.json" ]] || fail "missing requests fixture: $provider/$case_name"
   done
 done
+
+if ! python3 - "$CONTRACTS_DIR/Providers" "$PROVIDER_SOURCE" "$PROVIDER_TEST_SOURCE" <<'PY'
+import pathlib
+import re
+import sys
+
+providers = pathlib.Path(sys.argv[1])
+provider_source = pathlib.Path(sys.argv[2]).read_text()
+test_source = pathlib.Path(sys.argv[3]).read_text()
+
+enum_to_raw = dict(re.findall(r'^\s*([A-Z_]+)\("([A-Za-z][A-Za-z0-9]*)"\)', provider_source, re.M))
+registered = {
+    (enum_to_raw[enum].lower(), case)
+    for enum, case in re.findall(r'ContractCase\(ProviderId\.([A-Z_]+),\s*"([^"]+)"', test_source)
+    if enum in enum_to_raw
+}
+fixtures = {
+    (directory.name, response.name.removesuffix('-response.json'))
+    for directory in providers.iterdir() if directory.is_dir()
+    for response in directory.glob('*-response.json')
+}
+missing = fixtures - registered
+extra = registered - fixtures
+if missing:
+    print('missing Kotlin provider contract registrations:', ', '.join(f'{provider}/{case}' for provider, case in sorted(missing)), file=sys.stderr)
+if extra:
+    print('Kotlin provider contract registrations without fixtures:', ', '.join(f'{provider}/{case}' for provider, case in sorted(extra)), file=sys.stderr)
+raise SystemExit(bool(missing or extra))
+PY
+then
+  fail "Kotlin provider contract registrations differ from shared fixtures"
+fi
 
 for section in Providers Aggregation Alerts; do
   diff -qr "$CONTRACTS_DIR/$section" "$FIXTURE_TARGET/$section" >/dev/null \
