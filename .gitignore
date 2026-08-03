@@ -5,6 +5,7 @@
 
 # Android local SDK and build output
 Android/.gradle/
+Android/.kotlin/
 Android/build/
 Android/app/build/
 Android/local.properties
