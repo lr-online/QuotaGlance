@@ -1,17 +1,18 @@
 import { promptAction, router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
-import { AccountService, CreateAccountInput } from '../services/AccountService';
-import { ALL_PROVIDER_IDS, ProviderID } from '../providers/UsageProvider';
+import {
+  AccountService,
+  CreateAccountInput,
+  UpdateAccountInput
+} from '../services/AccountService';
+import { ALL_PROVIDER_IDS, ProviderID, ProviderProfile } from '../providers/UsageProvider';
+import { Account } from '../storage/AccountStore';
 import { providerDescriptor, providerDisplayName } from '../providers/ProviderCatalog';
 import { friendlyErrorText } from '../utils/ErrorMapping';
 import { resolveProfileDescription } from '../utils/ProfileDescriptionL10n';
 
 // Threshold support comes from the provider spec descriptor; pre-detection
 // there is no profile, matching the spec's `undetected` rule.
-function supportsLowBalanceThreshold(context: common.Context, id: ProviderID): boolean {
-  return providerDescriptor(context, id).supportsLowBalanceThreshold(undefined);
-}
-
 function keyPlaceholder(id: ProviderID): string {
   if (id === 'openRouter') {
     return 'sk-or-...';
@@ -26,6 +27,10 @@ function isValidThreshold(value: string): boolean {
   return /^\d+(\.\d+)?$/.test(value);
 }
 
+interface AccountEditorParams {
+  accountId?: string;
+}
+
 @Entry
 @Component
 struct AccountEditorPage {
@@ -33,15 +38,62 @@ struct AccountEditorPage {
   @State name: string = '';
   @State apiKey: string = '';
   @State threshold: string = '';
+  @State isEnabled: boolean = true;
   @State saving: boolean = false;
+  @State loading: boolean = false;
   @State errorText: string = '';
+  private editingAccountId: string = '';
+  private originalProvider: ProviderID = 'deepSeek';
+  private existingProfile?: ProviderProfile;
+
+  aboutToAppear(): void {
+    const params = router.getParams() as AccountEditorParams;
+    if (params === undefined || params === null || typeof params.accountId !== 'string'
+      || params.accountId.length === 0) {
+      return;
+    }
+    this.editingAccountId = params.accountId;
+    this.loadExistingAccount();
+  }
+
+  private async loadExistingAccount(): Promise<void> {
+    this.loading = true;
+    const context = getContext(this) as common.UIAbilityContext;
+    try {
+      const service = await AccountService.create(context);
+      const accounts = await service.loadAccounts();
+      const account = accounts.find((candidate: Account) => candidate.id === this.editingAccountId);
+      if (account === undefined) {
+        throw new Error('accountNotFound');
+      }
+      this.selectedProvider = account.provider;
+      this.originalProvider = account.provider;
+      this.existingProfile = account.detectedProfile;
+      this.name = account.displayName;
+      this.threshold = account.lowBalanceThreshold ?? '';
+      this.isEnabled = account.isEnabled;
+    } catch (error) {
+      this.errorText = friendlyErrorText(context, (error as Error).message);
+    } finally {
+      this.loading = false;
+    }
+  }
 
   private thresholdInvalid(): boolean {
     return this.threshold.trim().length > 0 && !isValidThreshold(this.threshold.trim());
   }
 
   private canSave(): boolean {
-    return !this.saving && this.apiKey.trim().length > 0 && !this.thresholdInvalid();
+    const keyRequired = this.editingAccountId.length === 0
+      || this.selectedProvider !== this.originalProvider;
+    return !this.loading && !this.saving
+      && (!keyRequired || this.apiKey.trim().length > 0)
+      && !this.thresholdInvalid();
+  }
+
+  private supportsLowBalanceThreshold(): boolean {
+    const profile = this.selectedProvider === this.originalProvider ? this.existingProfile : undefined;
+    return providerDescriptor(getContext(this), this.selectedProvider).supportsLowBalanceThreshold(profile);
   }
 
   private async save(): Promise<void> {
@@ -53,15 +105,27 @@ struct AccountEditorPage {
     const context = getContext(this) as common.UIAbilityContext;
     try {
       const service = await AccountService.create(context);
-      const input: CreateAccountInput = {
-        provider: this.selectedProvider,
-        displayName: this.name.trim(),
-        apiKey: this.apiKey.trim(),
-        lowBalanceThreshold: this.threshold.trim()
-      };
-      await service.createAccount(input);
-      const added = context.resourceManager.getStringSync($r('app.string.account_added').id);
-      promptAction.showToast({ message: added });
+      if (this.editingAccountId.length > 0) {
+        const input: UpdateAccountInput = {
+          provider: this.selectedProvider,
+          displayName: this.name.trim(),
+          apiKey: this.apiKey.trim(),
+          lowBalanceThreshold: this.threshold.trim(),
+          isEnabled: this.isEnabled
+        };
+        await service.updateAccount(this.editingAccountId, input);
+      } else {
+        const input: CreateAccountInput = {
+          provider: this.selectedProvider,
+          displayName: this.name.trim(),
+          apiKey: this.apiKey.trim(),
+          lowBalanceThreshold: this.threshold.trim()
+        };
+        await service.createAccount(input);
+      }
+      const messageId = this.editingAccountId.length > 0
+        ? $r('app.string.account_updated').id : $r('app.string.account_added').id;
+      promptAction.showToast({ message: context.resourceManager.getStringSync(messageId) });
       router.back();
     } catch (error) {
       this.errorText = friendlyErrorText(context, (error as Error).message);
@@ -82,7 +146,13 @@ struct AccountEditorPage {
         color: this.selectedProvider === id ? $r('app.color.accentTeal') : $r('app.color.slateSecondary')
       })
       .onClick(() => {
+        if (this.loading || this.saving) {
+          return;
+        }
         this.selectedProvider = id;
+        if (!this.supportsLowBalanceThreshold()) {
+          this.threshold = '';
+        }
         this.errorText = '';
       })
   }
@@ -105,7 +175,8 @@ struct AccountEditorPage {
           .onClick(() => {
             router.back();
           })
-        Text($r('app.string.add_account'))
+        Text(this.editingAccountId.length > 0
+          ? $r('app.string.edit_account') : $r('app.string.add_account'))
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
           .fontColor($r('app.color.textPrimary'))
@@ -130,7 +201,8 @@ struct AccountEditorPage {
             .width('100%')
             Text(resolveProfileDescription(
               getContext(this) as common.Context,
-              providerDescriptor(getContext(this), this.selectedProvider).profileDescription(undefined)
+              providerDescriptor(getContext(this), this.selectedProvider).profileDescription(
+                this.selectedProvider === this.originalProvider ? this.existingProfile : undefined)
             ))
               .fontSize(12)
               .fontColor($r('app.color.textSecondary'))
@@ -156,8 +228,14 @@ struct AccountEditorPage {
           .width('100%')
 
           Column() {
-            this.fieldLabel($r('app.string.api_key_label'))
-            TextInput({ placeholder: keyPlaceholder(this.selectedProvider), text: this.apiKey })
+            this.fieldLabel(this.editingAccountId.length > 0
+              ? $r('app.string.replacement_api_key_label') : $r('app.string.api_key_label'))
+            TextInput({
+              placeholder: this.editingAccountId.length > 0
+                && this.selectedProvider === this.originalProvider
+                ? $r('app.string.replacement_api_key_placeholder') : keyPlaceholder(this.selectedProvider),
+              text: this.apiKey
+            })
               .type(InputType.Password)
               .placeholderColor($r('app.color.slateSecondary'))
               .fontColor($r('app.color.textPrimary'))
@@ -179,7 +257,7 @@ struct AccountEditorPage {
           .alignItems(HorizontalAlign.Start)
           .width('100%')
 
-          if (supportsLowBalanceThreshold(getContext(this), this.selectedProvider)) {
+          if (this.supportsLowBalanceThreshold()) {
             Column() {
               this.fieldLabel($r('app.string.threshold_label'))
               TextInput({ placeholder: $r('app.string.threshold_placeholder'), text: this.threshold })
@@ -201,6 +279,21 @@ struct AccountEditorPage {
               }
             }
             .alignItems(HorizontalAlign.Start)
+            .width('100%')
+          }
+
+          if (this.editingAccountId.length > 0) {
+            Row() {
+              Text($r('app.string.enabled_label'))
+                .fontSize(14)
+                .fontColor($r('app.color.textPrimary'))
+              Blank()
+              Toggle({ type: ToggleType.Switch, isOn: this.isEnabled })
+                .selectedColor($r('app.color.accentTeal'))
+                .onChange((value: boolean) => {
+                  this.isEnabled = value;
+                })
+            }
             .width('100%')
           }
 

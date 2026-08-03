@@ -58,6 +58,10 @@ struct AccountsPage {
     await this.reload();
   }
 
+  private editAccount(account: Account): void {
+    router.pushUrl({ url: 'pages/AccountEditorPage', params: { accountId: account.id } });
+  }
+
   private confirmDelete(account: Account): void {
     const context = getContext(this) as common.UIAbilityContext;
     AlertDialog.show({
@@ -229,6 +233,14 @@ struct AccountsPage {
         .selectedColor($r('app.color.accentTeal'))
         .onChange((isOn: boolean) => {
           this.setEnabled(account, isOn);
+        })
+
+      Text($r('app.string.edit'))
+        .fontSize(13)
+        .fontColor($r('app.color.accentTeal'))
+        .padding({ left: 12, top: 6, bottom: 6 })
+        .onClick(() => {
+          this.editAccount(account);
         })
 
       Text($r('app.string.delete'))

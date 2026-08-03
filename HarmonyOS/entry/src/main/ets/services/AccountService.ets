@@ -24,6 +24,10 @@ export interface CreateAccountInput {
   lowBalanceThreshold?: string;
 }
 
+export interface UpdateAccountInput extends CreateAccountInput {
+  isEnabled: boolean;
+}
+
 // Orchestration layer used by pages and EntryFormAbility so the UI stays thin.
 // Error tokens from the provider layer propagate unchanged; the UI maps them
 // to friendly text.
@@ -88,6 +92,74 @@ export class AccountService {
       throw error as Error;
     }
     return account;
+  }
+
+  // Editing keeps the existing credential when apiKey is blank. Changing the
+  // provider requires a replacement key because the stored credential/profile
+  // cannot be assumed to work with a different provider. A supplied key is
+  // detected before any persisted state changes, matching the create path.
+  async updateAccount(accountId: string, input: UpdateAccountInput): Promise<Account> {
+    const accounts = await this.accountStore.load();
+    const existing = accounts.find((account: Account) => account.id === accountId);
+    if (existing === undefined) {
+      throw new Error('accountNotFound');
+    }
+
+    const provider = this.registry.provider(input.provider);
+    const apiKey = input.apiKey.trim();
+    if (apiKey.length === 0 && input.provider !== existing.provider) {
+      throw new Error('replacementKeyRequired');
+    }
+    const detection = apiKey.length > 0 ? await provider.detect(apiKey) : undefined;
+    const effectiveProfile = detection?.profile ?? existing.detectedProfile;
+    const displayName = input.displayName.trim();
+    const updated: Account = {
+      id: existing.id,
+      displayName: displayName.length > 0 ? displayName : providerDisplayName(this.context, input.provider),
+      provider: input.provider,
+      detectedProfile: effectiveProfile,
+      isEnabled: input.isEnabled,
+      sortOrder: existing.sortOrder
+    };
+    const threshold = input.lowBalanceThreshold?.trim();
+    if (threshold !== undefined && threshold.length > 0
+      && provider.descriptor.supportsLowBalanceThreshold(effectiveProfile)) {
+      updated.lowBalanceThreshold = threshold;
+    }
+
+    if (detection !== undefined) {
+      const previousKey = await KeyRepository.load(accountId);
+      try {
+        await KeyRepository.save(accountId, apiKey);
+        await this.accountStore.update(updated);
+        await this.snapshotStore.save(accountId, detection.snapshot);
+      } catch (error) {
+        try {
+          await this.accountStore.update(existing);
+        } catch (rollbackError) {
+          hilog.error(DOMAIN, TAG, 'account-edit metadata rollback failed: %{public}s',
+            (rollbackError as Error).message);
+        }
+        if (previousKey === null) {
+          await KeyRepository.clear(accountId);
+        } else {
+          await KeyRepository.save(accountId, previousKey);
+        }
+        throw error as Error;
+      }
+    } else {
+      await this.accountStore.update(updated);
+    }
+
+    if (!updated.isEnabled || updated.lowBalanceThreshold === undefined) {
+      const alertStateStore = await AlertStateStore.create(this.context);
+      await alertStateStore.clear(accountId);
+    }
+    notifyOverviewRefresh();
+    updateAllCards(this.context).catch((error: Object) => {
+      hilog.warn(DOMAIN, TAG, 'account-edit card update failed: %{public}s', (error as Error).message);
+    });
+    return updated;
   }
 
   async refreshAccount(account: Account): Promise<void> {
