@@ -4,6 +4,40 @@ import { common } from '@kit.AbilityKit';
 import { createProviderRegistry } from '../../../main/ets/providers/ProviderCatalog';
 import { ALL_PROVIDER_IDS, ProviderID, UsageProvider } from '../../../main/ets/providers/UsageProvider';
 import { resolveProfileDescription } from '../../../main/ets/utils/ProfileDescriptionL10n';
+import { Account } from '../../../main/ets/storage/AccountStore';
+import { StoredSnapshot } from '../../../main/ets/storage/SnapshotStore';
+import { UsageSnapshot } from '../../../main/ets/providers/UsageSnapshot';
+import { buildScreensaverMessages, ScreensaverMessageSource } from '../../../main/ets/utils/ScreensaverMessages';
+
+function account(id: string, enabled: boolean = true, threshold?: string): Account {
+  const value: Account = {
+    id: id,
+    displayName: id,
+    provider: 'deepSeek',
+    isEnabled: enabled,
+    sortOrder: 0
+  };
+  if (threshold !== undefined) {
+    value.lowBalanceThreshold = threshold;
+  }
+  return value;
+}
+
+function stored(amount: string, stale: boolean = false, providerStatus?: string): StoredSnapshot {
+  const usage: UsageSnapshot = {
+    provider: 'deepSeek',
+    balances: [{
+      label: 'balance',
+      available: { amount: amount, currency: 'CNY' },
+      breakdown: []
+    }],
+    receivedAtMs: 100
+  };
+  if (providerStatus !== undefined) {
+    usage.providerStatus = providerStatus;
+  }
+  return { snapshot: usage, isStale: stale };
+}
 
 export default function abilityTest() {
   describe('ProviderCatalogTest', () => {
@@ -66,6 +100,52 @@ export default function abilityTest() {
           + context.resourceManager.getStringSync($r('app.string.l10n_management_key').id)
       );
       expect(resolveProfileDescription(context, 'futureToken')).assertEqual('futureToken');
+    });
+  });
+
+  describe('ScreensaverMessagesTest', () => {
+    it('prioritizesErrorsAndCapsMessages', 0, () => {
+      const context = abilityDelegatorRegistry.getAbilityDelegator().getAppContext() as common.Context;
+      const sources: ScreensaverMessageSource[] = [
+        { account: account('low', true, '10'), stored: stored('5') },
+        { account: account('stale'), stored: stored('20', true) },
+        { account: account('unavailable'), stored: stored('20', false, 'inactive') },
+        { account: account('waiting'), stored: null }
+      ];
+      const messages = buildScreensaverMessages(context, sources);
+      expect(messages.length).assertEqual(3);
+      expect(messages[0].severity).assertEqual('error');
+      expect(messages[1].severity).assertEqual('error');
+      expect(messages[2].severity).assertEqual('warning');
+    });
+
+    it('excludesDisabledAccounts', 0, () => {
+      const context = abilityDelegatorRegistry.getAbilityDelegator().getAppContext() as common.Context;
+      const messages = buildScreensaverMessages(context, [
+        { account: account('disabled', false), stored: null }
+      ]);
+      expect(messages.length).assertEqual(0);
+    });
+
+    it('acceptsLegacySnapshotsWithoutRefreshMetadata', 0, () => {
+      const context = abilityDelegatorRegistry.getAbilityDelegator().getAppContext() as common.Context;
+      const messages = buildScreensaverMessages(context, [
+        { account: account('legacy'), stored: stored('20', true) }
+      ]);
+      expect(messages.length).assertEqual(1);
+      expect(messages[0].severity).assertEqual('error');
+      expect(messages[0].createdAtMs).assertEqual(100);
+    });
+
+    it('comparesLowBalanceThresholdsAsExactDecimals', 0, () => {
+      const context = abilityDelegatorRegistry.getAbilityDelegator().getAppContext() as common.Context;
+      const messages = buildScreensaverMessages(context, [
+        {
+          account: account('precise', true, '9007199254740992.0'),
+          stored: stored('9007199254740992.1')
+        }
+      ]);
+      expect(messages.length).assertEqual(0);
     });
   });
 }

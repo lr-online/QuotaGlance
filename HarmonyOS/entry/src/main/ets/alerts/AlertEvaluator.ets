@@ -183,7 +183,7 @@ function compareMagnitude(a: PlainDecimalParts, b: PlainDecimalParts, fracLength
 
 // Compares two decimal amount strings exactly (no doubles), returning
 // negative/zero/positive like Swift Decimal comparison.
-function compareDecimalStrings(a: string, b: string): number {
+export function compareDecimalStrings(a: string, b: string): number {
   const pa = parsePlainDecimal(a);
   const pb = parsePlainDecimal(b);
   if (pa === null || pb === null) {

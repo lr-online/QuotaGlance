@@ -9,6 +9,8 @@ struct WidgetCard {
   @LocalStorageProp('statusText') statusText: string = '';
   @LocalStorageProp('updatedAtText') updatedAtText: string = '';
   @LocalStorageProp('todayText') todayText: string = '';
+  @LocalStorageProp('messageText') messageText: string = '';
+  @LocalStorageProp('messageSeverity') messageSeverity: string = '';
   @LocalStorageProp('rowsText') rowsText: string = '';
   @LocalStorageProp('targetAccountId') targetAccountId: string = '';
 
@@ -32,6 +34,16 @@ struct WidgetCard {
       action: 'router',
       abilityName: 'EntryAbility'
     });
+  }
+
+  private messageColor(): string {
+    if (this.messageSeverity === 'error') {
+      return '#FF6B6B';
+    }
+    if (this.messageSeverity === 'warning') {
+      return '#F5C15D';
+    }
+    return '#8FE8DF';
   }
 
   @Builder
@@ -64,6 +76,13 @@ struct WidgetCard {
           .fontSize(11)
           .fontColor('#CFD6E6')
           .maxLines(1)
+      }
+      if (this.messageText.length > 0) {
+        Text(this.messageText)
+          .fontSize(10)
+          .fontColor(this.messageColor())
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       if (this.statusText.length > 0) {
         Text(this.statusText)
@@ -111,6 +130,15 @@ struct WidgetCard {
           .fontSize(11)
           .fontColor('#CFD6E6')
           .maxLines(2)
+      }
+
+      if (this.messageText.length > 0) {
+        Text(this.messageText)
+          .fontSize(11)
+          .fontColor(this.messageColor())
+          .maxLines(2)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
       }
 
       if (this.rows().length > 0) {

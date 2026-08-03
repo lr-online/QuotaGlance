@@ -7,13 +7,21 @@ import { formatAmount } from '../utils/NumberFormat';
 // file. Keys:
 //   snapshot_<accountId>        - JSON-serialized UsageSnapshot
 //   snapshot_stale_<accountId>  - bool, last refresh failed
+//   snapshot_error_<accountId>  - stable error token for the last failure
+//   snapshot_attempt_<accountId> / snapshot_success_<accountId> - timestamps
 const STORE_NAME = 'quotaglance_store';
 const SNAPSHOT_PREFIX = 'snapshot_';
 const STALE_PREFIX = 'snapshot_stale_';
+const ERROR_PREFIX = 'snapshot_error_';
+const ATTEMPT_PREFIX = 'snapshot_attempt_';
+const SUCCESS_PREFIX = 'snapshot_success_';
 
 export interface StoredSnapshot {
   snapshot: UsageSnapshot;
   isStale: boolean;
+  lastErrorToken?: string;
+  lastAttemptAtMs?: number;
+  lastSuccessAtMs?: number;
 }
 
 export class SnapshotStore {
@@ -31,11 +39,16 @@ export class SnapshotStore {
   async save(accountId: string, snapshot: UsageSnapshot): Promise<void> {
     await this.store.put(SNAPSHOT_PREFIX + accountId, JSON.stringify(snapshot));
     await this.store.put(STALE_PREFIX + accountId, false);
+    await this.store.delete(ERROR_PREFIX + accountId);
+    await this.store.put(ATTEMPT_PREFIX + accountId, Date.now());
+    await this.store.put(SUCCESS_PREFIX + accountId, Date.now());
     await this.store.flush();
   }
 
-  async markStale(accountId: string): Promise<void> {
+  async markStale(accountId: string, errorToken: string = 'unknown'): Promise<void> {
     await this.store.put(STALE_PREFIX + accountId, true);
+    await this.store.put(ERROR_PREFIX + accountId, errorToken);
+    await this.store.put(ATTEMPT_PREFIX + accountId, Date.now());
     await this.store.flush();
   }
 
@@ -47,7 +60,23 @@ export class SnapshotStore {
     try {
       const snapshot = JSON.parse(raw) as UsageSnapshot;
       const isStale = await this.store.get(STALE_PREFIX + accountId, false) as boolean;
-      return { snapshot: snapshot, isStale: isStale };
+      const errorToken = await this.store.get(ERROR_PREFIX + accountId, '') as string;
+      const attemptAtMs = await this.store.get(ATTEMPT_PREFIX + accountId, 0) as number;
+      const successAtMs = await this.store.get(SUCCESS_PREFIX + accountId, 0) as number;
+      const result: StoredSnapshot = {
+        snapshot: snapshot,
+        isStale: isStale
+      };
+      if (errorToken.length > 0) {
+        result.lastErrorToken = errorToken;
+      }
+      if (attemptAtMs > 0) {
+        result.lastAttemptAtMs = attemptAtMs;
+      }
+      if (successAtMs > 0) {
+        result.lastSuccessAtMs = successAtMs;
+      }
+      return result;
     } catch (error) {
       return null;
     }
@@ -56,6 +85,9 @@ export class SnapshotStore {
   async clear(accountId: string): Promise<void> {
     await this.store.delete(SNAPSHOT_PREFIX + accountId);
     await this.store.delete(STALE_PREFIX + accountId);
+    await this.store.delete(ERROR_PREFIX + accountId);
+    await this.store.delete(ATTEMPT_PREFIX + accountId);
+    await this.store.delete(SUCCESS_PREFIX + accountId);
     await this.store.flush();
   }
 }

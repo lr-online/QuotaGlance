@@ -269,6 +269,42 @@
       "value": "点击屏幕任意处退出"
     },
     {
+      "name": "screensaver_message_low_balance_title",
+      "value": "余额偏低"
+    },
+    {
+      "name": "screensaver_message_stale_title",
+      "value": "数据已过期"
+    },
+    {
+      "name": "screensaver_message_unavailable_title",
+      "value": "服务不可用"
+    },
+    {
+      "name": "screensaver_message_not_refreshed_title",
+      "value": "等待首次刷新"
+    },
+    {
+      "name": "screensaver_message_metrics_title",
+      "value": "部分指标不可用"
+    },
+    {
+      "name": "screensaver_message_metrics_detail",
+      "value": "服务商未提供完整指标"
+    },
+    {
+      "name": "screensaver_all_healthy",
+      "value": "所有账户状态正常"
+    },
+    {
+      "name": "screensaver_no_accounts",
+      "value": "尚未配置账户"
+    },
+    {
+      "name": "screensaver_messages",
+      "value": "消息"
+    },
+    {
       "name": "stale_hint_short",
       "value": "过期"
     },

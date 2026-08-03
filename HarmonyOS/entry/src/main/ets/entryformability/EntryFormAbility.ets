@@ -50,6 +50,8 @@ export default class EntryFormAbility extends FormExtensionAbility {
       'statusText': '',
       'updatedAtText': '',
       'todayText': '',
+      'messageText': '',
+      'messageSeverity': '',
       'rowsText': '',
       'targetAccountId': ''
     };

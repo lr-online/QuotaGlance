@@ -31,6 +31,17 @@ const STORE_NAME = 'quotaglance_store';
 const PERMISSION_ASKED_FLAG = 'notification_permission_prompted_v1';
 const LEGACY_PERMISSION_ASKED_FLAG = 'notification_permission_asked_v1';
 
+// SERVICE_INFORMATION is the public application slot intended for account
+// status alerts. Lock-screen detail visibility remains a system/user policy;
+// NotificationSlot.lockscreenVisibility is reserved and cannot force it.
+async function ensureNotificationSlot(): Promise<void> {
+  try {
+    await notificationManager.addSlot(notificationManager.SlotType.SERVICE_INFORMATION);
+  } catch (error) {
+    hilog.warn(DOMAIN, TAG, 'notification slot registration failed: %{public}s', (error as Error).message);
+  }
+}
+
 // First-use moment for the notification permission prompt: app launch, but
 // only once at least one account exists (no accounts = nothing to notify
 // about), and only once per install — re-prompting a user who already
@@ -43,6 +54,7 @@ export async function requestNotificationPermissionOnce(context: common.UIAbilit
     return;
   }
   try {
+    await ensureNotificationSlot();
     const store = await preferences.getPreferences(context, { name: STORE_NAME });
     const asked = await store.get(PERMISSION_ASKED_FLAG,
       await store.get(LEGACY_PERMISSION_ASKED_FLAG, false)) as boolean;
@@ -67,6 +79,7 @@ async function publishLowBalance(context: common.Context, account: AlertAccount,
     hilog.info(DOMAIN, TAG, 'notifications disabled, skip publish: %{public}s', account.id);
     return;
   }
+  await ensureNotificationSlot();
   const bundleName = context.applicationInfo.name;
   const want: Want = {
     bundleName: bundleName,
@@ -85,11 +98,16 @@ async function publishLowBalance(context: common.Context, account: AlertAccount,
     account.lowBalanceThreshold ?? '');
   const request: notificationManager.NotificationRequest = {
     id: notificationIdForAccount(account.id),
+    isAlertOnce: true,
+    notificationSlotType: notificationManager.SlotType.SERVICE_INFORMATION,
     content: {
-      notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_BASIC_TEXT,
-      normal: {
+      notificationContentType: notificationManager.ContentType.NOTIFICATION_CONTENT_LONG_TEXT,
+      longText: {
         title: title,
-        text: body
+        text: body,
+        longText: body,
+        briefText: title,
+        expandedTitle: title
       }
     },
     wantAgent: agent

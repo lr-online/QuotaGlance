@@ -13,6 +13,7 @@ import {
   aggregateSnapshots
 } from '../aggregation/SnapshotAggregator';
 import { formatAmount, formatCompactCount } from '../utils/NumberFormat';
+import { buildScreensaverMessages, ScreensaverMessage, ScreensaverMessageSource } from '../utils/ScreensaverMessages';
 
 const DOMAIN = 0x0000;
 const TAG = 'QuotaGlance';
@@ -26,6 +27,7 @@ const TAG = 'QuotaGlance';
 //   balanceText            - primary balance line ('12.34 CNY' / per-currency join)
 //   statusText / updatedAtText - health + freshness line (see SnapshotStore)
 //   todayText              - today cost/requests summary ('' when unavailable)
+//   messageText/messageSeverity - highest-priority status message
 //   rowsText               - newline-joined per-account rows for 2*4 / 4*4
 //   targetAccountId        - '' (open Index) or the account id (open detail)
 //
@@ -42,6 +44,8 @@ export interface CardDataParams {
   statusText: string;
   updatedAtText: string;
   todayText: string;
+  messageText: string;
+  messageSeverity: string;
   rowsText: string;
   targetAccountId: string;
 }
@@ -56,6 +60,8 @@ function toBindingData(params: CardDataParams): formBindingData.FormBindingData 
     'statusText': params.statusText,
     'updatedAtText': params.updatedAtText,
     'todayText': params.todayText,
+    'messageText': params.messageText,
+    'messageSeverity': params.messageSeverity,
     'rowsText': params.rowsText,
     'targetAccountId': params.targetAccountId
   };
@@ -93,6 +99,13 @@ function accountRow(account: Account, stored: StoredSnapshot | null): string {
   return `${account.displayName}  ${value}${stale}`;
 }
 
+function messageText(message: ScreensaverMessage | undefined): string {
+  if (message === undefined) {
+    return '';
+  }
+  return `${message.title} · ${message.detail}`;
+}
+
 // Builds the full payload for one form. A binding whose accountId no longer
 // resolves to an existing account degrades to the aggregate overview (the
 // macOS NCWidget deleted-account fallback).
@@ -122,6 +135,8 @@ export async function buildCardData(context: common.Context, formId: string): Pr
     statusText: '',
     updatedAtText: '',
     todayText: '',
+    messageText: '',
+    messageSeverity: '',
     rowsText: '',
     targetAccountId: target?.id ?? ''
   };
@@ -130,9 +145,13 @@ export async function buildCardData(context: common.Context, formId: string): Pr
     base.title = target.displayName;
     const stored = await snapshotStore.load(target.id);
     const texts = formatSnapshotTexts(context, stored);
+    const messages = buildScreensaverMessages(context, [{ account: target, stored: stored }]);
+    const topMessage = messages.length > 0 ? messages[0] : undefined;
     base.balanceText = texts['balanceText'] ?? '--';
     base.statusText = texts['statusText'] ?? '';
     base.updatedAtText = texts['updatedAtText'] ?? '';
+    base.messageText = messageText(topMessage);
+    base.messageSeverity = topMessage?.severity ?? '';
     const today = stored?.snapshot.today;
     if (today !== undefined && today.actualCost !== undefined) {
       const requests = today.requests !== undefined ? ` · ${formatCompactCount(today.requests)} 次` : '';
@@ -146,12 +165,14 @@ export async function buildCardData(context: common.Context, formId: string): Pr
   base.title = '总览';
   const snapshotInputs: AggregateSnapshotInput[] = [];
   const rows: string[] = [];
+  const sources: ScreensaverMessageSource[] = [];
   let latestMs = 0;
   for (const account of accounts) {
     if (!account.isEnabled) {
       continue;
     }
     const stored = await snapshotStore.load(account.id);
+    sources.push({ account: account, stored: stored });
     rows.push(accountRow(account, stored));
     if (stored === null) {
       continue;
@@ -212,6 +233,10 @@ export async function buildCardData(context: common.Context, formId: string): Pr
     base.updatedAtText = formatClock(latestMs);
   }
   base.rowsText = rows.join('\n');
+  const messages = buildScreensaverMessages(context, sources);
+  const topMessage = messages.length > 0 ? messages[0] : undefined;
+  base.messageText = messageText(topMessage);
+  base.messageSeverity = topMessage?.severity ?? '';
   return base;
 }
 

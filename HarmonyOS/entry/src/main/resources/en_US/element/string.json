@@ -269,6 +269,42 @@
       "value": "Click anywhere to exit"
     },
     {
+      "name": "screensaver_message_low_balance_title",
+      "value": "Low balance"
+    },
+    {
+      "name": "screensaver_message_stale_title",
+      "value": "Data is stale"
+    },
+    {
+      "name": "screensaver_message_unavailable_title",
+      "value": "Service unavailable"
+    },
+    {
+      "name": "screensaver_message_not_refreshed_title",
+      "value": "Waiting for first refresh"
+    },
+    {
+      "name": "screensaver_message_metrics_title",
+      "value": "Some metrics unavailable"
+    },
+    {
+      "name": "screensaver_message_metrics_detail",
+      "value": "The provider did not return all metrics"
+    },
+    {
+      "name": "screensaver_all_healthy",
+      "value": "All accounts are healthy"
+    },
+    {
+      "name": "screensaver_no_accounts",
+      "value": "No accounts configured"
+    },
+    {
+      "name": "screensaver_messages",
+      "value": "Messages"
+    },
+    {
       "name": "stale_hint_short",
       "value": "Stale"
     },
