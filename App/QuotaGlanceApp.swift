@@ -20,7 +20,7 @@ struct QuotaGlanceApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
-    private let settingsWindowPresenter = SetupWindowPresenter()
+    private lazy var windowCoordinator = AppWindowCoordinator(model: model)
     private var statusBarController: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -28,15 +28,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ApplicationMenuInstaller.installMainMenuIfNeeded()
         statusBarController = StatusBarController(
             model: model,
+            openDashboard: { [weak self] in
+                guard let self else { return }
+                self.windowCoordinator.showDashboard(
+                    selection: self.model.selectedAccountID.map(
+                        DashboardSelection.account
+                    ) ?? .allAccounts
+                )
+            },
             openSettings: { [weak self] in
                 guard let self else { return }
-                self.settingsWindowPresenter.show(
-                    model: self.model,
-                    title: L10n.string(
-                        .settingsWindowTitle,
-                        language: self.model.resolvedLanguage
-                    )
-                )
+                self.windowCoordinator.showSettings()
             }
         )
 
@@ -47,20 +49,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 force: true
             )
             if model.accounts.isEmpty {
-                settingsWindowPresenter.show(
-                    model: model,
-                    title: L10n.string(
-                        .setupWindowTitle,
-                        language: model.resolvedLanguage
-                    )
-                )
+                windowCoordinator.showSettings()
             }
         }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            model.handle(url: url)
+            guard let selection = model.handle(url: url) else { continue }
+            windowCoordinator.showDashboard(selection: selection)
         }
     }
 }

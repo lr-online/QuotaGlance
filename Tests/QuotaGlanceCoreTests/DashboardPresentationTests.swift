@@ -129,6 +129,68 @@ struct DashboardPresentationTests {
         #expect(presentation.accountRows.isEmpty)
     }
 
+    @Test("The app presentation retains every model row")
+    func appPresentationRetainsEveryModelRow() {
+        let accountID = UUID()
+        let account = Account(id: accountID, displayName: "Models")
+        let models = [
+            ModelUsage(model: "first", requests: 10),
+            ModelUsage(model: "second", requests: 20),
+            ModelUsage(model: "third", requests: 30),
+        ]
+        let usage = ProviderUsageSnapshot(
+            modelUsage: models,
+            receivedAt: Date(timeIntervalSince1970: 100)
+        )
+        let snapshot = AccountSnapshot(
+            accountID: accountID,
+            displayName: account.displayName,
+            usage: usage,
+            health: .unavailable(.providerError),
+            lastSuccessAt: usage.receivedAt
+        )
+        let presentation = DashboardPresenter.make(
+            selection: .account(accountID),
+            accounts: [account],
+            envelope: WidgetSnapshotEnvelope(
+                capturedAt: usage.receivedAt,
+                aggregate: AggregateSnapshot(accounts: [snapshot]),
+                accounts: [snapshot]
+            )
+        )
+
+        #expect(presentation.status == .unavailable(.providerError))
+        #expect(presentation.modelRows == models)
+    }
+
+    @Test("Known accounts without snapshots produce an empty detail")
+    func knownAccountWithoutSnapshotProducesEmptyDetail() {
+        let account = Account(displayName: "Waiting")
+        let presentation = DashboardPresenter.make(
+            selection: .account(account.id),
+            accounts: [account],
+            envelope: nil
+        )
+
+        #expect(presentation.title == "Waiting")
+        #expect(presentation.status == .empty)
+        #expect(presentation.usage == nil)
+        #expect(presentation.modelRows.isEmpty)
+    }
+
+    @Test("Deleted account selections fall back to All Accounts")
+    func deletedAccountSelectionFallsBackToAllAccounts() {
+        let presentation = DashboardPresenter.make(
+            selection: .account(UUID()),
+            accounts: [],
+            envelope: nil
+        )
+
+        #expect(presentation.title == "All Accounts")
+        #expect(presentation.status == .empty)
+        #expect(presentation.providerOverview?.rows.isEmpty == true)
+    }
+
     @Test("Seven daily buckets remain stable across selection mapping")
     func dailyBucketsRemainStable() throws {
         let fixture = dashboardFixture()

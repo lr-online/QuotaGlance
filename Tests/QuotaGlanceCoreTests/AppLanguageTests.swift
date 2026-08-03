@@ -55,5 +55,19 @@ struct AppLanguageTests {
             from: data
         )
         #expect(preferences.preferredLanguage == .system)
+        #expect(preferences.preferredTheme == .system)
+    }
+
+    @Test("Theme labels are localized")
+    func themeLabelsAreLocalized() {
+        #expect(
+            L10n.themePreferenceTitle(.system, language: .english) == "System"
+        )
+        #expect(
+            L10n.themePreferenceTitle(.light, language: .chinese) == "浅色"
+        )
+        #expect(
+            L10n.themePreferenceTitle(.dark, language: .chinese) == "深色"
+        )
     }
 }

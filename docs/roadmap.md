@@ -1,6 +1,6 @@
 # QuotaGlance Roadmap
 
-Last updated: 2026-08-02
+Last updated: 2026-08-03
 
 ## Current delivery track
 
@@ -28,6 +28,19 @@ Last updated: 2026-08-02
 - Prepare iPhone/iPad screenshots, review notes, privacy answers, and distribution settings separately from macOS.
 
 ## Multi-platform expansion
+
+Platform product gaps and their verification status are tracked in the
+[platform capability matrix](platform-capability-matrix.md). Provider, Aggregation, and
+Alerts contract parity remains a hard constraint; the following experience gaps are open:
+
+- Add HarmonyOS account editing, duplicate-name validation, and replacement-key detection.
+- Preserve and present full HarmonyOS snapshot failure/freshness metadata.
+- Align HarmonyOS notification authorization UX, disabled-account episode cleanup,
+  external routing, and service-card selection fallback.
+- Remove hard-coded Chinese service-card copy and align the exact-threshold comparison.
+- Keep Provider overview presentation platform-specific until a shared product requirement
+  justifies a new contract.
+- Evaluate a macOS screensaver/ambient mode separately from the dashboard work.
 
 ### 5. watchOS companion
 

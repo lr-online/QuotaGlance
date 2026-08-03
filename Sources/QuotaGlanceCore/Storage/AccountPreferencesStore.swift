@@ -1,7 +1,7 @@
 import Foundation
 
 public struct StoredAccountPreferences: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
 
     public var schemaVersion: Int
     public var accounts: [Account]
@@ -45,10 +45,11 @@ public struct AccountPreferencesStore {
             return StoredAccountPreferences(accounts: [], preferences: .default)
         }
         do {
-            return try JSONDecoder.quotaGlance.decode(
+            let decoded = try JSONDecoder.quotaGlance.decode(
                 StoredAccountPreferences.self,
                 from: data
             )
+            return try migrateIfNeeded(decoded)
         } catch {
             guard let sanitizedData = try sanitizedStoredPreferencesData(from: data)
             else {
@@ -58,9 +59,25 @@ public struct AccountPreferencesStore {
                 StoredAccountPreferences.self,
                 from: sanitizedData
             )
-            defaults.set(sanitizedData, forKey: storageKey)
-            return sanitized
+            return try migrateIfNeeded(sanitized, forceWrite: true)
         }
+    }
+
+    private func migrateIfNeeded(
+        _ stored: StoredAccountPreferences,
+        forceWrite: Bool = false
+    ) throws -> StoredAccountPreferences {
+        guard stored.schemaVersion < StoredAccountPreferences.currentSchemaVersion
+                || forceWrite else {
+            return stored
+        }
+        var migrated = stored
+        migrated.schemaVersion = StoredAccountPreferences.currentSchemaVersion
+        defaults.set(
+            try JSONEncoder.quotaGlance.encode(migrated),
+            forKey: storageKey
+        )
+        return migrated
     }
 
     private func sanitizedStoredPreferencesData(from data: Data) throws -> Data? {

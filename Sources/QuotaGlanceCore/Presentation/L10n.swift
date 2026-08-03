@@ -8,10 +8,17 @@ public enum L10nKey: String, Sendable {
     case languageEnglish
     case languageChinese
     case languageFooter
+    case appearanceSection
+    case appearance
+    case themeSystem
+    case themeLight
+    case themeDark
+    case appearanceFooter
 
     // Settings window / sections
     case settingsWindowTitle
     case setupWindowTitle
+    case dashboardWindowTitle
     case accounts
     case addAccount
     case refresh
@@ -97,6 +104,7 @@ public enum L10nKey: String, Sendable {
     case noData
     case retry
     case settings
+    case openDashboard
     case quit
     case upToDate
     case lowBalance
@@ -105,6 +113,23 @@ public enum L10nKey: String, Sendable {
     case savedData
     case unavailable
     case percentUsed
+    case providerOverview
+    case oneAccount
+    case accountCount
+    case disabled
+    case healthy
+    case requestShare
+    case todayMetrics
+    case totalMetrics
+    case inputTokens
+    case outputTokens
+    case cacheReadTokens
+    case cacheCreationTokens
+    case totalTokens
+    case providerStatus
+    case metricsUnavailable
+    case lastSuccessfulRefresh
+    case modelUsage
 
     case sevenDayUsage
     case currencyBalance
@@ -183,6 +208,20 @@ public enum L10n {
         }
     }
 
+    public static func themePreferenceTitle(
+        _ preference: AppThemePreference,
+        language: AppLanguage
+    ) -> String {
+        switch preference {
+        case .system:
+            string(.themeSystem, language: language)
+        case .light:
+            string(.themeLight, language: language)
+        case .dark:
+            string(.themeDark, language: language)
+        }
+    }
+
     private static let table: [L10nKey: [AppLanguage: String]] = [
         .languageSection: [
             .english: "General",
@@ -208,6 +247,30 @@ public enum L10n {
             .english: "Defaults to the macOS language. Override to keep QuotaGlance in English or Chinese.",
             .chinese: "默认跟随 macOS 系统语言。可强制使用英文或中文。",
         ],
+        .appearanceSection: [
+            .english: "Appearance",
+            .chinese: "外观",
+        ],
+        .appearance: [
+            .english: "Theme",
+            .chinese: "主题",
+        ],
+        .themeSystem: [
+            .english: "System",
+            .chinese: "跟随系统",
+        ],
+        .themeLight: [
+            .english: "Light",
+            .chinese: "浅色",
+        ],
+        .themeDark: [
+            .english: "Dark",
+            .chinese: "深色",
+        ],
+        .appearanceFooter: [
+            .english: "Applies to the menu bar, dashboard, and Settings. Widgets continue to follow macOS.",
+            .chinese: "应用于菜单栏、仪表盘和设置。小组件仍跟随 macOS 系统外观。",
+        ],
         .settingsWindowTitle: [
             .english: "QuotaGlance Settings",
             .chinese: "QuotaGlance 设置",
@@ -215,6 +278,10 @@ public enum L10n {
         .setupWindowTitle: [
             .english: "QuotaGlance Setup",
             .chinese: "QuotaGlance 初始设置",
+        ],
+        .dashboardWindowTitle: [
+            .english: "QuotaGlance Dashboard",
+            .chinese: "QuotaGlance 仪表盘",
         ],
         .accounts: [
             .english: "Accounts",
@@ -532,6 +599,10 @@ public enum L10n {
             .english: "Settings",
             .chinese: "设置",
         ],
+        .openDashboard: [
+            .english: "Open Dashboard",
+            .chinese: "打开仪表盘",
+        ],
         .quit: [
             .english: "Quit",
             .chinese: "退出",
@@ -563,6 +634,74 @@ public enum L10n {
         .percentUsed: [
             .english: "% used",
             .chinese: "% 已用",
+        ],
+        .providerOverview: [
+            .english: "Providers",
+            .chinese: "服务商总览",
+        ],
+        .oneAccount: [
+            .english: "1 account",
+            .chinese: "1 个账户",
+        ],
+        .accountCount: [
+            .english: "%d accounts",
+            .chinese: "%d 个账户",
+        ],
+        .disabled: [
+            .english: "Disabled",
+            .chinese: "已停用",
+        ],
+        .healthy: [
+            .english: "Healthy",
+            .chinese: "正常",
+        ],
+        .requestShare: [
+            .english: "Request share",
+            .chinese: "请求占比",
+        ],
+        .todayMetrics: [
+            .english: "Today",
+            .chinese: "今日指标",
+        ],
+        .totalMetrics: [
+            .english: "All Time",
+            .chinese: "累计指标",
+        ],
+        .inputTokens: [
+            .english: "Input tokens",
+            .chinese: "输入 Token",
+        ],
+        .outputTokens: [
+            .english: "Output tokens",
+            .chinese: "输出 Token",
+        ],
+        .cacheReadTokens: [
+            .english: "Cache read tokens",
+            .chinese: "缓存读取 Token",
+        ],
+        .cacheCreationTokens: [
+            .english: "Cache creation tokens",
+            .chinese: "缓存写入 Token",
+        ],
+        .totalTokens: [
+            .english: "Total tokens",
+            .chinese: "Token 总数",
+        ],
+        .providerStatus: [
+            .english: "Provider status",
+            .chinese: "服务商状态",
+        ],
+        .metricsUnavailable: [
+            .english: "Metrics unavailable",
+            .chinese: "指标不可用",
+        ],
+        .lastSuccessfulRefresh: [
+            .english: "Last successful refresh",
+            .chinese: "最近成功刷新",
+        ],
+        .modelUsage: [
+            .english: "Model Usage",
+            .chinese: "模型用量",
         ],
         .sevenDayUsage: [
             .english: "Seven day usage",

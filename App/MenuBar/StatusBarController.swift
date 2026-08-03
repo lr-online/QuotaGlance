@@ -7,7 +7,11 @@ final class StatusBarController: NSObject {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
 
-    init(model: AppModel, openSettings: @escaping () -> Void) {
+    init(
+        model: AppModel,
+        openDashboard: @escaping () -> Void,
+        openSettings: @escaping () -> Void
+    ) {
         statusItem = NSStatusBar.system.statusItem(
             withLength: NSStatusItem.squareLength
         )
@@ -34,6 +38,10 @@ final class StatusBarController: NSObject {
         popover.contentViewController = NSHostingController(
             rootView: MenuBarDashboardView(
                 model: model,
+                openDashboard: { [weak self] in
+                    self?.closePopover()
+                    openDashboard()
+                },
                 openSettings: { [weak self] in
                     self?.closePopover()
                     openSettings()

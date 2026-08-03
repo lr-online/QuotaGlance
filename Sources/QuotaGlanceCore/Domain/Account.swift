@@ -24,6 +24,14 @@ public enum RefreshInterval: Int, Codable, CaseIterable, Identifiable, Sendable 
     }
 }
 
+public enum AppThemePreference: String, Codable, CaseIterable, Identifiable, Sendable {
+    case system
+    case light
+    case dark
+
+    public var id: String { rawValue }
+}
+
 public struct Account: Codable, Equatable, Identifiable, Sendable {
     public var id: UUID
     public var displayName: String
@@ -93,24 +101,28 @@ public struct AppPreferences: Codable, Equatable, Sendable {
     public var launchAtLogin: Bool
     public var notificationCenterDefaultAccountID: UUID?
     public var preferredLanguage: AppLanguagePreference
+    public var preferredTheme: AppThemePreference
 
     public init(
         refreshInterval: RefreshInterval,
         launchAtLogin: Bool,
         notificationCenterDefaultAccountID: UUID? = nil,
-        preferredLanguage: AppLanguagePreference = .system
+        preferredLanguage: AppLanguagePreference = .system,
+        preferredTheme: AppThemePreference = .system
     ) {
         self.refreshInterval = refreshInterval
         self.launchAtLogin = launchAtLogin
         self.notificationCenterDefaultAccountID = notificationCenterDefaultAccountID
         self.preferredLanguage = preferredLanguage
+        self.preferredTheme = preferredTheme
     }
 
     public static let `default` = AppPreferences(
         refreshInterval: .fiveMinutes,
         launchAtLogin: false,
         notificationCenterDefaultAccountID: nil,
-        preferredLanguage: .system
+        preferredLanguage: .system,
+        preferredTheme: .system
     )
 
     private enum CodingKeys: String, CodingKey {
@@ -118,6 +130,7 @@ public struct AppPreferences: Codable, Equatable, Sendable {
         case launchAtLogin
         case notificationCenterDefaultAccountID
         case preferredLanguage
+        case preferredTheme
     }
 
     public init(from decoder: Decoder) throws {
@@ -134,6 +147,10 @@ public struct AppPreferences: Codable, Equatable, Sendable {
         preferredLanguage = try container.decodeIfPresent(
             AppLanguagePreference.self,
             forKey: .preferredLanguage
+        ) ?? .system
+        preferredTheme = try container.decodeIfPresent(
+            AppThemePreference.self,
+            forKey: .preferredTheme
         ) ?? .system
     }
 }

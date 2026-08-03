@@ -89,6 +89,8 @@ public struct DashboardPresentation: Equatable, Sendable {
     public var accountRows: [AccountSnapshot]
     public var usage: ProviderUsageSnapshot?
     public var metricsUnavailableReason: String?
+    public var modelRows: [ModelUsage]
+    public var providerOverview: ProviderOverviewPresentation?
     public var status: DashboardStatus
     public var lastSuccessAt: Date?
 
@@ -103,6 +105,8 @@ public struct DashboardPresentation: Equatable, Sendable {
         accountRows: [AccountSnapshot],
         usage: ProviderUsageSnapshot?,
         metricsUnavailableReason: String? = nil,
+        modelRows: [ModelUsage] = [],
+        providerOverview: ProviderOverviewPresentation? = nil,
         status: DashboardStatus,
         lastSuccessAt: Date?
     ) {
@@ -116,12 +120,68 @@ public struct DashboardPresentation: Equatable, Sendable {
         self.accountRows = accountRows
         self.usage = usage
         self.metricsUnavailableReason = metricsUnavailableReason
+        self.modelRows = modelRows
+        self.providerOverview = providerOverview
         self.status = status
         self.lastSuccessAt = lastSuccessAt
     }
 }
 
 public enum DashboardPresenter {
+    public static func make(
+        selection: DashboardSelection,
+        accounts: [Account],
+        envelope: WidgetSnapshotEnvelope?,
+        language: AppLanguage = .english
+    ) -> DashboardPresentation {
+        let resolvedSelection: DashboardSelection
+        switch selection {
+        case .allAccounts:
+            resolvedSelection = .allAccounts
+        case let .account(accountID):
+            resolvedSelection = accounts.contains { $0.id == accountID }
+                ? selection
+                : .allAccounts
+        }
+        let effectiveEnvelope = envelope ?? .empty(capturedAt: .now)
+        if let presentation = make(
+            selection: resolvedSelection,
+            envelope: effectiveEnvelope,
+            language: language
+        ) {
+            var result = presentation
+            if case .allAccounts = resolvedSelection {
+                result.providerOverview = ProviderOverviewPresenter.make(
+                    accounts: accounts,
+                    envelope: envelope,
+                    language: language
+                )
+            }
+            return result
+        }
+
+        let accountID: UUID
+        if case let .account(id) = resolvedSelection {
+            accountID = id
+        } else {
+            preconditionFailure("All Accounts always produces a presentation")
+        }
+        let account = accounts.first { $0.id == accountID }
+        return DashboardPresentation(
+            title: account?.displayName ?? L10n.string(.account, language: language),
+            balances: [],
+            remaining: nil,
+            primaryMetric: nil,
+            todayActualCost: nil,
+            todayRequests: nil,
+            dailyUsage: [],
+            accountRows: [],
+            usage: nil,
+            status: .empty,
+            lastSuccessAt: nil
+        )
+    }
+
     public static func make(
         selection: DashboardSelection,
         envelope: WidgetSnapshotEnvelope,
@@ -172,6 +232,7 @@ public enum DashboardPresenter {
                 accountRows: [],
                 usage: account.usage,
                 metricsUnavailableReason: account.usage?.metricsUnavailableReason,
+                modelRows: account.usage?.modelUsage ?? [],
                 status: status(for: account.health),
                 lastSuccessAt: account.lastSuccessAt
             )
