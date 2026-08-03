@@ -118,6 +118,15 @@ rg -Fq "properties.ignoreSignHap=true" "$HARMONYOS_BUILD_SCRIPT" || fail "Harmon
 rg -Fq "ohpm install --all" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not install ohpm deps"
 rg -Fq "assembleHap" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not assemble HAP"
 rg -Fq 'Huawei Pad Mini' "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing tablet/Pad Mini deviceTypes check"
+HARMONYOS_BUILD_PROFILE_TEMPLATE="$ROOT_DIR/HarmonyOS/build-profile.template.json5"
+HARMONYOS_GITIGNORE="$ROOT_DIR/HarmonyOS/.gitignore"
+[[ -f "$HARMONYOS_BUILD_PROFILE_TEMPLATE" ]] || fail "missing HarmonyOS build profile template"
+rg -Fq '"signingConfigs": []' "$HARMONYOS_BUILD_PROFILE_TEMPLATE" \
+  || fail "HarmonyOS build profile template must not contain signing material"
+rg -Fxq '/build-profile.json5' "$HARMONYOS_GITIGNORE" \
+  || fail "machine-local HarmonyOS build profile is not ignored"
+rg -Fq 'build-profile.template.json5' "$HARMONYOS_BUILD_SCRIPT" \
+  || fail "HarmonyOS build script does not initialize the local build profile"
 HARMONYOS_MODULE_JSON5="$ROOT_DIR/HarmonyOS/entry/src/main/module.json5"
 [[ -f "$HARMONYOS_MODULE_JSON5" ]] || fail "missing HarmonyOS entry module.json5"
 rg -Fq '"tablet"' "$HARMONYOS_MODULE_JSON5" || fail "HarmonyOS entry module missing tablet deviceType"

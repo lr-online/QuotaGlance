@@ -7,3 +7,8 @@ build/
 local.properties
 .obfuscated/
 
+# DevEco writes machine-local signing paths and credentials here.
+/build-profile.json5
+*.cer
+*.p7b
+*.p12
