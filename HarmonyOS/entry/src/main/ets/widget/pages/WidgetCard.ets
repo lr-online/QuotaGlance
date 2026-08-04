@@ -110,6 +110,32 @@ struct WidgetCard {
     });
   }
 
+  private requestRefresh(): void {
+    postCardAction(this, {
+      action: 'message',
+      params: {
+        message: 'refresh'
+      }
+    });
+  }
+
+  @Builder
+  refreshButton() {
+    Button($r('app.string.widget_refresh'))
+      .fontSize(this.dimension() >= 3 ? 11 : 10)
+      .fontColor(this.accentColor())
+      .width(64)
+      .height(this.dimension() >= 3 ? 30 : 26)
+      .padding({ left: 10, right: 10 })
+      .backgroundColor(this.cardBackground())
+      .border({ width: 1, color: this.accentColor() })
+      .borderRadius(8)
+      .stateEffect(true)
+      .onClick(() => {
+        this.requestRefresh();
+      })
+  }
+
   @Builder
   compactBody() {
     Column({ space: 6 }) {
@@ -141,12 +167,20 @@ struct WidgetCard {
           .fontColor(this.textSecondaryColor())
           .maxLines(1)
       }
-      if (this.updatedAtText.length > 0) {
-        Text(this.updatedAtText)
-          .fontSize(10)
-          .fontColor(this.slateColor())
-          .maxLines(1)
+      Row() {
+        if (this.updatedAtText.length > 0) {
+          Text(this.updatedAtText)
+            .fontSize(10)
+            .fontColor(this.slateColor())
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+        }
+        Blank()
+          .layoutWeight(1)
+        this.refreshButton()
       }
+      .width('100%')
     }
     .width('100%')
     .alignItems(HorizontalAlign.Start)
@@ -211,13 +245,20 @@ struct WidgetCard {
           .layoutWeight(1)
       }
 
-      if (this.updatedAtText.length > 0) {
-        Text(this.updatedAtText)
-          .fontSize(10)
-          .fontColor(this.slateColor())
-          .maxLines(1)
-          .width('100%')
+      Row() {
+        if (this.updatedAtText.length > 0) {
+          Text(this.updatedAtText)
+            .fontSize(10)
+            .fontColor(this.slateColor())
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+        }
+        Blank()
+          .layoutWeight(1)
+        this.refreshButton()
       }
+      .width('100%')
     }
     .width('100%')
     .height('100%')

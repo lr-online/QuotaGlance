@@ -26,7 +26,11 @@
     },
     {
       "name": "widget_description",
-      "value": "View AI provider account balances and quotas, refreshed every 30 minutes"
+      "value": "View AI provider account balances and quotas, refreshed every 30 minutes or on demand"
+    },
+    {
+      "name": "widget_refresh",
+      "value": "Refresh"
     },
     {
       "name": "add_account",

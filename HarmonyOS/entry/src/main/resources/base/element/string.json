@@ -26,7 +26,11 @@
     },
     {
       "name": "widget_description",
-      "value": "显示 AI 服务商账户余额/额度，每 30 分钟刷新"
+      "value": "显示 AI 服务商账户余额/额度，每 30 分钟刷新，支持手动刷新"
+    },
+    {
+      "name": "widget_refresh",
+      "value": "刷新"
     },
     {
       "name": "add_account",
