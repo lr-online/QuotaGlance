@@ -1,3 +1,7 @@
+import { common } from '@kit.AbilityKit';
+import { switchFormAccount } from '../../services/CardUpdater';
+import { SwipeDirection } from '../FormAccountNavigation';
+
 @Entry
 @Component
 struct WidgetCard {
@@ -13,6 +17,9 @@ struct WidgetCard {
   @LocalStorageProp('messageSeverity') messageSeverity: string = '';
   @LocalStorageProp('rowsText') rowsText: string = '';
   @LocalStorageProp('targetAccountId') targetAccountId: string = '';
+  @State private swipeOffsetX: number = 0;
+  @State private swipeOffsetY: number = 0;
+  private switchingAccount: boolean = false;
 
   private dimension(): number {
     const parsed = Number(this.formDimension);
@@ -46,17 +53,26 @@ struct WidgetCard {
     return '#8FE8DF';
   }
 
-  @Builder
-  footerButton() {
-    Button(this.mode === 'account' ? '查看详情' : $r('app.string.open_app'))
-      .fontSize(12)
-      .fontColor('#12161F')
-      .backgroundColor('#57E0D6')
-      .borderRadius(14)
-      .height(28)
-      .onClick(() => {
-        this.openApp();
-      })
+  private resetSwipe(): void {
+    this.swipeOffsetX = 0;
+    this.swipeOffsetY = 0;
+  }
+
+  private finishSwipe(): void {
+    const offsetX = this.swipeOffsetX;
+    const offsetY = this.swipeOffsetY;
+    this.resetSwipe();
+    if (this.switchingAccount || Math.abs(offsetX) < 48 || Math.abs(offsetX) <= Math.abs(offsetY)) {
+      return;
+    }
+
+    const direction: SwipeDirection = offsetX < 0 ? 'left' : 'right';
+    this.switchingAccount = true;
+    const context = getContext(this) as common.Context;
+    switchFormAccount(context, this.formId, direction)
+      .finally(() => {
+        this.switchingAccount = false;
+      });
   }
 
   @Builder
@@ -181,7 +197,6 @@ struct WidgetCard {
         this.compactBody()
       }
 
-      this.footerButton()
     }
     .width('100%')
     .height('100%')
@@ -189,5 +204,23 @@ struct WidgetCard {
     .padding(12)
     .backgroundColor('#12161F')
     .borderRadius(16)
+    .onClick(() => {
+      this.openApp();
+    })
+    .gesture(
+      PanGesture()
+        .onActionUpdate((event?: GestureEvent) => {
+          if (event !== undefined) {
+            this.swipeOffsetX = event.offsetX;
+            this.swipeOffsetY = event.offsetY;
+          }
+        })
+        .onActionEnd(() => {
+          this.finishSwipe();
+        })
+        .onActionCancel(() => {
+          this.resetSwipe();
+        })
+    )
   }
 }
