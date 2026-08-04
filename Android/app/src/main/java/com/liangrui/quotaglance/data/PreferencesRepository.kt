@@ -27,9 +27,19 @@ enum class AppLanguage(val raw: String) {
     }
 }
 
+enum class AppThemeMode(val raw: String) {
+    System("system"), Light("light"), Dark("dark"),
+    ;
+
+    companion object {
+        fun fromRaw(value: String?): AppThemeMode = entries.firstOrNull { it.raw == value } ?: System
+    }
+}
+
 data class AppPreferences(
     val refreshInterval: RefreshInterval = RefreshInterval.Five,
     val language: AppLanguage = AppLanguage.System,
+    val themeMode: AppThemeMode = AppThemeMode.System,
     val defaultQuickViewAccountId: String? = null,
 )
 
@@ -44,6 +54,7 @@ class DataStorePreferencesRepository(context: Context) : PreferencesRepository {
         AppPreferences(
             refreshInterval = RefreshInterval.fromMinutes(values[refreshIntervalKey]),
             language = AppLanguage.fromRaw(values[languageKey]),
+            themeMode = AppThemeMode.fromRaw(values[themeModeKey]),
             defaultQuickViewAccountId = values[defaultQuickViewKey],
         )
     }
@@ -52,6 +63,7 @@ class DataStorePreferencesRepository(context: Context) : PreferencesRepository {
         store.edit { values ->
             values[refreshIntervalKey] = value.refreshInterval.minutes
             values[languageKey] = value.language.raw
+            values[themeModeKey] = value.themeMode.raw
             value.defaultQuickViewAccountId?.let { values[defaultQuickViewKey] = it }
                 ?: values.remove(defaultQuickViewKey)
         }
@@ -62,6 +74,7 @@ class DataStorePreferencesRepository(context: Context) : PreferencesRepository {
     private companion object {
         val refreshIntervalKey = intPreferencesKey("refreshIntervalMinutes")
         val languageKey = stringPreferencesKey("language")
+        val themeModeKey = stringPreferencesKey("themeMode")
         val defaultQuickViewKey = stringPreferencesKey("defaultQuickViewAccountId")
     }
 }

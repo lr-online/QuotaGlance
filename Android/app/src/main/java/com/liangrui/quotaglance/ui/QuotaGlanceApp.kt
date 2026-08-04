@@ -65,7 +65,7 @@ fun QuotaGlanceApp(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val copy = appCopy(state.preferences.language)
     val dashboard = DashboardPresenter.present(state.accounts, state.snapshots, Instant.now(), state.route)
-    QuotaGlanceTheme {
+    QuotaGlanceTheme(themeMode = state.preferences.themeMode) {
         Scaffold(
             topBar = {
                 TopAppBar(

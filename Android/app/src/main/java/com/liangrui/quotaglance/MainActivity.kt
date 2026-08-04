@@ -18,6 +18,7 @@ import com.liangrui.quotaglance.ui.AppRoute
 import com.liangrui.quotaglance.ui.QuotaGlanceApp
 import com.liangrui.quotaglance.ui.QuotaGlanceViewModel
 import com.liangrui.quotaglance.ui.QuotaGlanceViewModelFactory
+import com.liangrui.quotaglance.ui.shouldRequestNotificationPermission
 
 class MainActivity : ComponentActivity() {
     private var notificationsGranted by mutableStateOf(false)
@@ -35,8 +36,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         notificationsGranted = hasNotificationPermission()
         setContent {
-            QuotaGlanceApp(viewModel, notificationsGranted, ::requestNotificationPermission)
+            QuotaGlanceApp(viewModel, notificationsGranted, ::requestNotificationPermissionIfNeeded)
         }
+        requestNotificationPermissionIfNeeded()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -57,8 +59,8 @@ class MainActivity : ComponentActivity() {
         super.onPause()
     }
 
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+    private fun requestNotificationPermissionIfNeeded() {
+        if (shouldRequestNotificationPermission(Build.VERSION.SDK_INT, hasNotificationPermission())) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }

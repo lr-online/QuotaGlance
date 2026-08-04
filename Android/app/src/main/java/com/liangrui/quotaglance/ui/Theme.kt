@@ -5,6 +5,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.liangrui.quotaglance.data.AppThemeMode
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF006A6A),
@@ -30,6 +31,11 @@ private val DarkColors = darkColorScheme(
 )
 
 @Composable
-fun QuotaGlanceTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (androidx.compose.foundation.isSystemInDarkTheme()) DarkColors else LightColors, content = content)
+fun QuotaGlanceTheme(themeMode: AppThemeMode, content: @Composable () -> Unit) {
+    val colors = when (themeMode) {
+        AppThemeMode.System -> if (androidx.compose.foundation.isSystemInDarkTheme()) DarkColors else LightColors
+        AppThemeMode.Light -> LightColors
+        AppThemeMode.Dark -> DarkColors
+    }
+    MaterialTheme(colorScheme = colors, content = content)
 }

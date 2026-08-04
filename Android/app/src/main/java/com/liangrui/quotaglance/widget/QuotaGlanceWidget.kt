@@ -111,7 +111,7 @@ class QuotaGlanceWidgetConfigurationActivity : ComponentActivity() {
             val accounts by app.container.accounts.accounts.collectAsStateWithLifecycle(emptyList())
             val preferences by app.container.preferences.preferences.collectAsStateWithLifecycle(AppPreferences())
             val copy = appCopy(preferences.language)
-            QuotaGlanceTheme {
+            QuotaGlanceTheme(themeMode = preferences.themeMode) {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
