@@ -1,7 +1,3 @@
-import { common } from '@kit.AbilityKit';
-import { switchFormAccount } from '../../services/CardUpdater';
-import { SwipeDirection } from '../FormAccountNavigation';
-
 @Entry
 @Component
 struct WidgetCard {
@@ -17,9 +13,6 @@ struct WidgetCard {
   @LocalStorageProp('messageSeverity') messageSeverity: string = '';
   @LocalStorageProp('rowsText') rowsText: string = '';
   @LocalStorageProp('targetAccountId') targetAccountId: string = '';
-  @State private swipeOffsetX: number = 0;
-  @State private swipeOffsetY: number = 0;
-  private switchingAccount: boolean = false;
 
   private dimension(): number {
     const parsed = Number(this.formDimension);
@@ -53,26 +46,13 @@ struct WidgetCard {
     return '#8FE8DF';
   }
 
-  private resetSwipe(): void {
-    this.swipeOffsetX = 0;
-    this.swipeOffsetY = 0;
-  }
-
-  private finishSwipe(): void {
-    const offsetX = this.swipeOffsetX;
-    const offsetY = this.swipeOffsetY;
-    this.resetSwipe();
-    if (this.switchingAccount || Math.abs(offsetX) < 48 || Math.abs(offsetX) <= Math.abs(offsetY)) {
-      return;
-    }
-
-    const direction: SwipeDirection = offsetX < 0 ? 'left' : 'right';
-    this.switchingAccount = true;
-    const context = getContext(this) as common.Context;
-    switchFormAccount(context, this.formId, direction)
-      .finally(() => {
-        this.switchingAccount = false;
-      });
+  private requestAccountSwitch(direction: string): void {
+    postCardAction(this, {
+      action: 'message',
+      params: {
+        message: direction
+      }
+    });
   }
 
   @Builder
@@ -189,7 +169,8 @@ struct WidgetCard {
     .alignItems(HorizontalAlign.Start)
   }
 
-  build() {
+  @Builder
+  cardPage() {
     Column({ space: 8 }) {
       if (this.dimension() >= 3) {
         this.listBody()
@@ -207,20 +188,25 @@ struct WidgetCard {
     .onClick(() => {
       this.openApp();
     })
-    .gesture(
-      PanGesture()
-        .onActionUpdate((event?: GestureEvent) => {
-          if (event !== undefined) {
-            this.swipeOffsetX = event.offsetX;
-            this.swipeOffsetY = event.offsetY;
-          }
-        })
-        .onActionEnd(() => {
-          this.finishSwipe();
-        })
-        .onActionCancel(() => {
-          this.resetSwipe();
-        })
-    )
+  }
+
+  build() {
+    Swiper() {
+      this.cardPage()
+      this.cardPage()
+      this.cardPage()
+    }
+    .index(1)
+    .loop(false)
+    .indicator(false)
+    .width('100%')
+    .height('100%')
+    .onChange((index: number) => {
+      if (index === 0) {
+        this.requestAccountSwitch('right');
+      } else if (index === 2) {
+        this.requestAccountSwitch('left');
+      }
+    })
   }
 }

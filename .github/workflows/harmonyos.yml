@@ -9,6 +9,7 @@ on:
       - "scripts/build-harmonyos.sh"
       - "scripts/sync-contracts-to-harmonyos.sh"
       - "scripts/verify-provider-parity.sh"
+      - "Tests/ScriptTests/HarmonyOSWidgetInteractionTests.sh"
       - ".github/workflows/harmonyos.yml"
   push:
     branches:
@@ -19,6 +20,7 @@ on:
       - "scripts/build-harmonyos.sh"
       - "scripts/sync-contracts-to-harmonyos.sh"
       - "scripts/verify-provider-parity.sh"
+      - "Tests/ScriptTests/HarmonyOSWidgetInteractionTests.sh"
       - ".github/workflows/harmonyos.yml"
 
 concurrency:
@@ -84,6 +86,9 @@ jobs:
           grep -Fq '"phone"' "$MODULE"
           grep -Fq '"tablet"' "$MODULE"
           echo "deviceTypes include phone and tablet (Huawei Pad Mini)"
+
+      - name: Verify widget interaction API support
+        run: bash Tests/ScriptTests/HarmonyOSWidgetInteractionTests.sh
 
       - name: Build entry HAP
         env:
