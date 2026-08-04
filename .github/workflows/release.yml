@@ -1,24 +1,61 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - v*
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag in vX.Y.Z form
+        required: true
+        type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
-  package:
-    runs-on: macos-14
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
-      contents: write
-    timeout-minutes: 90
+      contents: read
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      android_version_code: ${{ steps.version.outputs.android_version_code }}
     steps:
-      - name: Checkout
+      - name: Checkout selected tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate selected tag
+        id: version
+        env:
+          SELECTED_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          metadata="$(bash scripts/release-version.sh "$SELECTED_TAG")"
+          git fetch --force --tags origin
+          tag_commit="$(git rev-parse -q --verify "refs/tags/$SELECTED_TAG^{commit}")"
+          [[ "$tag_commit" == "$(git rev-parse HEAD)" ]] || {
+            echo "Selected tag does not match the checked-out commit: $SELECTED_TAG" >&2
+            exit 1
+          }
+          printf '%s\n' "$metadata" >> "$GITHUB_OUTPUT"
+
+  macos:
+    needs: prepare
+    runs-on: macos-14
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout selected tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -41,6 +78,9 @@ jobs:
       - name: Run Swift tests
         run: swift test
 
+      - name: Verify provider parity
+        run: /bin/bash scripts/verify-provider-parity.sh
+
       - name: Verify app icon assets
         run: /bin/bash Tests/ScriptTests/AppIconTests.sh
 
@@ -50,27 +90,157 @@ jobs:
       - name: Verify DMG packaging
         run: /bin/bash Tests/ScriptTests/DMGPackagingTests.sh
 
+      - name: Verify release version helper
+        run: /bin/bash Tests/ScriptTests/ReleaseVersionTests.sh
+
       - name: Verify local install safety
         run: /bin/bash Tests/ScriptTests/LocalInstallSafetyTests.sh
 
       - name: Package release DMGs
         env:
-          QUOTAGLANCE_VERSION: ${{ github.ref_name }}
-        run: ./scripts/package-dmg.sh
+          QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.tag }}
+        run: ./scripts/package-dmg.sh dist all
 
-      - name: Upload packaged artifacts
+      - name: Upload macOS release assets
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: QuotaGlance-${{ github.ref_name }}
+          name: QuotaGlance-macOS-${{ needs.prepare.outputs.version }}
           path: |
             dist/*.dmg
             dist/*.dmg.sha256
           if-no-files-found: error
 
-      - name: Publish GitHub release
+  android:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout selected tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.0.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+
+      - name: Install Android API 35 build inputs
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Sync shared contracts
+        run: |
+          bash scripts/sync-specs-to-android.sh
+          bash scripts/sync-contracts-to-android.sh
+
+      - name: Verify contract parity
+        run: |
+          bash scripts/verify-provider-parity.sh
+          bash scripts/verify-android-parity.sh
+
+      - name: Test, lint, and build release APK
+        working-directory: Android
+        env:
+          QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.version }}
+          QUOTAGLANCE_VERSION_CODE: ${{ needs.prepare.outputs.android_version_code }}
+        run: |
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleRelease \
+            -PquotaglanceVersion="$QUOTAGLANCE_VERSION" \
+            -PquotaglanceVersionCode="$QUOTAGLANCE_VERSION_CODE"
+
+      - name: Name Android release asset
+        env:
+          QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          asset="dist/QuotaGlance-${QUOTAGLANCE_VERSION}-android-universal.apk"
+          cp Android/app/build/outputs/apk/release/app-release.apk "$asset"
+          sha256sum "$asset" > "$asset.sha256"
+
+      - name: Upload Android release asset
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: QuotaGlance-Android-${{ needs.prepare.outputs.version }}
+          path: |
+            dist/*-android-universal.apk
+            dist/*-android-universal.apk.sha256
+          if-no-files-found: error
+
+  publish:
+    needs:
+      - prepare
+      - macos
+      - android
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout selected tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download macOS release assets
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: QuotaGlance-macOS-${{ needs.prepare.outputs.version }}
+          path: release-assets/macos
+
+      - name: Download Android release asset
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: QuotaGlance-Android-${{ needs.prepare.outputs.version }}
+          path: release-assets/android
+
+      - name: Generate release notes from commits
+        env:
+          SELECTED_TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin
+          previous_tag=""
+          while IFS= read -r candidate; do
+            [[ "$candidate" == "$SELECTED_TAG" ]] && continue
+            if [[ "$candidate" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              previous_tag="$candidate"
+              break
+            fi
+          done < <(git tag --merged "$SELECTED_TAG" --sort=-version:refname)
+
+          {
+            echo "## Changes"
+            if [[ -n "$previous_tag" ]]; then
+              git log --no-merges --format='- %s (%h)' "$previous_tag..$SELECTED_TAG"
+            else
+              git log --no-merges --format='- %s (%h)' "$SELECTED_TAG"
+            fi
+          } > release-notes.md
+
+          if [[ "$(wc -l < release-notes.md)" -eq 1 ]]; then
+            echo "- No non-merge commits since the previous release." >> release-notes.md
+          fi
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: QuotaGlance ${{ needs.prepare.outputs.version }}
+          body_path: release-notes.md
           files: |
-            dist/*.dmg
-            dist/*.dmg.sha256
-          generate_release_notes: true
+            release-assets/macos/*.dmg
+            release-assets/macos/*.dmg.sha256
+            release-assets/android/*-android-universal.apk
+            release-assets/android/*-android-universal.apk.sha256
+          fail_on_unmatched_files: true

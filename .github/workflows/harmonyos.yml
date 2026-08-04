@@ -96,12 +96,34 @@ jobs:
           HARMONYOS_SKIP_SIGN: "1"
         run: bash scripts/build-harmonyos.sh
 
+      - name: Name HarmonyOS artifact
+        id: metadata
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^[[:space:]]*"versionName":[[:space:]]*"\([^"]*\)".*/\1/p' HarmonyOS/AppScope/app.json5)"
+          [[ -n "$version" ]] || {
+            echo "Unable to read HarmonyOS versionName" >&2
+            exit 1
+          }
+          source="$(find HarmonyOS -type f -name '*.hap' -print -quit)"
+          [[ -n "$source" && -f "$source" ]] || {
+            echo "HarmonyOS build did not produce a HAP" >&2
+            exit 1
+          }
+          short_sha="$(git rev-parse --short=12 HEAD)"
+          mkdir -p dist
+          target="dist/QuotaGlance-${version}-harmonyos-phone-tablet-unsigned-${short_sha}.hap"
+          cp "$source" "$target"
+          sha256sum "$target" > "$target.sha256"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+
       - name: Upload HAP artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: QuotaGlance-HarmonyOS-phone-tablet-${{ github.sha }}
+          name: QuotaGlance-HarmonyOS-${{ steps.metadata.outputs.version }}-${{ steps.metadata.outputs.short_sha }}
           path: |
-            HarmonyOS/entry/build/default/outputs/default/*.hap
-            HarmonyOS/**/outputs/**/*.hap
+            dist/*.hap
+            dist/*.hap.sha256
           if-no-files-found: error
           retention-days: 14

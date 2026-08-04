@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release QuotaGlance"
+  short_description: "Prepare and dispatch a confirmed QuotaGlance release"
+  default_prompt: "Use $releasing-quotaglance to prepare the next QuotaGlance release."
