@@ -55,7 +55,7 @@ class OkHttpRawHttpClient(private val client: OkHttpClient = OkHttpClient()) : R
             }
         } catch (error: IOException) {
             // Keep the UI actionable without ever including URLs, headers, or keys.
-            throw ProviderFailure("network", error::class.simpleName ?: "io")
+            throw ProviderFailure("network", detail = error::class.simpleName ?: "io")
         }
     }
 }
