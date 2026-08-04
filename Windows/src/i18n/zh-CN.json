@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "QuotaGlance",
+    "noAccounts": "添加 API 账户后，即可在这里查看余额和配额。",
+    "loading": "正在加载...",
+    "error": "发生错误",
+    "retry": "重试",
+    "refreshPartial": "部分账户刷新失败，仍会保留已有数据。"
+  },
+  "nav": { "overview": "概览", "settings": "设置", "addProvider": "添加账户" },
+  "actions": { "refresh": "刷新", "add": "添加", "edit": "编辑", "save": "保存更改", "saveAccount": "保存账户", "delete": "删除账户", "show": "显示 API 密钥", "hide": "隐藏 API 密钥" },
+  "status": { "healthy": "正常", "belowThreshold": "低于阈值", "stale": "数据过期", "unavailable": "不可用", "partial": "部分数据", "loading": "正在加载快照..." },
+  "metrics": {
+    "balance": "余额", "todayCost": "今日花费", "todayRequests": "今日请求数", "quotaLimit": "上限", "quotaUsed": "已用", "quotaRemaining": "剩余", "quotaWindow": "配额窗口", "spendToday": "今日", "spendWeek": "本周", "spendMonth": "本月", "spendTotal": "总计"
+  },
+  "overview": {
+    "subtitle": "AI 服务商余额与配额", "emptyTitle": "从这里开始查看配额", "summary": "账户汇总", "allAccounts": "全部已启用账户", "weeklyUsage": "用量趋势", "lastSevenDays": "最近 7 天", "noUsage": "暂时没有每日用量数据。", "accounts": "账户"
+  },
+  "detail": {
+    "notFound": "这个账户已不存在。", "refreshed": "刷新于", "neverRefreshed": "尚未刷新", "disabled": "该账户已停用，不会参与刷新、汇总和告警。", "noSnapshot": "此账户尚未获取快照。", "notProvided": "服务商未提供", "balanceBreakdown": "余额明细", "spending": "花费", "dailyUsage": "每日用量", "modelUsage": "模型用量", "providerStatus": "服务商状态"
+  },
+  "addAccount": {
+    "title": "添加账户", "subtitle": "连接 API 密钥", "selectProvider": "服务商", "displayName": "显示名称", "pasteKey": "API 密钥", "detect": "检测配置", "detected": "已检测", "detectHelp": "保存前检测区域和凭据类型。", "detectRequired": "请先检测 API 密钥的配置。", "refreshNow": "立即刷新", "saved": "已添加账户", "missingKey": "请输入 API 密钥", "missingName": "请输入显示名称", "nameHelp": "使用容易辨认且不重复的账户名称。", "keyPlaceholder": "粘贴 API 密钥", "keyHelp": "密钥会通过 Windows DPAPI 保存，之后不会再次显示。", "region": "区域"
+  },
+  "edit": {
+    "title": "编辑账户", "threshold": "低余额阈值", "thresholdHelp": "留空可关闭此账户的低余额告警。", "invalidThreshold": "阈值必须是有效小数。", "replaceKey": "替换 API 密钥", "replaceKeyPlaceholder": "留空以保留当前密钥", "replaceKeyHelp": "新密钥通过服务商检测后才会替换已保存的凭据。", "enabled": "纳入账户", "enabledHelp": "参与刷新、汇总和告警。", "disabledHelp": "保留在本地，但不参与刷新和汇总。", "deleteConfirm": "删除该账户及其已保存的 API 密钥？此操作无法撤销。"
+  },
+  "settings": {
+    "title": "设置", "subtitle": "刷新与快速查看偏好", "refreshInterval": "刷新间隔", "language": "语言", "notifications": "低余额通知", "notificationsHelp": "仅在新的低余额告警周期开始时通知。", "launchAtLogin": "登录时启动", "launchAtLoginHelp": "便携客户端的可选 Windows 启动偏好。", "defaultWidget": "桌面小组件显示内容", "widgetHelp": "选择悬浮桌面小组件显示的账户。", "minute1": "每分钟", "minute5": "每 5 分钟", "minute15": "每 15 分钟", "minute30": "每 30 分钟", "minute60": "每小时", "languageSystem": "跟随系统", "languageEn": "English", "languageZhCn": "简体中文", "widgetAll": "全部账户", "widgetDefault": "第一个已启用账户"
+  },
+  "popover": { "title": "快速查看", "openMain": "打开主窗口", "refreshAll": "刷新全部" },
+  "widget": { "refresh": "刷新", "noData": "没有账户数据" },
+  "region": { "global": "全球", "china": "中国", "international": "国际" },
+  "credential": { "standard": "标准密钥", "management": "管理密钥", "tokenPlan": "Token 套餐" },
+  "errors": { "invalidCredential": "API 密钥无效", "rateLimited": "请求过于频繁，请稍后再试", "httpStatus": "服务商请求失败", "invalidResponse": "服务商返回了非预期数据", "providerInactive": "服务商账户未启用", "unsupportedCredential": "不支持此凭据类型", "regionDetectionFailed": "无法检测服务商区域", "profileMismatch": "检测结果与保存的账户配置不一致", "providerUnavailable": "服务商不可用", "offline": "网络离线", "timeout": "请求超时" }
+}
