@@ -3,6 +3,7 @@
 struct WidgetCard {
   @LocalStorageProp('formId') formId: string = '';
   @LocalStorageProp('formDimension') formDimension: string = '2';
+  @LocalStorageProp('themeMode') themeMode: string = 'system';
   @LocalStorageProp('mode') mode: string = 'aggregate';
   @LocalStorageProp('title') title: string = '总览';
   @LocalStorageProp('balanceText') balanceText: string = '--';
@@ -36,27 +37,77 @@ struct WidgetCard {
     });
   }
 
-  private messageColor(): string {
+  private messageColor(): ResourceColor {
     if (this.messageSeverity === 'error') {
-      return '#FF6B6B';
+      return $r('app.color.danger');
     }
     if (this.messageSeverity === 'warning') {
-      return '#F5C15D';
+      return $r('app.color.warning');
     }
-    return '#8FE8DF';
+    return this.accentColor();
   }
 
-  @Builder
-  footerButton() {
-    Button(this.mode === 'account' ? '查看详情' : $r('app.string.open_app'))
-      .fontSize(12)
-      .fontColor('#12161F')
-      .backgroundColor('#57E0D6')
-      .borderRadius(14)
-      .height(28)
-      .onClick(() => {
-        this.openApp();
-      })
+  // Form cards render outside the main UIAbility, so the app-level color mode
+  // override is not guaranteed to reach this component. The selected mode is
+  // persisted into the binding payload; system mode deliberately uses dynamic
+  // resources so it still follows the host device's color mode.
+  private cardBackground(): ResourceColor {
+    if (this.themeMode === 'light') {
+      return '#FFFFFF';
+    }
+    if (this.themeMode === 'dark') {
+      return '#1B2233';
+    }
+    return $r('app.color.cardBackground');
+  }
+
+  private textPrimaryColor(): ResourceColor {
+    if (this.themeMode === 'light') {
+      return '#1A2333';
+    }
+    if (this.themeMode === 'dark') {
+      return '#FFFFFF';
+    }
+    return $r('app.color.textPrimary');
+  }
+
+  private textSecondaryColor(): ResourceColor {
+    if (this.themeMode === 'light') {
+      return '#5A6478';
+    }
+    if (this.themeMode === 'dark') {
+      return '#99A1B3';
+    }
+    return $r('app.color.textSecondary');
+  }
+
+  private slateColor(): ResourceColor {
+    if (this.themeMode === 'light') {
+      return '#C3CAD8';
+    }
+    if (this.themeMode === 'dark') {
+      return '#54607A';
+    }
+    return $r('app.color.slateSecondary');
+  }
+
+  private accentColor(): ResourceColor {
+    if (this.themeMode === 'light') {
+      return '#0E9C93';
+    }
+    if (this.themeMode === 'dark') {
+      return '#57E0D6';
+    }
+    return $r('app.color.accentTeal');
+  }
+
+  private requestAccountSwitch(direction: string): void {
+    postCardAction(this, {
+      action: 'message',
+      params: {
+        message: direction
+      }
+    });
   }
 
   @Builder
@@ -64,17 +115,17 @@ struct WidgetCard {
     Column({ space: 6 }) {
       Text(this.title)
         .fontSize(11)
-        .fontColor('#99A1B3')
+        .fontColor(this.textSecondaryColor())
         .maxLines(1)
       Text(this.balanceText)
         .fontSize(22)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#57E0D6')
+        .fontColor(this.accentColor())
         .maxLines(1)
       if (this.todayText.length > 0) {
         Text(this.todayText)
           .fontSize(11)
-          .fontColor('#CFD6E6')
+          .fontColor(this.textPrimaryColor())
           .maxLines(1)
       }
       if (this.messageText.length > 0) {
@@ -87,13 +138,13 @@ struct WidgetCard {
       if (this.statusText.length > 0) {
         Text(this.statusText)
           .fontSize(10)
-          .fontColor('#99A1B3')
+          .fontColor(this.textSecondaryColor())
           .maxLines(1)
       }
       if (this.updatedAtText.length > 0) {
         Text(this.updatedAtText)
           .fontSize(10)
-          .fontColor('#54607A')
+          .fontColor(this.slateColor())
           .maxLines(1)
       }
     }
@@ -107,13 +158,13 @@ struct WidgetCard {
       Row() {
         Text(this.title)
           .fontSize(12)
-          .fontColor('#99A1B3')
+          .fontColor(this.textSecondaryColor())
           .layoutWeight(1)
           .maxLines(1)
         if (this.statusText.length > 0) {
           Text(this.statusText)
             .fontSize(10)
-            .fontColor('#99A1B3')
+            .fontColor(this.textSecondaryColor())
             .maxLines(1)
         }
       }
@@ -122,13 +173,13 @@ struct WidgetCard {
       Text(this.balanceText)
         .fontSize(this.dimension() === 4 ? 24 : 20)
         .fontWeight(FontWeight.Bold)
-        .fontColor('#57E0D6')
+        .fontColor(this.accentColor())
         .maxLines(2)
 
       if (this.todayText.length > 0) {
         Text(this.todayText)
           .fontSize(11)
-          .fontColor('#CFD6E6')
+          .fontColor(this.textPrimaryColor())
           .maxLines(2)
       }
 
@@ -146,7 +197,7 @@ struct WidgetCard {
           ForEach(this.rows(), (row: string) => {
             Text(row)
               .fontSize(10)
-              .fontColor('#CFD6E6')
+              .fontColor(this.textPrimaryColor())
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .width('100%')
@@ -163,7 +214,7 @@ struct WidgetCard {
       if (this.updatedAtText.length > 0) {
         Text(this.updatedAtText)
           .fontSize(10)
-          .fontColor('#54607A')
+          .fontColor(this.slateColor())
           .maxLines(1)
           .width('100%')
       }
@@ -173,7 +224,8 @@ struct WidgetCard {
     .alignItems(HorizontalAlign.Start)
   }
 
-  build() {
+  @Builder
+  cardPage() {
     Column({ space: 8 }) {
       if (this.dimension() >= 3) {
         this.listBody()
@@ -181,13 +233,35 @@ struct WidgetCard {
         this.compactBody()
       }
 
-      this.footerButton()
     }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.SpaceBetween)
     .padding(12)
-    .backgroundColor('#12161F')
+    .backgroundColor(this.cardBackground())
     .borderRadius(16)
+    .onClick(() => {
+      this.openApp();
+    })
+  }
+
+  build() {
+    Swiper() {
+      this.cardPage()
+      this.cardPage()
+      this.cardPage()
+    }
+    .index(1)
+    .loop(false)
+    .indicator(false)
+    .width('100%')
+    .height('100%')
+    .onChange((index: number) => {
+      if (index === 0) {
+        this.requestAccountSwitch('right');
+      } else if (index === 2) {
+        this.requestAccountSwitch('left');
+      }
+    })
   }
 }

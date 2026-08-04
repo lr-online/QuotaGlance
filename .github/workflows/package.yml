@@ -1,4 +1,4 @@
-name: Package
+name: Package macOS
 
 on:
   workflow_dispatch:
@@ -34,6 +34,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Read artifact metadata
+        id: metadata
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^[[:space:]]*MARKETING_VERSION: "\([^"]*\)"/\1/p' project.yml)"
+          [[ -n "$version" ]] || {
+            echo "Unable to read macOS marketing version" >&2
+            exit 1
+          }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Select Xcode
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
         with:
@@ -68,7 +80,7 @@ jobs:
       - name: Upload packaged artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: QuotaGlance-${{ github.sha }}
+          name: QuotaGlance-macOS-${{ steps.metadata.outputs.version }}-${{ steps.metadata.outputs.short_sha }}
           path: |
             dist/*.dmg
             dist/*.dmg.sha256

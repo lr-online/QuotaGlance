@@ -9,6 +9,7 @@ import { FormBindingStore } from '../storage/FormBindingStore';
 import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 import { applyLanguage } from '../utils/LanguageUtils';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
+import { updateAllCards } from '../services/CardUpdater';
 
 const DOMAIN = 0x0000;
 const FORM_ID_PARAM = 'ohos.extra.param.key.form_identity';
@@ -31,6 +32,10 @@ export default class EntryAbility extends UIAbility {
       .then((store: ThemeStore) => store.load())
       .then((mode: ThemeMode) => {
         applyThemeMode(this.context, mode);
+        // Existing forms may have been created before the theme was changed;
+        // republish their payload so manual light/dark overrides are visible
+        // without requiring a refresh or card recreation.
+        return updateAllCards(this.context);
       })
       .catch((error: Object) => {
         hilog.warn(DOMAIN, 'QuotaGlance', 'theme restore failed: %{public}s', (error as Error).message);

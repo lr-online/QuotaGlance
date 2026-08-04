@@ -5,7 +5,7 @@ usage() {
   cat >&2 <<'EOF'
 usage: fetch-ci-package.sh <pr-number|branch|run-id> [--install] [--edition legacy|full] [--verify]
 
-Download Package workflow DMG artifacts from GitHub Actions.
+Download Package macOS workflow DMG artifacts from GitHub Actions.
 With --install, replace ~/Applications/QuotaGlance.app from the macOS12 (legacy) DMG.
 With --verify, run scripts/verify-dmg.sh against the downloaded DMG.
 EOF
@@ -54,7 +54,7 @@ resolve_run_id() {
   local branch=""
 
   if [[ "$target" =~ ^[0-9]+$ ]] && [[ ${#target} -ge 8 ]]; then
-    # Likely a run id (Package runs are large integers).
+    # Likely a run id (Package macOS runs are large integers).
     if gh run view "$target" -R "$REPO" --json databaseId >/dev/null 2>&1; then
       printf '%s\n' "$target"
       return 0
@@ -70,7 +70,7 @@ resolve_run_id() {
   run_id="$(
     gh run list \
       -R "$REPO" \
-      --workflow=Package \
+      --workflow="Package macOS" \
       --branch "$branch" \
       --limit 20 \
       --json databaseId,status,conclusion,event \
@@ -84,7 +84,7 @@ resolve_run_id() {
     run_id="$(
       gh run list \
         -R "$REPO" \
-        --workflow=Package \
+        --workflow="Package macOS" \
         --branch "$branch" \
         --limit 5 \
         --json databaseId,status \
@@ -93,7 +93,7 @@ resolve_run_id() {
   fi
 
   [[ -n "$run_id" ]] || {
-    echo "No Package run found for: $target (branch: $branch)" >&2
+    echo "No Package macOS run found for: $target (branch: $branch)" >&2
     exit 1
   }
   printf '%s\n' "$run_id"
@@ -102,7 +102,7 @@ resolve_run_id() {
 wait_for_success() {
   local run_id="$1"
 
-  echo "Waiting for Package run $run_id ..."
+  echo "Waiting for Package macOS run $run_id ..."
   gh run watch "$run_id" -R "$REPO" --exit-status
 }
 

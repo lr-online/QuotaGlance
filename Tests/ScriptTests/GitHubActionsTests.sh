@@ -61,9 +61,10 @@ rg -Fq "Tests/ScriptTests/HarmonyOSStringParityTests.sh" "$CI_WORKFLOW" \
   || fail "CI workflow missing HarmonyOS string parity test"
 rg -Fq "Tests/ScriptTests/BuildEditionTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing build edition contract test"
 rg -Fq "Tests/ScriptTests/DMGPackagingTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing DMG packaging test"
+rg -Fq "Tests/ScriptTests/ReleaseVersionTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing release version test"
 rg -Fq "Tests/ScriptTests/LocalInstallSafetyTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing local install safety test"
 
-rg -q "^name: Package$" "$PACKAGE_WORKFLOW" || fail "Package workflow name changed"
+rg -q "^name: Package macOS$" "$PACKAGE_WORKFLOW" || fail "macOS packaging workflow name is wrong"
 rg -q "workflow_dispatch:" "$PACKAGE_WORKFLOW" || fail "Package workflow missing workflow_dispatch"
 rg -q "pull_request:" "$PACKAGE_WORKFLOW" || fail "Package workflow missing pull_request trigger"
 assert_pinned_action "actions/checkout" "$PACKAGE_WORKFLOW"
@@ -73,16 +74,24 @@ assert_read_only_workflow "$PACKAGE_WORKFLOW"
 rg -Fq "xcode-version: '16.2'" "$PACKAGE_WORKFLOW" || fail "Package workflow does not pin the supported Xcode version"
 rg -Fq "./scripts/package-dmg.sh dist" "$PACKAGE_WORKFLOW" || fail "Package workflow does not package DMGs"
 rg -q "upload-artifact" "$PACKAGE_WORKFLOW" || fail "Package workflow does not upload artifacts"
+rg -Fq 'QuotaGlance-macOS-${{ steps.metadata.outputs.version }}' "$PACKAGE_WORKFLOW" \
+  || fail "macOS package artifact is not versioned"
 rg -Fq "fetch-ci-package.sh" "$FETCH_SCRIPT" || fail "fetch script self-path changed"
+rg -Fq -- '--workflow="Package macOS"' "$FETCH_SCRIPT" || fail "fetch script uses old workflow name"
 rg -q -- "--install" "$FETCH_SCRIPT" || fail "fetch script missing --install mode"
 rg -q -- "--verify" "$FETCH_SCRIPT" || fail "fetch script missing --verify mode"
 
 rg -q "^name: Release$" "$RELEASE_WORKFLOW" || fail "release workflow name changed"
-rg -q "tags:" "$RELEASE_WORKFLOW" || fail "release workflow missing tag trigger"
-rg -q "v\*" "$RELEASE_WORKFLOW" || fail "release workflow missing version tag pattern"
+rg -q "workflow_dispatch:" "$RELEASE_WORKFLOW" || fail "release workflow missing manual trigger"
+rg -Fq "description: Existing release tag in vX.Y.Z form" "$RELEASE_WORKFLOW" \
+  || fail "release workflow missing tag input"
+rg -Fq "ref: \${{ inputs.tag }}" "$RELEASE_WORKFLOW" || fail "release workflow does not check out selected tag"
+! rg -q "push:" "$RELEASE_WORKFLOW" || fail "release workflow must not run automatically on pushes"
+! rg -q "tags:" "$RELEASE_WORKFLOW" || fail "release workflow must not use a tag trigger"
 assert_pinned_action "actions/checkout" "$RELEASE_WORKFLOW"
 assert_pinned_action "maxim-lobanov/setup-xcode" "$RELEASE_WORKFLOW"
 assert_pinned_action "actions/upload-artifact" "$RELEASE_WORKFLOW"
+assert_pinned_action "actions/download-artifact" "$RELEASE_WORKFLOW"
 assert_pinned_action "softprops/action-gh-release" "$RELEASE_WORKFLOW"
 rg -Fq 'persist-credentials: false' "$RELEASE_WORKFLOW" \
   || fail "release workflow does not disable checkout credential persistence"
@@ -91,11 +100,19 @@ rg -q '^concurrency:$' "$RELEASE_WORKFLOW" \
 rg -Fq "xcode-version: '16.2'" "$RELEASE_WORKFLOW" || fail "release workflow does not pin the supported Xcode version"
 rg -Fq "command -v rg" "$RELEASE_WORKFLOW" || fail "release workflow does not ensure ripgrep availability"
 rg -Fq "brew install ripgrep" "$RELEASE_WORKFLOW" || fail "release workflow lacks the ripgrep install fallback"
-rg -Fq 'QUOTAGLANCE_VERSION: ${{ github.ref_name }}' "$RELEASE_WORKFLOW" \
-  || fail "release workflow does not pass the tag version to packaging"
+rg -Fq "scripts/release-version.sh" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not validate the selected tag"
+rg -Fq 'QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.tag }}' "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not pass the selected tag to macOS packaging"
+rg -Fq "quotaglanceVersionCode" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not set Android version code"
 rg -Fq "./scripts/package-dmg.sh" "$RELEASE_WORKFLOW" || fail "release workflow does not package DMGs"
 rg -q "upload-artifact" "$RELEASE_WORKFLOW" || fail "release workflow does not upload artifacts"
 rg -q "softprops/action-gh-release" "$RELEASE_WORKFLOW" || fail "release workflow does not publish a GitHub release"
+rg -Fq "git log --no-merges" "$RELEASE_WORKFLOW" || fail "release workflow does not derive notes from commits"
+rg -Fq "body_path: release-notes.md" "$RELEASE_WORKFLOW" || fail "release workflow does not use generated release notes"
+! rg -q "generate_release_notes" "$RELEASE_WORKFLOW" || fail "release workflow must not use generated GitHub notes"
+! rg -q "HarmonyOS" "$RELEASE_WORKFLOW" || fail "release workflow must not publish unsigned HarmonyOS HAPs"
 
 rg -q "^name: HarmonyOS$" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow name changed"
 rg -q "workflow_dispatch:" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow missing workflow_dispatch"
@@ -115,6 +132,8 @@ rg -Fq "scripts/build-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS wor
 rg -Fq "scripts/sync-contracts-to-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync contract fixtures"
 rg -Fq "scripts/verify-provider-parity.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not verify provider parity"
 rg -q "upload-artifact" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not upload HAP artifacts"
+rg -Fq 'QuotaGlance-HarmonyOS-${{ steps.metadata.outputs.version }}' "$HARMONYOS_WORKFLOW" \
+  || fail "HarmonyOS artifact is not versioned"
 rg -Fq "HARMONYOS_SKIP_SIGN" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing unsigned CI mode"
 rg -Fq "properties.ignoreSignHap=true" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing ignoreSignHap"
 rg -Fq "ohpm install --all" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not install ohpm deps"
@@ -157,13 +176,12 @@ rg -Fq 'scripts/verify-provider-parity.sh' "$QUALITY_WORKFLOW" \
 rg -q '^name: Android$' "$ANDROID_WORKFLOW" || fail "Android workflow name changed"
 rg -q 'workflow_dispatch:' "$ANDROID_WORKFLOW" || fail "Android workflow missing workflow_dispatch"
 rg -q 'pull_request:' "$ANDROID_WORKFLOW" || fail "Android workflow missing pull_request trigger"
-rg -q 'tags:' "$ANDROID_WORKFLOW" || fail "Android workflow missing tag trigger"
-rg -q 'v\*' "$ANDROID_WORKFLOW" || fail "Android workflow missing version tag pattern"
 assert_pinned_action "actions/checkout" "$ANDROID_WORKFLOW"
 assert_pinned_action "actions/setup-java" "$ANDROID_WORKFLOW"
 assert_pinned_action "android-actions/setup-android" "$ANDROID_WORKFLOW"
 assert_pinned_action "actions/upload-artifact" "$ANDROID_WORKFLOW"
-assert_pinned_action "softprops/action-gh-release" "$ANDROID_WORKFLOW"
+! rg -q 'tags:' "$ANDROID_WORKFLOW" || fail "Android workflow must not trigger from tags"
+! rg -q 'softprops/action-gh-release' "$ANDROID_WORKFLOW" || fail "Android workflow must not publish releases"
 rg -Fq 'persist-credentials: false' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not disable checkout credential persistence"
 rg -q '^concurrency:$' "$ANDROID_WORKFLOW" \
@@ -180,8 +198,8 @@ rg -Fq 'scripts/verify-android-parity.sh' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not verify Android parity"
 rg -Fq ':app:testDebugUnitTest :app:lint :app:assembleDebug :app:assembleRelease' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not test, lint, and build both APK variants"
-rg -Fq '*-android-universal.apk' "$ANDROID_WORKFLOW" \
-  || fail "Android workflow does not publish a release APK"
+rg -Fq 'QuotaGlance-Android-${{ steps.metadata.outputs.version }}' "$ANDROID_WORKFLOW" \
+  || fail "Android artifact is not versioned"
 
 [[ -f "$ROOT_DIR/.github/dependabot.yml" ]] \
   || fail "missing Dependabot configuration"

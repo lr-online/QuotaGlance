@@ -5,6 +5,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseVersionName = providers.gradleProperty("quotaglanceVersion").orNull
+val releaseVersionCodeInput = providers.gradleProperty("quotaglanceVersionCode").orNull
+val releaseVersionCode = releaseVersionCodeInput?.toIntOrNull()
+
+require(releaseVersionCodeInput == null || releaseVersionCode != null && releaseVersionCode > 0) {
+    "quotaglanceVersionCode must be a positive integer"
+}
+
 android {
     namespace = "com.liangrui.quotaglance"
     compileSdk = 35
@@ -13,8 +21,8 @@ android {
         applicationId = "com.liangrui.quotaglance"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.6"
+        versionCode = releaseVersionCode ?: 2
+        versionName = releaseVersionName ?: "0.1.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

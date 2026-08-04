@@ -64,7 +64,8 @@ Alerts contract parity remains a hard constraint; the following experience gaps 
   synced assets/fixtures and exact decimal arithmetic; Android additions do not
   modify the macOS or HarmonyOS source modules.
 - `android.yml` installs API 35, runs sync/parity/JVM/lint/debug+release builds,
-  uploads PR artifacts, and attaches an APK plus SHA-256 to version-tag releases.
+  and uploads versioned debug/release artifacts. The manual `Release` workflow
+  is the sole publisher of versioned Android GitHub Release assets.
 - Android device/emulator verification for notification permission, WorkManager,
   Glance, encrypted storage, and external links remains a manual gate until
   device CI is available. See `Android/AGENTS.md` and the platform matrix.
@@ -85,9 +86,9 @@ Alerts contract parity remains a hard constraint; the following experience gaps 
 ### GitHub Actions + Quality CI (2026-08)
 
 - CI workflow (`ci.yml`, macos-14): `swift test`, `scripts/verify-provider-parity.sh`, and ScriptTests including `GitHubActionsTests.sh`, on pull requests and pushes to `main`.
-- Package workflow (`package.yml`): DMG packaging and artifact upload on PRs, pushes to `main`, and manual dispatch.
-- Release workflow (`release.yml`): version-tag DMG packaging and GitHub release publication.
-- HarmonyOS workflow (`harmonyos.yml`, ubuntu + OHOS SDK): contract sync, provider parity check, unsigned HAP build; path filters include `Contracts/**`, `HarmonyOS/**`, and parity scripts.
+- Package macOS workflow (`package.yml`): DMG packaging and versioned artifact upload on PRs, pushes to `main`, and manual dispatch.
+- Release workflow (`release.yml`): manually selected existing `vX.Y.Z` tag, synchronized macOS/Android versioned builds, commit-derived notes, and GitHub Release publication. The unsigned HarmonyOS HAP is deliberately excluded.
+- HarmonyOS workflow (`harmonyos.yml`, ubuntu + OHOS SDK): contract sync, provider parity check, unsigned HAP build, and versioned artifact upload; path filters include `Contracts/**`, `HarmonyOS/**`, and parity scripts.
 - Quality workflow (`quality.yml`, ubuntu): actionlint, zizmor, ShellCheck on `scripts/` and `Tests/**/*.sh`, gitleaks, and a dedicated provider-contract job running `verify-provider-parity.sh` + `ProviderParityTests.sh` on PRs, pushes to `main`, and merge queue.
 - Dependabot for GitHub Actions; workflows pin third-party actions to commit SHAs and use read-only `contents` permissions where applicable.
 
