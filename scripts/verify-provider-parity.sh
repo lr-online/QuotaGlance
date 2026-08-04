@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Verify provider parity across the shared contracts and both platforms:
-#   1. Swift ProviderID.allCases == ArkTS ProviderID union members.
+# Verify provider parity across the shared contracts and four platforms:
+#   1. Swift ProviderID.allCases == ArkTS ProviderID union members == Rust
+#      `ProviderID` enum raw values (and similarly Kotlin in
+#      verify-android-parity.sh).
 #   2. Contracts/Providers/<dir>/ has spec.json plus complete
 #      <case>-response/-expected/-requests triples.
 #   3. Contracts/Aggregation and Contracts/Alerts have complete
@@ -8,11 +10,15 @@
 #   4. Every provider contract case is registered in ArkTS CONTRACT_CASES.
 #   5. Registered ArkTS step URLs match the requests fixtures.
 #   6. Each spec.json is byte-identical to its copies under
-#      Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json and
-#      HarmonyOS/entry/src/main/resources/rawfile/providerspecs/<id>.json.
+#      Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json,
+#      HarmonyOS/entry/src/main/resources/rawfile/providerspecs/<id>.json, and
+#      Windows/src-tauri/assets/providerspecs/<id>.json.
 #   7. HarmonyOS ohosTest contract copies match Contracts/Providers,
 #      Contracts/Aggregation, and Contracts/Alerts
 #      (same scope as scripts/sync-contracts-to-harmonyos.sh).
+#   8. Windows portable-client contract copies match Contracts/{Providers,
+#      Aggregation, Alerts} (same scope as
+#      scripts/sync-contracts-to-windows.sh).
 # Exits 1 on the first failing section after printing every error it found.
 set -euo pipefail
 
@@ -27,6 +33,13 @@ CORE_SPEC_DIR="$REPO_ROOT/Sources/QuotaGlanceCore/Resources/ProviderSpecs"
 HARMONYOS_SPEC_DIR="$REPO_ROOT/HarmonyOS/entry/src/main/resources/rawfile/providerspecs"
 OHOSTEST_CONTRACTS_DIR="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts"
 CONTRACT_TEST_FILE="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"
+WINDOWS_SPEC_DIR="$REPO_ROOT/Windows/src-tauri/assets/providerspecs"
+WINDOWS_CONTRACTS_DIR="$REPO_ROOT/Windows/src-tauri/assets/contracts"
+RUST_DOMAIN_FILE="$REPO_ROOT/Windows/src-tauri/src/domain.rs"
+RUST_SPEC_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_spec.rs"
+RUST_ERROR_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_error.rs"
+ANDROID_PARITY_SCRIPT="$REPO_ROOT/scripts/verify-android-parity.sh"
+WINDOWS_PARITY_SCRIPT="$REPO_ROOT/scripts/verify-windows-parity.sh"
 
 errors=0
 
@@ -93,6 +106,47 @@ compare_ordered_lists() {
   fi
 }
 
+extract_rust_provider_ids() {
+  local file="$1"
+  python3 - "$file" <<'PY' 2>/dev/null || true
+import re
+import sys
+src = open(sys.argv[1]).read()
+m = re.search(r"pub enum ProviderID\s*\{([^}]+)\}", src)
+if not m:
+    sys.exit(0)
+print('\n'.join(re.findall(r'rename\s*=\s*"([^"]+)"', m.group(1))))
+PY
+}
+
+extract_rust_const_array() {
+  local file="$1"
+  local name="$2"
+  python3 - "$file" "$name" <<'PY' 2>/dev/null || true
+import re
+import sys
+src = open(sys.argv[1]).read()
+m = re.search(rf"pub const {re.escape(sys.argv[2])}:\s*[^\[]*\[(.*?)\]", src, re.DOTALL)
+if not m:
+    sys.exit(0)
+strings = sorted(set(re.findall(r'"([^"]+)"', m.group(1))))
+print('\n'.join(strings))
+PY
+}
+
+extract_rust_const_int() {
+  local file="$1"
+  local name="$2"
+  python3 - "$file" "$name" <<'PY' 2>/dev/null || true
+import re
+import sys
+src = open(sys.argv[1]).read()
+m = re.search(rf"pub const {re.escape(sys.argv[2])}:\s*u32\s*=\s*(\d+)", src)
+if m:
+    print(m.group(1))
+PY
+}
+
 # --- Check 1: Swift ProviderID.allCases == ArkTS ProviderID union -----------
 
 check_provider_id_sets() {
@@ -100,6 +154,7 @@ check_provider_id_sets() {
   [[ -f "$ARKTS_PROVIDER_FILE" ]] || { fail "missing $ARKTS_PROVIDER_FILE"; return; }
 
   local swift_ids swift_ids_order arkts_ids arkts_array_ids arkts_known_ids spec_ids
+  local rust_ids rust_ids_order
   swift_ids_order="$(
     sed -n '/static let allCases/,/^    \]/p' "$SWIFT_PROVIDER_FILE" \
       | grep -oE '\.[A-Za-z][A-Za-z0-9]*' \
@@ -129,18 +184,23 @@ check_provider_id_sets() {
       extract_spec_id "$spec"
     done | sort -u
   )"
+  rust_ids_order="$(extract_rust_provider_ids "$RUST_DOMAIN_FILE")"
+  rust_ids="$(printf '%s\n' "$rust_ids_order" | sort -u)"
 
   [[ -n "$swift_ids" ]] || { fail "could not extract ProviderID allCases from $SWIFT_PROVIDER_FILE"; return; }
   [[ -n "$arkts_ids" ]] || { fail "could not extract ProviderID union from $ARKTS_PROVIDER_FILE"; return; }
   [[ -n "$arkts_array_ids" ]] || { fail "could not extract ALL_PROVIDER_IDS from $ARKTS_PROVIDER_FILE"; return; }
   [[ -n "$arkts_known_ids" ]] || { fail "could not extract KNOWN_PROVIDER_IDS from $ARKTS_SPEC_FILE"; return; }
   [[ -n "$spec_ids" ]] || { fail "could not extract provider ids from $CONTRACTS_DIR"; return; }
+  [[ -n "$rust_ids" ]] || { fail "could not extract ProviderID enum from $RUST_DOMAIN_FILE"; return; }
 
   compare_sets "ProviderID sets (Swift allCases vs ArkTS union)" "$swift_ids" "$arkts_ids"
   compare_sets "ProviderID sets (Swift allCases vs ArkTS ALL_PROVIDER_IDS)" "$swift_ids" "$(printf '%s\n' "$arkts_array_ids" | sort -u)"
   compare_sets "ProviderID sets (Swift allCases vs ArkTS KNOWN_PROVIDER_IDS)" "$swift_ids" "$arkts_known_ids"
   compare_sets "ProviderID sets (Swift allCases vs Contracts specs)" "$swift_ids" "$spec_ids"
+  compare_sets "ProviderID sets (Swift allCases vs Rust enum)" "$swift_ids" "$rust_ids"
   compare_ordered_lists "ProviderID order (Swift allCases vs ArkTS ALL_PROVIDER_IDS)" "$swift_ids_order" "$arkts_array_ids"
+  compare_ordered_lists "ProviderID order (Swift allCases vs Rust enum)" "$swift_ids_order" "$rust_ids_order"
 }
 
 # --- Check 2: shared protocol enums and spec-engine allow-lists -------------
@@ -150,6 +210,7 @@ check_protocol_allow_lists() {
   local swift_kinds arkts_kinds arkts_known_kinds
   local swift_errors arkts_errors swift_fields arkts_fields
   local swift_version arkts_version
+  local rust_regions rust_kinds rust_errors rust_fields rust_version
 
   swift_regions="$(
     sed -n '/public enum ProviderRegion/,/public enum ProviderCredentialKind/p' "$SWIFT_PROVIDER_FILE" \
@@ -210,16 +271,28 @@ check_protocol_allow_lists() {
   swift_version="$(sed -n 's/.*supportedSpecVersion = \([0-9][0-9]*\).*/\1/p' "$SWIFT_SPEC_FILE")"
   arkts_version="$(sed -n 's/.*SUPPORTED_SPEC_VERSION = \([0-9][0-9]*\).*/\1/p' "$ARKTS_SPEC_FILE")"
 
+  rust_regions="$(extract_rust_const_array "$RUST_SPEC_FILE" KNOWN_REGIONS)"
+  rust_kinds="$(extract_rust_const_array "$RUST_SPEC_FILE" KNOWN_CREDENTIAL_KINDS)"
+  rust_errors="$(extract_rust_const_array "$RUST_ERROR_FILE" KNOWN_ERROR_TOKENS)"
+  rust_fields="$(extract_rust_const_array "$RUST_SPEC_FILE" KNOWN_SNAPSHOT_FIELDS)"
+  rust_version="$(extract_rust_const_int "$RUST_SPEC_FILE" SPEC_VERSION)"
+
   compare_sets "ProviderRegion values (Swift vs ArkTS)" "$swift_regions" "$arkts_regions"
   compare_sets "ProviderRegion values (Swift vs ArkTS validator)" "$swift_regions" "$arkts_known_regions"
+  compare_sets "ProviderRegion values (Swift vs Rust)" "$swift_regions" "$rust_regions"
   compare_sets "ProviderCredentialKind values (Swift vs ArkTS)" "$swift_kinds" "$arkts_kinds"
   compare_sets "ProviderCredentialKind values (Swift vs ArkTS validator)" "$swift_kinds" "$arkts_known_kinds"
+  compare_sets "ProviderCredentialKind values (Swift vs Rust)" "$swift_kinds" "$rust_kinds"
   compare_sets "provider error tokens (Swift vs ArkTS)" "$swift_errors" "$arkts_errors"
+  compare_sets "provider error tokens (Swift vs Rust)" "$swift_errors" "$rust_errors"
   compare_sets "snapshot field allow-list (Swift vs ArkTS)" "$swift_fields" "$arkts_fields"
-  [[ -n "$swift_version" && -n "$arkts_version" ]] \
-    || fail "could not extract provider spec engine versions"
+  compare_sets "snapshot field allow-list (Swift vs Rust)" "$swift_fields" "$rust_fields"
+  [[ -n "$swift_version" && -n "$arkts_version" && -n "$rust_version" ]] \
+    || fail "could not extract provider spec engine versions from one or more platforms"
   [[ "$swift_version" == "$arkts_version" ]] \
     || fail "provider spec engine versions differ: Swift=$swift_version ArkTS=$arkts_version"
+  [[ "$swift_version" == "$rust_version" ]] \
+    || fail "provider spec engine versions differ: Swift=$swift_version Rust=$rust_version"
 
   local spec spec_version
   for spec in "$CONTRACTS_DIR"/*/spec.json; do
@@ -439,12 +512,13 @@ PY
 check_spec_copies() {
   [[ -d "$CONTRACTS_DIR" ]] || { fail "missing $CONTRACTS_DIR"; return; }
 
-  local spec id core_copy harmonyos_copy
+  local spec id core_copy harmonyos_copy windows_copy
   for spec in "$CONTRACTS_DIR"/*/spec.json; do
     [[ -f "$spec" ]] || continue
     id="$(extract_spec_id "$spec")"
     core_copy="$CORE_SPEC_DIR/$id.json"
     harmonyos_copy="$HARMONYOS_SPEC_DIR/$id.json"
+    windows_copy="$WINDOWS_SPEC_DIR/$id.json"
 
     if [[ ! -f "$core_copy" ]]; then
       fail "spec '$id': missing Swift copy $core_copy (run scripts/sync-specs-to-core.sh)"
@@ -457,11 +531,17 @@ check_spec_copies() {
     elif ! cmp -s "$spec" "$harmonyos_copy"; then
       fail "spec '$id': $harmonyos_copy differs from $spec (run scripts/sync-specs-to-harmonyos.sh)"
     fi
+
+    if [[ ! -f "$windows_copy" ]]; then
+      fail "spec '$id': missing Windows copy $windows_copy (run scripts/sync-specs-to-windows.sh)"
+    elif ! cmp -s "$spec" "$windows_copy"; then
+      fail "spec '$id': $windows_copy differs from $spec (run scripts/sync-specs-to-windows.sh)"
+    fi
   done
 
   # Stale copies whose provider directory no longer exists.
   local copy
-  for copy in "$CORE_SPEC_DIR"/*.json "$HARMONYOS_SPEC_DIR"/*.json; do
+  for copy in "$CORE_SPEC_DIR"/*.json "$HARMONYOS_SPEC_DIR"/*.json "$WINDOWS_SPEC_DIR"/*.json; do
     [[ -f "$copy" ]] || continue
     id="$(extract_spec_id "$copy")"
     local found=1 candidate
@@ -518,6 +598,61 @@ check_ohostest_contracts() {
   done
 }
 
+# --- Check 10: Windows contract copies match Contracts/ ---------------------
+
+check_windows_contracts() {
+  [[ -d "$CONTRACTS_DIR" ]] || { fail "missing $CONTRACTS_DIR"; return; }
+  if [[ ! -d "$WINDOWS_CONTRACTS_DIR" ]]; then
+    fail "missing $WINDOWS_CONTRACTS_DIR (run scripts/sync-contracts-to-windows.sh)"
+    return
+  fi
+
+  local hint="run scripts/sync-contracts-to-windows.sh"
+  local dir name diff_output
+
+  # Provider trees: contracts/<provider>/ matches Contracts/Providers/<provider>/.
+  for dir in "$CONTRACTS_DIR"/*/; do
+    name="$(basename "$dir")"
+    if ! diff_output="$(diff -r "$dir" "$WINDOWS_CONTRACTS_DIR/$name" 2>&1)"; then
+      fail "Windows contract copies for provider '$name' are out of sync ($hint):"$'\n'"$diff_output"
+    fi
+  done
+
+  # Aggregation and alerts trees: contracts/aggregation|alerts/ match
+  # Contracts/Aggregation|Alerts/.
+  local src_dir dst_name
+  for pair in "Aggregation aggregation" "Alerts alerts"; do
+    src_dir="${pair%% *}"
+    dst_name="${pair##* }"
+    if ! diff_output="$(diff -r "$REPO_ROOT/Contracts/$src_dir" "$WINDOWS_CONTRACTS_DIR/$dst_name" 2>&1)"; then
+      fail "Windows contract copies for Contracts/$src_dir are out of sync ($hint):"$'\n'"$diff_output"
+    fi
+  done
+
+  # No unexpected top-level entries beyond providers and aggregation/alerts.
+  local entry
+  for entry in "$WINDOWS_CONTRACTS_DIR"/*; do
+    [[ -e "$entry" ]] || continue
+    name="$(basename "$entry")"
+    [[ "$name" == "aggregation" || "$name" == "alerts" ]] && continue
+    [[ -d "$CONTRACTS_DIR/$name" ]] \
+      || fail "Windows contract copies have unexpected entry '$name' ($hint)"
+  done
+}
+
+# --- Check 11: per-platform parity scripts exist ----------------------------
+
+check_android_windows_parity_scripts_exist() {
+  [[ -f "$ANDROID_PARITY_SCRIPT" ]] \
+    || fail "missing $ANDROID_PARITY_SCRIPT"
+  [[ -x "$ANDROID_PARITY_SCRIPT" ]] \
+    || fail "$ANDROID_PARITY_SCRIPT is not executable (chmod +x scripts/verify-android-parity.sh)"
+  [[ -f "$WINDOWS_PARITY_SCRIPT" ]] \
+    || fail "missing $WINDOWS_PARITY_SCRIPT"
+  [[ -x "$WINDOWS_PARITY_SCRIPT" ]] \
+    || fail "$WINDOWS_PARITY_SCRIPT is not executable (chmod +x scripts/verify-windows-parity.sh)"
+}
+
 check_provider_id_sets
 check_protocol_allow_lists
 check_usage_provider_interface
@@ -527,18 +662,21 @@ check_contract_case_registration
 check_contract_case_step_urls
 check_spec_copies
 check_ohostest_contracts
+check_windows_contracts
+check_android_windows_parity_scripts_exist
 
 if (( errors > 0 )); then
   echo "FAIL: provider parity check found $errors problem(s)" >&2
   exit 1
 fi
 
-echo "OK: ProviderID sets match (Swift <-> ArkTS)"
+echo "OK: ProviderID sets match (Swift <-> ArkTS <-> Rust)"
 echo "OK: protocol enums, error tokens, snapshot fields, and spec versions match"
 echo "OK: UsageProvider shared interface members are present on both platforms"
 echo "OK: contract fixture triples complete under Contracts/Providers/"
 echo "OK: aggregation and alert contract fixture pairs are complete"
 echo "OK: every provider contract fixture case is registered in ArkTS CONTRACT_CASES"
 echo "OK: ArkTS CONTRACT_CASES step URLs match requests fixtures"
-echo "OK: spec.json copies byte-identical (Contracts <-> Swift core <-> HarmonyOS)"
+echo "OK: spec.json copies byte-identical (Contracts <-> Swift core <-> HarmonyOS <-> Windows)"
 echo "OK: ohosTest contract copies in sync with Contracts/ (Providers + Aggregation + Alerts)"
+echo "OK: Windows contract copies in sync with Contracts/ (Providers + Aggregation + Alerts)"

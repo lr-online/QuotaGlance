@@ -72,18 +72,27 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
    才允许全手写 provider——此时省略 spec.json 但 fixture 必须保留。为单个
    provider 扩 schema 是 anti-pattern；确需扩 schema 时，schema + README +
    双端引擎必须同改。
-3. **三处副本的同步纪律。** `Contracts/` 是唯一权威源，改动后必须重跑：
+3. **四处副本的同步纪律。** `Contracts/` 是唯一权威源，改动后必须重跑：
    `bash scripts/sync-specs-to-core.sh`（→ `Sources/QuotaGlanceCore/Resources/ProviderSpecs/`）、
    `bash scripts/sync-specs-to-harmonyos.sh`（→ `HarmonyOS/entry/src/main/resources/rawfile/providerspecs/`）、
+   `bash scripts/sync-specs-to-android.sh`（→ Android 对应资源目录）、
+   `bash scripts/sync-specs-to-windows.sh`（→ `Windows/src-tauri/assets/providerspecs/`）、
    `bash scripts/sync-contracts-to-harmonyos.sh`（→ `HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/`，
-   同步 `Contracts/Providers/`、`Contracts/Aggregation/`、`Contracts/Alerts/`）。随后
+   同步 `Contracts/Providers/`、`Contracts/Aggregation/`、`Contracts/Alerts/`）、
+   `bash scripts/sync-contracts-to-android.sh`（→ Android 对应测试资源目录）、
+   `bash scripts/sync-contracts-to-windows.sh`（→ `Windows/src-tauri/assets/contracts/`）。随后
    `bash scripts/verify-provider-parity.sh` 必须全绿；该脚本还要求每个 provider fixture
    case 都在 ArkTS `CONTRACT_CASES` 中登记，且各 step URL 与 `*-requests.json`
-   一致。同步产物禁止手改。
+   一致，并包含跨四端（Swift/ArkTS/Kotlin/Rust）的 ProviderID 与错误 token 同步校验。
+   各平台单独的 parity 脚本：`bash scripts/verify-android-parity.sh`、
+   `bash scripts/verify-windows-parity.sh`。同步产物禁止手改。
 4. **双端语义镜像。** provider / 聚合 / 告警的行为改动必须双端对应提交；确实
    无法一致的，显式登记进 `HarmonyOS/AGENTS.md` 的平台差异白名单，不允许静默
    漂移。现状是 ArkTS 已镜像 provider / aggregation / alerts 引擎，并消费对应契约
-   fixture；任何后续共享行为改动都必须双端一起改并附测试。
+   fixture；任何后续共享行为改动都必须双端一起改并附测试。Windows 端的 Rust
+   镜像增加了 provider / aggregation / alerts 三引擎 + DPAPI 凭据存储 + 同名
+   平台差异白名单（见 `Windows/AGENTS.md`），同样不允许在不更新合同与四端
+   实现的情况下静默改动行为。
 5. **错误 token 表是双端契约。** spec 只允许引用 `Contracts/README.md`
    "Error tokens" 一节列出的稳定 token；同一张表镜像在 ArkTS
    `UsageProvider.ets` 头注释与 Swift `ProviderError`（`UsageProvider.swift`）。
@@ -136,6 +145,30 @@ agent 添加平台支持时，按本清单逐项检查功能缺失，除非明�
   provider parity 校验或等价检查；共享 provider / aggregation / alerts 行为改动必须附平台测试，
   无法自动化的 UI/通知/后台能力需记录人工验证步骤。
 
+## Windows 端 baseline 状态（本次新增）
+
+逐项对照上方 12 项：
+
+| # | 能力 | 状态 | 备注 |
+|---|---|---|---|
+| 1 | Provider / spec 契约 | ✅ Implemented | Rust `domain.rs` + `providers/{spec_engine, spec_driven_provider, minimax_model_remains_strategy}` 镜像 Swift；`KNOWN_*` allow-list 与 Swift/Kotlin/ArkTS 对齐；`scripts/sync-specs-to-windows.sh` + `verify-windows-parity.sh` + `verify-provider-parity.sh` 四端守护 |
+| 2 | 账户与凭据生命周期 | ✅ Implemented | `storage/account_store.rs` 20 上限 + 去空白/重复校验；DPAPI `credential_vault.rs` 加密 API key；删除账户级联清凭据 + 快照；API key 空值校验 |
+| 3 | 用户偏好 | ✅ Implemented（+ 启动项差异） | `storage/preferences.rs`：interval 1/5/15/30/60、locale、notifications、launch_at_login opt-in、widget target。**启动项差异**：默认关闭，写 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 等用户主动开启 |
+| 4 | 刷新与快照存储 | ✅ Implemented | `refresh/refresh_coordinator.rs` 单/全部/间隔/启动/前台触发 + 失败隔离；`storage/snapshot_store.rs` per-UUID JSON + 失败保留 stale/unavailable 标记 |
+| 5 | 聚合与指标语义 | ✅ Implemented | `aggregation/snapshot_aggregator.rs` 镜像 Swift；7 天窗口 + 货币求和 + Int64 溢出 isPartial |
+| 6 | 账户级明细展示 | ✅ Implemented | React `AccountDetail.tsx` + breakdown + spend today/week/month/total + quota windows + daily/model + providerStatus + metricsUnavailableReason |
+| 7 | 告警与通知 | ✅ Implemented | `alerts/alert_evaluator.rs` 镜像 + episode 去抖 + recovery reset；`tauri-plugin-notification` 发本地 Toast |
+| 8 | 主界面 + Quick View | ✅ Implemented（+ Widget Board 差异） | 系统托盘 + popover + 主窗口 + widget 子进程。**Widget Board 差异**：v1 用 `WebviewWindow(label=widget)`；Win11 Widget Board App Identity 接入为 v2 待办 |
+| 9 | 账户编辑与设置 | ✅ Implemented | `AccountEdit.tsx` + `Settings.tsx` 走 settings 与 command 桥 |
+| 10 | 深链路 + 选择解析 | ✅ Implemented | `quotaglance://` scheme + `tauri-plugin-deep-link` + `tauri-plugin-single-instance` 锁进程；`getIntentPayload` 路由到前端 |
+| 11 | 本地化与格式化 | ✅ Implemented | `src/i18n/{en,zh-CN}.json`；`resolveLocale` 跟随 navigator.language；Rust `Money.amount` 字符串序列化对齐 ArkTS canonical |
+| 12 | 平台工程 + 质量门禁 | ✅ Implemented | `.github/workflows/windows.yml` 在 windows-latest 跑 sync → 跨端 verify-provider-parity.sh → verify-windows-parity.sh → cargo test → `cargo tauri build --bundles zip` + 上传 portable zip 产物；3 个新同步脚本加入常用命令 |
+
+**未做（明确登记）**：
+- 真实网络环境跑通 provider 端到端（本地 macOS/iOS runner 不存在，需要在 macOS 上手测；CI 只能跑单元/契约层）
+- 桌面小组件首次启动后被 DWM 截获导致无法被拖动的极端情况 — Windows 11 / 10 行为差异，登记为差异 v2 待补
+- Tauri 2 的 `tauri-plugin-clipboard-manager` 暂不接入（依赖 API key 复制场景），未来添加
+
 ## 新增一个 provider（操作清单）
 
 1. **写 spec**：新建 `Contracts/Providers/<lowercased-id>/spec.json`（目录名 =
@@ -176,8 +209,14 @@ agent 添加平台支持时，按本清单逐项检查功能缺失，除非明�
 | 脚本测试（单个） | `bash Tests/ScriptTests/<X>.sh`（AppIconTests / BuildEditionTests / DMGPackagingTests / GitHubActionsTests / LocalInstallSafetyTests） |
 | 同步 spec → Swift 资源 | `bash scripts/sync-specs-to-core.sh` |
 | 同步 spec → HarmonyOS rawfile | `bash scripts/sync-specs-to-harmonyos.sh` |
+| 同步 spec → Android 资源 | `bash scripts/sync-specs-to-android.sh` |
+| 同步 spec → Windows rawfile | `bash scripts/sync-specs-to-windows.sh` |
 | 同步契约 fixture → ohosTest rawfile | `bash scripts/sync-contracts-to-harmonyos.sh` |
-| 双端 parity 校验（改 Contracts 后必跑） | `bash scripts/verify-provider-parity.sh` |
+| 同步契约 fixture → Android 测试资源 | `bash scripts/sync-contracts-to-android.sh` |
+| 同步契约 fixture → Windows 测试资源 | `bash scripts/sync-contracts-to-windows.sh` |
+| 四端 parity 校验（改 Contracts 后必跑） | `bash scripts/verify-provider-parity.sh` |
+| Android 端单平台 parity | `bash scripts/verify-android-parity.sh` |
+| Windows 端单平台 parity | `bash scripts/verify-windows-parity.sh` |
 | HarmonyOS 构建 HAP | `bash scripts/build-harmonyos.sh`（需 `DEVECO_SDK_HOME` 或 `HOS_SDK_HOME`，ohpm 与 hvigorw 在 PATH；DevEco 本地环境另需 `JAVA_HOME` 指向 DevEco JBR） |
 
 CI 现状：`.github/workflows/ci.yml`（macos-14 + Xcode 16.2）跑 `swift test` +
