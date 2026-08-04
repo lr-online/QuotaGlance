@@ -19,6 +19,7 @@ import {
 } from '../aggregation/SnapshotAggregator';
 import { formatAmount, formatCompactCount } from '../utils/NumberFormat';
 import { buildScreensaverMessages, ScreensaverMessage, ScreensaverMessageSource } from '../utils/ScreensaverMessages';
+import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 
 const DOMAIN = 0x0000;
 const TAG = 'QuotaGlance';
@@ -27,6 +28,7 @@ const TAG = 'QuotaGlance';
 // for the formBindingData payload every card consumes (WidgetCard.ets reads
 // these keys via @LocalStorageProp):
 //   formId / formDimension - identity + grid dimension (1=1*2, 2=2*2, 3=2*4, 4=4*4)
+//   themeMode              - persisted app theme ('system', 'light' or 'dark')
 //   mode                   - 'aggregate' (总览) or 'account'
 //   title                  - '总览' or the account display name
 //   balanceText            - primary balance line ('12.34 CNY' / per-currency join)
@@ -43,6 +45,7 @@ const TAG = 'QuotaGlance';
 export interface CardDataParams {
   formId: string;
   dimension: number;
+  themeMode: ThemeMode;
   mode: string;
   title: string;
   balanceText: string;
@@ -59,6 +62,7 @@ function toBindingData(params: CardDataParams): formBindingData.FormBindingData 
   const data: Record<string, string> = {
     'formId': params.formId,
     'formDimension': `${params.dimension}`,
+    'themeMode': params.themeMode,
     'mode': params.mode,
     'title': params.title,
     'balanceText': params.balanceText,
@@ -118,6 +122,13 @@ export async function buildCardData(context: common.Context, formId: string): Pr
   const bindingStore = await FormBindingStore.create(context);
   const accountStore = await AccountStore.create(context);
   const snapshotStore = await SnapshotStore.create(context);
+  let themeMode: ThemeMode = 'system';
+  try {
+    const themeStore = await ThemeStore.create(context);
+    themeMode = await themeStore.load();
+  } catch (error) {
+    hilog.warn(DOMAIN, TAG, 'load card theme failed: %{public}s', (error as Error).message);
+  }
   const binding: FormBinding = (await bindingStore.bindingFor(formId)) ?? { dimension: 2 };
   const accounts = await accountStore.load();
 
@@ -134,6 +145,7 @@ export async function buildCardData(context: common.Context, formId: string): Pr
   const base: CardDataParams = {
     formId: formId,
     dimension: binding.dimension,
+    themeMode: themeMode,
     mode: target === null ? 'aggregate' : 'account',
     title: '',
     balanceText: '',

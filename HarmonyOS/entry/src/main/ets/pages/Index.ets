@@ -28,6 +28,7 @@ import { ThemeMode, ThemeStore } from '../storage/ThemeStore';
 import { applyLanguage } from '../utils/LanguageUtils';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 import { AccountDetailView, markAccountsRefreshedThisLaunch } from '../components/AccountDetailView';
+import { updateAllCards } from '../services/CardUpdater';
 
 // Aggregate currency ordering: CNY first, then USD, then the rest
 // alphabetically (mirrors the mac app's CNY/USD emphasis).
@@ -335,6 +336,7 @@ struct Index {
         // ThemeUtils): correct whether or not that callback fires for an
         // app-level setColorMode.
         reapplyWindowBackground(context);
+        return updateAllCards(context);
       })
       .catch((error: Object) => {
         promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
