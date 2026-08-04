@@ -97,7 +97,7 @@ cd Android
 ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleRelease
 ```
 
-release APK 位于 `Android/app/build/outputs/apk/release/app-release.apk`。GitHub Actions 在每个 PR 上传 debug/release APK artifact；推送 `v*` tag 后会将 `QuotaGlance-<version>-android-universal.apk` 和 SHA-256 添加到 GitHub Release。开源下载版使用 Android debug 证书以避免在仓库保存私钥，适合测试和侧载安装，不适用于 Play Store 或长期生产签名。
+release APK 位于 `Android/app/build/outputs/apk/release/app-release.apk`。GitHub Actions 在每个 PR 上传带应用版本与短 commit SHA 的 debug/release APK artifact。正式 `Release` 仅能手动选择一个已有的 `vX.Y.Z` tag；它会将该版本写入 Android APK，并把 `QuotaGlance-<version>-android-universal.apk` 和 SHA-256 发布到 GitHub Release。开源下载版使用 Android debug 证书以避免在仓库保存私钥，适合测试和侧载安装，不适用于 Play Store 或长期生产签名。
 
 
 ## 功能
@@ -188,13 +188,17 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 ## GitHub Actions
 
 - `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test`、版本构建约束、DMG 打包约束和本地安装安全检查。
-- `Release` 会在推送 `v*` tag 时自动打包 DMG，并把 `dist/*.dmg` 与对应的 `.sha256` 发布到 GitHub Release。
-- `Android` 会在 Android/Contracts 相关 PR 上同步契约、执行 JVM 测试和 lint，并构建 debug/release APK；同一 `v*` tag 将 Android universal APK 与 SHA-256 附加到 GitHub Release。
+- `Package macOS` 会在 pull request、`main` 和手动触发时构建 macOS DMG，并上传带 macOS 应用版本与短 commit SHA 的 artifact。
+- `Release` 只可手动触发，输入一个已存在的 `vX.Y.Z` tag。它从该 tag 构建 macOS 12/macOS 14 DMG 和 Android universal APK，所有下载包都附 SHA-256；发布说明取自上一个版本 tag 之后的非 merge 提交。
+- `Android` 会在 Android/Contracts 相关 PR 或 `main` 推送时同步契约、执行 JVM 测试和 lint，并上传带版本的 debug/release APK artifact。它不再独立创建 GitHub Release。
+- `HarmonyOS` 会上传带版本的未签名 HAP CI artifact，但不会附到 GitHub Release；公开可安装发布需要单独配置 HarmonyOS 签名。
 
-示例：
+开发者要求发布时应遵循 [`releasing-quotaglance` Skill](skills/releasing-quotaglance/SKILL.md)：先查看最新 tag 和其后的提交，选择下一个版本，完成验证并再次确认，再创建 tag 并手动 dispatch `Release`。
+
+手动触发 Release 前，tag 必须已存在：
 
 ```bash
-git tag v0.1.0
+git tag -a v0.1.0 -m "QuotaGlance v0.1.0"
 git push origin v0.1.0
 ```
 

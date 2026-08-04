@@ -64,5 +64,8 @@ jobs:
       - name: Verify DMG packaging
         run: /bin/bash Tests/ScriptTests/DMGPackagingTests.sh
 
+      - name: Verify release version helper
+        run: /bin/bash Tests/ScriptTests/ReleaseVersionTests.sh
+
       - name: Verify local install safety
         run: /bin/bash Tests/ScriptTests/LocalInstallSafetyTests.sh

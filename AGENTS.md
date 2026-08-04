@@ -4,6 +4,12 @@
 实现细节一律以代码和 `Contracts/README.md` 为准。HarmonyOS 端的专项说明见
 `HarmonyOS/AGENTS.md`。
 
+## 发布
+
+当开发者要求发布、release、打 tag 或分发 QuotaGlance 时，先读取并遵循仓库中的
+`skills/releasing-quotaglance/SKILL.md`。在开发者选定版本且再次明确批准前，不得创建
+或推送 tag，也不得触发 GitHub Release。
+
 ## 项目一句话
 
 macOS 菜单栏 + 桌面小组件应用，集中查看多个 AI API provider 的余额/配额；
