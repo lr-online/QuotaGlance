@@ -305,6 +305,11 @@ private fun AccountDetail(snapshot: AccountSnapshot?, account: QuotaAccount, cop
         }
         Text(copy.details, style = MaterialTheme.typography.titleMedium)
         Text(copy.health(snapshot.health), style = MaterialTheme.typography.bodySmall)
+        when (val health = snapshot.health) {
+            is AccountHealth.Stale -> Text(localizedError(health.reason, copy), style = MaterialTheme.typography.bodySmall)
+            is AccountHealth.Unavailable -> Text(localizedError(health.reason, copy), style = MaterialTheme.typography.bodySmall)
+            AccountHealth.Healthy, AccountHealth.BelowThreshold -> Unit
+        }
         snapshot.detectedProfile?.let { Text("${copy.profile}: ${profileDescription(it, copy)}") }
         snapshot.usage?.let { usage ->
             usage.providerStatus?.let { Text("${copy.providerStatus}: $it") }
