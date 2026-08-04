@@ -19,6 +19,7 @@ import com.liangrui.quotaglance.core.HttpRequest
 import com.liangrui.quotaglance.core.HttpResponse
 import com.liangrui.quotaglance.core.Money
 import com.liangrui.quotaglance.core.ProviderId
+import com.liangrui.quotaglance.core.ProviderFailure
 import com.liangrui.quotaglance.core.QuotaAccount
 import com.liangrui.quotaglance.core.RawHttpClient
 import com.liangrui.quotaglance.core.SpecDrivenProvider
@@ -27,6 +28,7 @@ import com.liangrui.quotaglance.data.PreferencesRepository
 import com.liangrui.quotaglance.widget.QuotaGlanceWidget
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,11 +46,16 @@ class OkHttpRawHttpClient(private val client: OkHttpClient = OkHttpClient()) : R
     override val requests: MutableList<HttpRequest> = mutableListOf()
 
     override suspend fun execute(request: HttpRequest): HttpResponse = withContext(Dispatchers.IO) {
-        val httpRequest = Request.Builder().url(request.url).method(request.method, null).apply {
-            request.headers.forEach { (name, value) -> header(name, value) }
-        }.build()
-        client.newCall(httpRequest).execute().use { response ->
-            HttpResponse(response.code, response.body?.string().orEmpty())
+        try {
+            val httpRequest = Request.Builder().url(request.url).method(request.method, null).apply {
+                request.headers.forEach { (name, value) -> header(name, value) }
+            }.build()
+            client.newCall(httpRequest).execute().use { response ->
+                HttpResponse(response.code, response.body?.string().orEmpty())
+            }
+        } catch (error: IOException) {
+            // Keep the UI actionable without ever including URLs, headers, or keys.
+            throw ProviderFailure("network", error::class.simpleName ?: "io")
         }
     }
 }

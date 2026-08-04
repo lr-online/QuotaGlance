@@ -87,7 +87,7 @@ class AccountSaveCoordinator(
     }
 
     private fun Throwable.token(): String = when (this) {
-        is CoreProviderFailure -> token
+        is CoreProviderFailure -> message ?: token
         else -> "offline"
     }
 }
