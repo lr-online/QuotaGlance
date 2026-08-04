@@ -14,13 +14,13 @@ fail() {
 assert_contains() {
   local needle="$1"
   local file="$2"
-  rg -Fq "$needle" "$file" || fail "$file missing: $needle"
+  grep -Fq -- "$needle" "$file" || fail "$file missing: $needle"
 }
 
 assert_not_contains() {
   local needle="$1"
   local file="$2"
-  ! rg -Fq "$needle" "$file" || fail "$file must not contain: $needle"
+  ! grep -Fq -- "$needle" "$file" || fail "$file must not contain: $needle"
 }
 
 # Widget pages run in the system form process. Keep swipe recognition inside
