@@ -1,0 +1,96 @@
+name: Windows Tauri client
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Windows/**"
+      - "Contracts/**"
+      - "scripts/sync-*windows*.sh"
+      - "scripts/verify-*parity*.sh"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "Windows/**"
+      - "Contracts/**"
+      - "scripts/sync-*windows*.sh"
+      - "scripts/verify-*parity*.sh"
+      - ".github/workflows/windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        shell: pwsh
+        run: |
+          if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+            winget install --id Rustlang.Rustup -e --accept-package-agreements --accept-source-agreements
+          }
+          rustup default stable
+          rustup target add x86_64-pc-windows-msvc
+          rustc --version
+
+      - name: Install Node.js + pnpm
+        shell: pwsh
+        run: |
+          if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+            winget install --id OpenJS.Nodejs.LTS -e --accept-package-agreements --accept-source-agreements
+          }
+          if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+            npm install -g pnpm
+          }
+          node --version
+          pnpm --version
+
+      - name: Sync spec + contract sources into Windows assets
+        shell: bash
+        run: |
+          bash scripts/sync-specs-to-windows.sh
+          bash scripts/sync-contracts-to-windows.sh
+
+      - name: Install front-end dependencies
+        working-directory: Windows
+        shell: pwsh
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Verify provider parity (Swift / ArkTS / Kotlin / Rust)
+        shell: bash
+        run: |
+          bash scripts/verify-provider-parity.sh
+
+      - name: Verify Windows-only parity
+        shell: bash
+        run: |
+          bash scripts/verify-windows-parity.sh
+
+      - name: Cargo test (engine, aggregation, alerts)
+        working-directory: Windows/src-tauri
+        shell: pwsh
+        run: cargo test --verbose
+
+      - name: Cargo build (NSIS + MSI)
+        working-directory: Windows/src-tauri
+        shell: pwsh
+        run: |
+          cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+          $exe = Get-ChildItem -Path ../target/release -Filter "*.exe" | Select-Object -First 1
+          if ($exe) { Write-Host "portable exe: $($exe.FullName) ($((Get-Item $exe.FullName).Length / 1MB) MB)" }
+
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotaglance-windows-installers
+          path: |
+            Windows/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+            Windows/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            Windows/target/release/*.exe
+          if-no-files-found: warn
+          retention-days: 14
