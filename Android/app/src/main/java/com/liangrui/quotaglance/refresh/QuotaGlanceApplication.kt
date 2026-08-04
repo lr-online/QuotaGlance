@@ -30,6 +30,7 @@ class AndroidAppContainer(application: Application) {
     val snapshots = DataStoreSnapshotRepository(application)
     val preferences = DataStorePreferencesRepository(application)
     val providers = AssetProviderRegistry(application)
+    val accountSaveLogger = AndroidAccountSaveLogger()
     val notificationDispatcher = AndroidNotificationDispatcher(application, preferences)
     val refreshCoordinator = RefreshCoordinator(
         providers = providers,

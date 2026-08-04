@@ -68,7 +68,7 @@ internal class EvalScope(
 }
 
 internal object SpecEngine {
-    private val template = Regex("\\$\\{([^}]+)}")
+    private val template = Regex("\\$\\{([^}]+)\\}")
 
     fun resolve(root: JsonElement?, path: String): JsonElement? {
         if (path.isEmpty()) return root?.takeUnless { it is JsonNull }

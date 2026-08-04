@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Constraints
@@ -46,19 +47,32 @@ class OkHttpRawHttpClient(private val client: OkHttpClient = OkHttpClient()) : R
     override val requests: MutableList<HttpRequest> = mutableListOf()
 
     override suspend fun execute(request: HttpRequest): HttpResponse = withContext(Dispatchers.IO) {
+        val endpoint = request.url.safeEndpoint()
+        Log.d(LOG_TAG, "http_start method=${request.method} endpoint=$endpoint")
         try {
             val httpRequest = Request.Builder().url(request.url).method(request.method, null).apply {
                 request.headers.forEach { (name, value) -> header(name, value) }
             }.build()
             client.newCall(httpRequest).execute().use { response ->
+                Log.d(LOG_TAG, "http_response method=${request.method} endpoint=$endpoint status=${response.code}")
                 HttpResponse(response.code, response.body?.string().orEmpty())
             }
         } catch (error: IOException) {
             // Keep the UI actionable without ever including URLs, headers, or keys.
+            Log.w(LOG_TAG, "http_failure method=${request.method} endpoint=$endpoint type=${error::class.simpleName ?: "IOException"}")
             throw ProviderFailure("network", detail = error::class.simpleName ?: "io")
         }
     }
+
+    private companion object {
+        const val LOG_TAG = "QuotaGlance/HTTP"
+    }
 }
+
+private fun String.safeEndpoint(): String = substringAfter("://", missingDelimiterValue = this)
+    .substringBefore('/')
+    .substringBefore('?')
+    .take(120)
 
 /** Loads every production provider from the synced contract assets. */
 class AssetProviderRegistry(

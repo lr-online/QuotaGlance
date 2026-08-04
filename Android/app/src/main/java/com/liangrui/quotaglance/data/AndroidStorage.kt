@@ -1,6 +1,7 @@
 package com.liangrui.quotaglance.data
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -267,9 +268,18 @@ class KeystoreCredentialVault(context: Context) : CredentialVault {
 
     override suspend fun read(accountId: String): String? = preferences.getString(accountId, null)
     override suspend fun write(accountId: String, apiKey: String) {
-        check(preferences.edit().putString(accountId, apiKey).commit()) { "credential write failed" }
+        try {
+            check(preferences.edit().putString(accountId, apiKey).commit()) { "credential write failed" }
+        } catch (error: Throwable) {
+            Log.e(TAG, "credential_write_failed type=${error::class.simpleName ?: "Throwable"}")
+            throw error
+        }
     }
     override suspend fun delete(accountId: String) {
         check(preferences.edit().remove(accountId).commit()) { "credential delete failed" }
+    }
+
+    private companion object {
+        const val TAG = "QuotaGlance/Storage"
     }
 }

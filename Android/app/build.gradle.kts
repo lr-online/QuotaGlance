@@ -15,12 +15,12 @@ require(releaseVersionCodeInput == null || releaseVersionCode != null && release
 
 android {
     namespace = "com.liangrui.quotaglance"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.liangrui.quotaglance"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = releaseVersionCode ?: 2
         versionName = releaseVersionName ?: "0.1.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -41,6 +41,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
             // Open-source GitHub releases use the Android debug key so the APK
