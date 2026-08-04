@@ -46,17 +46,13 @@ struct WidgetCard {
     return '#8FE8DF';
   }
 
-  @Builder
-  footerButton() {
-    Button(this.mode === 'account' ? '查看详情' : $r('app.string.open_app'))
-      .fontSize(12)
-      .fontColor('#12161F')
-      .backgroundColor('#57E0D6')
-      .borderRadius(14)
-      .height(28)
-      .onClick(() => {
-        this.openApp();
-      })
+  private requestAccountSwitch(direction: string): void {
+    postCardAction(this, {
+      action: 'message',
+      params: {
+        message: direction
+      }
+    });
   }
 
   @Builder
@@ -173,7 +169,8 @@ struct WidgetCard {
     .alignItems(HorizontalAlign.Start)
   }
 
-  build() {
+  @Builder
+  cardPage() {
     Column({ space: 8 }) {
       if (this.dimension() >= 3) {
         this.listBody()
@@ -181,7 +178,6 @@ struct WidgetCard {
         this.compactBody()
       }
 
-      this.footerButton()
     }
     .width('100%')
     .height('100%')
@@ -189,5 +185,28 @@ struct WidgetCard {
     .padding(12)
     .backgroundColor('#12161F')
     .borderRadius(16)
+    .onClick(() => {
+      this.openApp();
+    })
+  }
+
+  build() {
+    Swiper() {
+      this.cardPage()
+      this.cardPage()
+      this.cardPage()
+    }
+    .index(1)
+    .loop(false)
+    .indicator(false)
+    .width('100%')
+    .height('100%')
+    .onChange((index: number) => {
+      if (index === 0) {
+        this.requestAccountSwitch('right');
+      } else if (index === 2) {
+        this.requestAccountSwitch('left');
+      }
+    })
   }
 }
