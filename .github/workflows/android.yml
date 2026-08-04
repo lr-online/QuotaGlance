@@ -70,6 +70,9 @@ jobs:
         run: |
           set -euo pipefail
           version="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts)"
+          if [[ -z "$version" ]]; then
+            version="$(sed -n 's/^[[:space:]]*versionName = releaseVersionName ?: "\([^"]*\)".*/\1/p' app/build.gradle.kts)"
+          fi
           [[ -n "$version" ]] || {
             echo "Unable to read Android versionName" >&2
             exit 1

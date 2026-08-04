@@ -158,7 +158,7 @@ class RefreshCoordinator(
     }
 
     private fun Throwable.token(): String = when (this) {
-        is ProviderFailure -> token
+        is ProviderFailure -> message ?: token
         else -> "offline"
     }
 }

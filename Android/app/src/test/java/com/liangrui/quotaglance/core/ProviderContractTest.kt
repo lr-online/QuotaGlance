@@ -13,6 +13,13 @@ import org.junit.Test
 
 class ProviderContractTest {
     @Test
+    fun `network failures retain a safe diagnostic token`() {
+        val failure = ProviderFailure("network", detail = "SSLHandshakeException")
+
+        assertEquals("network:SSLHandshakeException", failure.message)
+    }
+
+    @Test
     fun `request templates interpolate the supplied api key`() = runTest {
         val transport = FixtureTransport("apiinfo", "usage", listOf(200))
         val provider = SpecDrivenProvider(
