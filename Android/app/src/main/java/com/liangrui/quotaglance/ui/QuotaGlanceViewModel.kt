@@ -44,6 +44,7 @@ class QuotaGlanceViewModel(
         credentials = container.credentials,
         mutationService = mutationService,
         refreshCoordinator = container.refreshCoordinator,
+        logger = container.accountSaveLogger,
     )
     private val mutableState = MutableStateFlow(QuotaGlanceUiState(route = initialRoute))
     private val refreshMutex = Mutex()

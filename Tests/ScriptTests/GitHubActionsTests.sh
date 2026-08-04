@@ -188,7 +188,7 @@ rg -q '^concurrency:$' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not declare concurrency"
 rg -Fq 'java-version: "17"' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not use JDK 17"
-rg -Fq 'sdkmanager "platforms;android-35" "build-tools;35.0.0"' "$ANDROID_WORKFLOW" \
+rg -Fq 'sdkmanager "platforms;android-36" "build-tools;36.0.0"' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not install the required SDK inputs"
 rg -Fq 'scripts/sync-specs-to-android.sh' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not sync provider specs"
