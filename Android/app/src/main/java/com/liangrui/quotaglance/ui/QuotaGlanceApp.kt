@@ -1,7 +1,5 @@
 package com.liangrui.quotaglance.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -292,24 +289,6 @@ private fun StatusChip(status: DashboardStatus, copy: AppCopy) {
     }
     Surface(color = color, shape = MaterialTheme.shapes.small) {
         Text(copy.status(status), modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), style = MaterialTheme.typography.labelLarge)
-    }
-}
-
-@Composable
-private fun AccountRow(account: QuotaAccount, snapshot: AccountSnapshot?, copy: AppCopy, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(account.displayName, style = MaterialTheme.typography.titleMedium)
-                Text(account.provider.raw, style = MaterialTheme.typography.labelMedium)
-            }
-            Text(snapshot?.remaining?.let(::formatMoney) ?: copy.noBalance, style = MaterialTheme.typography.bodyLarge)
-            Text(snapshot?.let { copy.health(it.health) } ?: copy.notRefreshed, style = MaterialTheme.typography.bodySmall)
-            account.detectedProfile?.let { Text(profileDescription(it, copy), style = MaterialTheme.typography.bodySmall) }
-        }
     }
 }
 
