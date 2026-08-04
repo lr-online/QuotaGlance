@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,6 +39,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -79,8 +81,10 @@ fun QuotaGlanceApp(
     var languageMenu by remember { mutableStateOf(false) }
     QuotaGlanceTheme(themeMode = state.preferences.themeMode) {
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                     title = { Text(if (state.section == AppSection.Overview) "QuotaGlance" else copy.section(state.section)) },
                     navigationIcon = {
                         if (state.section != AppSection.Overview) {
@@ -193,16 +197,7 @@ private fun OverviewScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusChip(dashboard.status, copy)
-                if (dashboard.aggregate.balances.isEmpty()) {
-                    Text(if (dashboard.status == DashboardStatus.Empty) copy.emptyOverview else copy.noBalance, style = MaterialTheme.typography.bodyLarge)
-                } else {
-                    dashboard.aggregate.balances.forEach { Text(formatMoney(it), style = MaterialTheme.typography.headlineMedium) }
-                }
-                dashboard.aggregate.todayActualCost?.let { Text("${copy.today}: ${formatMoney(it)}") }
-                dashboard.aggregate.todayRequests?.let { Text("${copy.requests}: $it") }
-            }
+            DashboardSummaryCard(dashboard, copy)
         }
         item {
             Text(copy.providers, style = MaterialTheme.typography.titleMedium)
@@ -252,8 +247,16 @@ private fun ProviderOverviewRow(summary: ProviderOverview, copy: AppCopy) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 14.dp).width(4.dp),
+            ) {}
+            Column(modifier = Modifier.padding(14.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(summary.displayName, style = MaterialTheme.typography.titleMedium)
                 Text("${summary.enabledAccountCount} ${copy.accounts.lowercase()}", style = MaterialTheme.typography.labelMedium)
@@ -274,6 +277,48 @@ private fun ProviderOverviewRow(summary: ProviderOverview, copy: AppCopy) {
             }
             if (!summary.hasData) Text(copy.notRefreshed, style = MaterialTheme.typography.bodySmall)
             if (summary.isStale) Text(copy.staleData, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardSummaryCard(dashboard: DashboardState, copy: AppCopy) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(if (copy.chinese) "总览" else "Overview", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (dashboard.aggregate.balances.isEmpty()) {
+                        Text(if (dashboard.status == DashboardStatus.Empty) copy.emptyOverview else copy.noBalance, style = MaterialTheme.typography.titleMedium)
+                    } else {
+                        Text(dashboard.aggregate.balances.joinToString(separator = " · ", transform = ::formatMoney), style = MaterialTheme.typography.headlineMedium)
+                    }
+                }
+                StatusChip(dashboard.status, copy)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SummaryMetric(copy.today, dashboard.aggregate.todayActualCost?.let(::formatMoney) ?: "-", Modifier.weight(1f))
+                SummaryMetric(copy.requests, dashboard.aggregate.todayRequests?.toString() ?: "-", Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryMetric(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
         }
     }
 }
@@ -294,10 +339,16 @@ private fun StatusChip(status: DashboardStatus, copy: AppCopy) {
 
 @Composable
 private fun AccountDetail(snapshot: AccountSnapshot?, account: QuotaAccount, copy: AppCopy) {
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = MaterialTheme.shapes.large,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+    Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(account.displayName, style = MaterialTheme.typography.titleMedium)
-            Text(account.provider.raw, style = MaterialTheme.typography.labelMedium)
+            Text(copy.providerName(account.provider), style = MaterialTheme.typography.labelMedium)
         }
         if (snapshot == null) {
             Text(copy.notRefreshed, style = MaterialTheme.typography.bodyMedium)
@@ -356,6 +407,7 @@ private fun AccountDetail(snapshot: AccountSnapshot?, account: QuotaAccount, cop
             Text("${copy.lastUpdated}: ${Instant.ofEpochMilli(usage.receivedAtMillis)}", style = MaterialTheme.typography.bodySmall)
         }
     }
+    }
 }
 
 @Composable
@@ -403,7 +455,7 @@ private fun AccountsScreen(state: QuotaGlanceUiState, copy: AppCopy, viewModel: 
     ) {
         item {
             if (!editorVisible) {
-                Button(onClick = { editorVisible = true; load(null) }) {
+                Button(onClick = { editorVisible = true; load(null) }, modifier = Modifier.fillMaxWidth()) {
                     Text(copy.addAccount)
                 }
             }
@@ -412,77 +464,85 @@ private fun AccountsScreen(state: QuotaGlanceUiState, copy: AppCopy, viewModel: 
             Text(copy.accounts, style = MaterialTheme.typography.titleMedium)
         }
         item {
-            if (editorVisible) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(if (editing == null) copy.addAccount else copy.editAccount, style = MaterialTheme.typography.titleLarge)
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(copy.accountName) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    label = {
-                        Text(
-                            when {
-                                editing == null -> copy.apiKey
-                                originalProvider != null && originalProvider != provider -> copy.replaceKeyRequired
-                                else -> copy.replaceKey
-                            },
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(copy.provider, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { providerMenu = true }) { Text(provider.raw) }
-                    DropdownMenu(expanded = providerMenu, onDismissRequest = { providerMenu = false }) {
-                        ProviderId.entries.forEach { id ->
-                            DropdownMenuItem(text = { Text(id.raw) }, onClick = { provider = id; providerMenu = false })
-                        }
-                    }
-                }
-                if (supportsLowBalanceThreshold) {
+            if (editorVisible) Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = MaterialTheme.shapes.large,
+            ) {
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(if (editing == null) copy.addAccount else copy.editAccount, style = MaterialTheme.typography.titleLarge)
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(copy.accountName) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(
-                        value = threshold,
-                        onValueChange = { threshold = it },
-                        label = { Text(copy.lowBalanceThreshold) },
+                        value = apiKey,
+                        onValueChange = { apiKey = it },
+                        label = {
+                            Text(
+                                when {
+                                    editing == null -> copy.apiKey
+                                    originalProvider != null && originalProvider != provider -> copy.replaceKeyRequired
+                                    else -> copy.replaceKey
+                                },
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
                     )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(copy.enabled, modifier = Modifier.weight(1f))
-                    Switch(checked = enabled, onCheckedChange = { enabled = it })
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        viewModel.saveAccount(editing, name, provider, apiKey, enabled, threshold)
-                        if (editing == null) {
-                            editorVisible = false
-                            load(null)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(copy.provider, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { providerMenu = true }) { Text(copy.providerName(provider)) }
+                        DropdownMenu(expanded = providerMenu, onDismissRequest = { providerMenu = false }) {
+                            ProviderId.entries.forEach { id ->
+                                DropdownMenuItem(text = { Text(copy.providerName(id)) }, onClick = { provider = id; providerMenu = false })
+                            }
                         }
-                    }) { Text(copy.save) }
-                    OutlinedButton(onClick = { editorVisible = false; load(null) }) { Text(copy.cancel) }
+                    }
+                    if (supportsLowBalanceThreshold) {
+                        OutlinedTextField(
+                            value = threshold,
+                            onValueChange = { threshold = it },
+                            label = { Text(copy.lowBalanceThreshold) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(copy.enabled, modifier = Modifier.weight(1f))
+                        Switch(checked = enabled, onCheckedChange = { enabled = it })
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            viewModel.saveAccount(editing, name, provider, apiKey, enabled, threshold)
+                            if (editing == null) {
+                                editorVisible = false
+                                load(null)
+                            }
+                        }) { Text(copy.save) }
+                        OutlinedButton(onClick = { editorVisible = false; load(null) }) { Text(copy.cancel) }
+                    }
                 }
             }
         }
-        item { HorizontalDivider() }
         items(state.accounts.sortedBy { it.sortOrder }, key = { it.id }) { account ->
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(account.displayName, style = MaterialTheme.typography.titleMedium)
-                    Text(account.provider.raw, style = MaterialTheme.typography.bodySmall)
-                }
-                Switch(checked = account.isEnabled, onCheckedChange = { viewModel.setEnabled(account, it) })
-                TextButton(onClick = { editorVisible = true; load(account) }) { Text(copy.edit) }
-                TextButton(onClick = {
-                    viewModel.deleteAccount(account.id)
-                    if (editing == account.id) {
-                        editorVisible = false
-                        load(null)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Row(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(account.displayName, style = MaterialTheme.typography.titleMedium)
+                        Text(copy.providerName(account.provider), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                }) { Text(copy.delete) }
+                    Switch(checked = account.isEnabled, onCheckedChange = { viewModel.setEnabled(account, it) })
+                    TextButton(onClick = { editorVisible = true; load(account) }) { Text(copy.edit) }
+                    TextButton(onClick = {
+                        viewModel.deleteAccount(account.id)
+                        if (editing == account.id) {
+                            editorVisible = false
+                            load(null)
+                        }
+                    }) { Text(copy.delete) }
+                }
             }
-            HorizontalDivider()
         }
     }
 }
@@ -500,6 +560,11 @@ private fun SettingsScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = MaterialTheme.shapes.large,
+        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(copy.settings, style = MaterialTheme.typography.titleLarge)
         Text(copy.refreshInterval, style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -549,6 +614,8 @@ private fun SettingsScreen(
         Text(if (notificationsGranted) copy.notificationsEnabled else copy.notificationsNeeded, style = MaterialTheme.typography.bodyMedium)
         if (!notificationsGranted) OutlinedButton(onClick = requestNotificationPermission) { Text(copy.enableNotifications) }
         Text(copy.backgroundScheduling, style = MaterialTheme.typography.bodySmall)
+        }
+        }
     }
 }
 
@@ -631,6 +698,14 @@ internal data class AppCopy(val preferredLanguage: AppLanguage) {
         AppThemeMode.Light -> if (chinese) "浅色" else "Light"
         AppThemeMode.Dark -> if (chinese) "深色" else "Dark"
     }
+    fun providerName(value: ProviderId): String = when (value) {
+        ProviderId.API_INFO -> "API Info"
+        ProviderId.DEEP_SEEK -> "DeepSeek"
+        ProviderId.KIMI -> "Kimi"
+        ProviderId.OPEN_ROUTER -> "OpenRouter"
+        ProviderId.MINI_MAX -> "MiniMax"
+        ProviderId.BIO_MAP_CODING -> if (chinese) "BioMap Coding" else "BioMap Coding"
+    }
     fun status(status: DashboardStatus): String = when (status) {
         DashboardStatus.Empty -> if (chinese) "未配置" else "Not configured"
         DashboardStatus.Healthy -> if (chinese) "正常" else "Healthy"
@@ -650,15 +725,16 @@ internal fun appCopy(language: AppLanguage): AppCopy = AppCopy(
     if (language == AppLanguage.System && Locale.getDefault().language.startsWith("zh", ignoreCase = true)) AppLanguage.Chinese else language,
 )
 
-private fun localizedError(message: String, copy: AppCopy): String = when (message) {
-    "EmptyDisplayName" -> if (copy.chinese) "请输入账户名称。" else "Enter an account name."
-    "DuplicateDisplayName" -> if (copy.chinese) "账户名称已存在。" else "An account with this name already exists."
-    "EmptyApiKey" -> if (copy.chinese) "请输入 API key。" else "Enter an API key."
-    "InvalidThreshold" -> if (copy.chinese) "请输入有效的非负阈值。" else "Enter a valid non-negative threshold."
-    "unauthorized", "invalidCredential" -> if (copy.chinese) "API key 无效或没有访问权限。" else "The API key is invalid or is not authorized."
-    "rateLimited" -> if (copy.chinese) "服务商当前限制了请求。" else "The provider is currently rate-limiting requests."
-    "offline", "network" -> if (copy.chinese) "无法连接到服务商。" else "Unable to connect to the provider."
-    "AccountLimit" -> if (copy.chinese) "最多支持 20 个账户。" else "A maximum of 20 accounts is supported."
+private fun localizedError(message: String, copy: AppCopy): String = when {
+    message == "EmptyDisplayName" -> if (copy.chinese) "请输入账户名称。" else "Enter an account name."
+    message == "DuplicateDisplayName" -> if (copy.chinese) "账户名称已存在。" else "An account with this name already exists."
+    message == "EmptyApiKey" -> if (copy.chinese) "请输入 API key。" else "Enter an API key."
+    message == "InvalidThreshold" -> if (copy.chinese) "请输入有效的非负阈值。" else "Enter a valid non-negative threshold."
+    message == "unauthorized" || message == "invalidCredential" -> if (copy.chinese) "API key 无效或没有访问权限。" else "The API key is invalid or is not authorized."
+    message == "rateLimited" -> if (copy.chinese) "服务商当前限制了请求。" else "The provider is currently rate-limiting requests."
+    message == "offline" || message == "network" || message.startsWith("network:") -> if (copy.chinese) "无法连接到服务商，请检查网络后重试。" else "Unable to connect to the provider. Check your network and try again."
+    message.startsWith("httpStatus:") -> if (copy.chinese) "服务商返回 HTTP ${message.removePrefix("httpStatus:")}。" else "The provider returned HTTP ${message.removePrefix("httpStatus:")}."
+    message == "AccountLimit" -> if (copy.chinese) "最多支持 20 个账户。" else "A maximum of 20 accounts is supported."
     else -> message
 }
 

@@ -32,8 +32,16 @@ interface UsageProvider {
     suspend fun fetch(apiKey: String, profile: ProviderProfile): ProviderUsageSnapshot
 }
 
-class ProviderFailure(val token: String, val statusCode: Int? = null) : Exception(
-    if (token == "httpStatus") "httpStatus:${statusCode ?: 0}" else token,
+class ProviderFailure(
+    val token: String,
+    val statusCode: Int? = null,
+    val detail: String? = null,
+) : Exception(
+    when {
+        token == "httpStatus" -> "httpStatus:${statusCode ?: 0}"
+        token == "network" && !detail.isNullOrBlank() -> "network:$detail"
+        else -> token
+    },
 )
 
 fun Throwable.providerToken(): String =

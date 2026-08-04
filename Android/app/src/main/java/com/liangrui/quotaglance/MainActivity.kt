@@ -22,7 +22,9 @@ import com.liangrui.quotaglance.ui.shouldRequestNotificationPermission
 
 class MainActivity : ComponentActivity() {
     private var notificationsGranted by mutableStateOf(false)
+    private var notificationPermissionInFlight = false
     private val notificationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationPermissionInFlight = false
         notificationsGranted = granted
     }
     private val viewModel: QuotaGlanceViewModel by viewModels {
@@ -38,7 +40,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             QuotaGlanceApp(viewModel, notificationsGranted, ::requestNotificationPermissionIfNeeded)
         }
-        requestNotificationPermissionIfNeeded()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -54,13 +55,21 @@ class MainActivity : ComponentActivity() {
         viewModel.startForegroundRefresh()
     }
 
+    override fun onPostResume() {
+        super.onPostResume()
+        // Request only after the Activity is resumed. Some Android 13+ builds
+        // silently ignore an ActivityResult launch during onCreate.
+        requestNotificationPermissionIfNeeded()
+    }
+
     override fun onPause() {
         viewModel.stopForegroundRefresh()
         super.onPause()
     }
 
     private fun requestNotificationPermissionIfNeeded() {
-        if (shouldRequestNotificationPermission(Build.VERSION.SDK_INT, hasNotificationPermission())) {
+        if (!notificationPermissionInFlight && shouldRequestNotificationPermission(Build.VERSION.SDK_INT, hasNotificationPermission())) {
+            notificationPermissionInFlight = true
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
