@@ -52,6 +52,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
     const placeholder: Record<string, string> = {
       'formId': formId ?? '',
       'formDimension': '' + dimension,
+      'themeMode': 'system',
       'mode': 'aggregate',
       'title': this.context.resourceManager.getStringSync($r('app.string.overview_label').id),
       'balanceText': this.context.resourceManager.getStringSync($r('app.string.widget_loading').id),
