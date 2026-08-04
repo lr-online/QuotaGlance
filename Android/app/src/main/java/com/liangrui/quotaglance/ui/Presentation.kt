@@ -31,6 +31,12 @@ sealed interface AppRoute {
     }
 }
 
+/** Returns the account shown in the detail pane for a route, with a stable fallback for All. */
+internal fun selectedAccountForRoute(route: AppRoute, accounts: List<QuotaAccount>): QuotaAccount? = when (route) {
+    AppRoute.All -> accounts.firstOrNull { it.isEnabled } ?: accounts.firstOrNull()
+    is AppRoute.Account -> accounts.firstOrNull { it.id == route.id }
+}
+
 sealed interface QuickViewSelection {
     data object All : QuickViewSelection
     data object Default : QuickViewSelection
