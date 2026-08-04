@@ -16,7 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Palette
@@ -88,7 +88,7 @@ fun QuotaGlanceApp(
                     navigationIcon = {
                         if (state.section != AppSection.Overview) {
                             IconButton(onClick = { viewModel.setSection(AppSection.Overview) }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = copy.back)
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = copy.back)
                             }
                         }
                     },
