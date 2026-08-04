@@ -1,6 +1,7 @@
 package com.liangrui.quotaglance.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -83,7 +85,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.liangrui.quotaglance.core.AccountHealth
 import com.liangrui.quotaglance.core.AccountSnapshot
+import com.liangrui.quotaglance.core.DailyUsage
 import com.liangrui.quotaglance.core.Money
+import com.liangrui.quotaglance.core.ModelUsage
 import com.liangrui.quotaglance.core.ProviderId
 import com.liangrui.quotaglance.core.QuotaAccount
 import com.liangrui.quotaglance.core.UsageCounters
@@ -92,6 +96,8 @@ import com.liangrui.quotaglance.data.AppPreferences
 import com.liangrui.quotaglance.data.AppThemeMode
 import com.liangrui.quotaglance.data.RefreshInterval
 import java.time.Instant
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -113,19 +119,10 @@ fun QuotaGlanceApp(
             topBar = {
                 TopAppBar(
                     title = {
-                        Column {
-                            Text(
-                                if (state.section == AppSection.Overview) "QuotaGlance" else copy.section(state.section),
-                                style = MaterialTheme.typography.titleLarge,
-                            )
-                            if (state.section == AppSection.Overview && state.accounts.isNotEmpty()) {
-                                Text(
-                                    copy.liveOverview,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+                        Text(
+                            if (state.section == AppSection.Overview) "QuotaGlance" else copy.section(state.section),
+                            style = MaterialTheme.typography.titleLarge,
+                        )
                     },
                     navigationIcon = {
                         if (state.section != AppSection.Overview) {
@@ -249,10 +246,13 @@ private fun OverviewScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { OverviewHero(dashboard, copy) }
+        if (dashboard.aggregate.dailyUsage.isNotEmpty()) {
+            item { DailyUsageSection(dashboard, copy) }
+        }
         item {
             SectionHeading(copy.providers, copy.providerSummary(summaries.size))
         }
@@ -269,9 +269,6 @@ private fun OverviewScreen(
                 val snapshot = state.snapshots.firstOrNull { it.accountId == account.id }
                 AccountDetail(snapshot, account, copy)
             }
-        }
-        if (dashboard.aggregate.dailyUsage.isNotEmpty()) {
-            item { DailyUsageSection(dashboard, copy) }
         }
     }
 }
@@ -309,13 +306,13 @@ private fun EmptyOverview(copy: AppCopy, viewModel: QuotaGlanceViewModel) {
 private fun OverviewHero(dashboard: DashboardState, copy: AppCopy) {
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.extraLarge,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(copy.availableBalance, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f))
+                    Text(copy.availableBalance, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f))
                     Spacer(Modifier.height(4.dp))
                     if (dashboard.aggregate.balances.isEmpty()) {
                         Text(
@@ -325,7 +322,14 @@ private fun OverviewHero(dashboard: DashboardState, copy: AppCopy) {
                         )
                     } else {
                         dashboard.aggregate.balances.forEach { balance ->
-                            Text(formatMoney(balance), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(
+                                formatMoney(balance),
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }
@@ -333,7 +337,7 @@ private fun OverviewHero(dashboard: DashboardState, copy: AppCopy) {
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 MetricTile(copy.today, dashboard.aggregate.todayActualCost?.let(::formatMoney) ?: "-", Modifier.weight(1f))
-                MetricTile(copy.requests, dashboard.aggregate.todayRequests?.toString() ?: "-", Modifier.weight(1f))
+                MetricTile(copy.requests, dashboard.aggregate.todayRequests?.let(::formatCount) ?: "-", Modifier.weight(1f))
             }
         }
     }
@@ -371,11 +375,11 @@ private fun ProviderOverviewRow(summary: ProviderOverview, copy: AppCopy) {
         else -> copy.status(DashboardStatus.Healthy)
     }
     Surface(
-        modifier = Modifier.fillMaxWidth().border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), MaterialTheme.shapes.medium),
-        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
         shape = MaterialTheme.shapes.medium,
     ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ProviderGlyph(summary.provider)
                 Spacer(Modifier.width(12.dp))
@@ -393,10 +397,10 @@ private fun ProviderOverviewRow(summary: ProviderOverview, copy: AppCopy) {
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                summary.todayRequests?.let { Text("${copy.requests}  $it", style = MaterialTheme.typography.bodySmall) }
+                summary.todayRequests?.let { Text("${copy.requests}  ${formatCount(it)}", style = MaterialTheme.typography.bodySmall) }
                 summary.todayCosts.firstOrNull()?.let { Text("${copy.today}  ${formatMoney(it)}", style = MaterialTheme.typography.bodySmall) }
                 summary.quotaWindows.firstOrNull()?.let { window ->
-                    Text("${copy.remaining}  ${window.remaining?.toPlainString() ?: "-"} ${window.unit}", style = MaterialTheme.typography.bodySmall)
+                    Text("${copy.remaining}  ${window.remaining?.let(::formatQuantity) ?: "-"} ${window.unit}", style = MaterialTheme.typography.bodySmall)
                 }
             }
             if (summary.requestFraction > 0.0) {
@@ -465,11 +469,11 @@ private fun StatusBadge(status: DashboardStatus, copy: AppCopy) {
 @Composable
 private fun AccountDetail(snapshot: AccountSnapshot?, account: QuotaAccount, copy: AppCopy) {
     Surface(
-        modifier = Modifier.fillMaxWidth().border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), MaterialTheme.shapes.large),
+        modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.extraLarge,
     ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(account.displayName, style = MaterialTheme.typography.titleLarge)
@@ -491,54 +495,180 @@ private fun AccountDetail(snapshot: AccountSnapshot?, account: QuotaAccount, cop
             }
             snapshot.usage?.let { usage ->
                 usage.balances.forEach { balance ->
-                    DetailSectionTitle(balance.label)
-                    DetailLine(copy.availableBalance, formatMoney(balance.available), emphasized = true)
-                    balance.breakdown.forEach { entry -> DetailLine(entry.label, formatMoney(entry.value)) }
+                    BalanceSummary(balance, copy)
                 }
                 usage.spendingLimit?.let { limit ->
-                    DetailSectionTitle(limit.label)
-                    DetailLine(copy.used, limit.used?.let(::formatMoney) ?: "-")
-                    DetailLine(copy.limit, limit.limit?.let(::formatMoney) ?: "-")
-                    limit.remaining?.let { DetailLine(copy.remaining, formatMoney(it), emphasized = true) }
-                    limit.resetDescription?.let { DetailLine(copy.reset, it) }
+                    SpendingLimitSummary(limit, copy)
                 }
-                if (usage.spend.today != null || usage.spend.week != null || usage.spend.month != null || usage.spend.total != null) {
-                    DetailSectionTitle(copy.spend)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SpendTile(copy.today, usage.spend.today?.let(::formatMoney) ?: "-", Modifier.weight(1f))
-                        SpendTile(copy.week, usage.spend.week?.let(::formatMoney) ?: "-", Modifier.weight(1f))
-                    }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SpendTile(copy.month, usage.spend.month?.let(::formatMoney) ?: "-", Modifier.weight(1f))
-                        SpendTile(copy.total, usage.spend.total?.let(::formatMoney) ?: "-", Modifier.weight(1f))
-                    }
+                SpendSummary(usage, copy)
+                if (usage.quotaWindows.isNotEmpty()) {
+                    QuotaWindowsSummary(usage.quotaWindows, copy)
                 }
-                usage.quotaWindows.forEach { window ->
-                    DetailSectionTitle(window.label)
-                    DetailLine(copy.remaining, "${window.remaining?.toPlainString() ?: "-"} ${window.unit}", emphasized = true)
-                    window.resetsAtMillis?.let { DetailLine(copy.resetsAt, Instant.ofEpochMilli(it).toString()) }
-                }
-                usage.today?.let { CountersDetail(copy.today, it, copy) }
-                usage.total?.let { CountersDetail(copy.total, it, copy) }
+                usage.today?.let { CountersSummary(copy.today, it, copy) }
+                usage.total?.let { CountersSummary(copy.total, it, copy) }
                 if (usage.dailyUsage.isNotEmpty()) {
-                    DetailSectionTitle(copy.recentUsage)
-                    usage.dailyUsage.forEach { entry ->
-                        DetailLine(entry.date, "${formatMoney(entry.actualCost)}${entry.requests?.let { "  ${copy.requests}: $it" }.orEmpty()}")
-                    }
+                    DailyUsageChart(usage.dailyUsage, copy)
                 }
                 if (usage.modelUsage.isNotEmpty()) {
-                    DetailSectionTitle(copy.models)
-                    usage.modelUsage.forEach { model ->
-                        val fields = listOfNotNull(model.actualCost?.let(::formatMoney), model.requests?.let { "${copy.requests}: $it" }, model.totalTokens?.let { "${copy.totalTokens}: $it" })
-                        DetailLine(model.model, fields.joinToString("  "))
-                    }
+                    ModelUsageSummary(usage.modelUsage, copy)
                 }
                 usage.providerStatus?.let { DetailLine(copy.providerStatus, it) }
                 usage.metricsUnavailableReason?.let { DetailLine(copy.metricsUnavailable, it) }
-                DetailLine(copy.lastUpdated, Instant.ofEpochMilli(usage.receivedAtMillis).toString())
+                DetailLine(copy.lastUpdated, formatUpdatedAt(usage.receivedAtMillis))
             }
         }
     }
+}
+
+@Composable
+private fun BalanceSummary(balance: com.liangrui.quotaglance.core.MonetaryBalance, copy: AppCopy) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        DetailSectionTitle(balance.label)
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Text(copy.availableBalance, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            Text(formatMoney(balance.available), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
+        }
+        balance.breakdown.forEach { entry ->
+            DetailLine(entry.label, formatMoney(entry.value))
+        }
+    }
+}
+
+@Composable
+private fun SpendingLimitSummary(limit: com.liangrui.quotaglance.core.SpendingLimit, copy: AppCopy) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        DetailSectionTitle(limit.label)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SpendTile(copy.remaining, limit.remaining?.let(::formatMoney) ?: "-", Modifier.weight(1f), emphasize = true)
+            SpendTile(copy.limit, limit.limit?.let(::formatMoney) ?: "-", Modifier.weight(1f))
+        }
+        limit.used?.let { DetailLine(copy.used, formatMoney(it)) }
+        limit.resetDescription?.let { DetailLine(copy.reset, it) }
+    }
+}
+
+@Composable
+private fun SpendSummary(usage: com.liangrui.quotaglance.core.ProviderUsageSnapshot, copy: AppCopy) {
+    val values = listOfNotNull(
+        copy.today to usage.spend.today?.let(::formatMoney),
+        copy.week to usage.spend.week?.let(::formatMoney),
+        copy.month to usage.spend.month?.let(::formatMoney),
+        copy.total to usage.spend.total?.let(::formatMoney),
+    )
+    if (values.isEmpty()) return
+    DetailSectionTitle(copy.spend)
+    values.chunked(2).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { (label, value) -> SpendTile(label, value ?: "-", Modifier.weight(1f)) }
+            if (row.size == 1) Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun QuotaWindowsSummary(windows: List<com.liangrui.quotaglance.core.QuotaWindow>, copy: AppCopy) {
+    DetailSectionTitle(copy.remaining)
+    windows.forEach { window ->
+        val remaining = window.remaining?.let(::formatQuantity) ?: "-"
+        val limit = window.limit
+        val used = limit?.let { maxLimit ->
+            window.used ?: window.remaining?.let { maxLimit.subtract(it) }
+        }
+        val fraction = if (limit != null && limit.signum() > 0 && used != null) {
+            used.divide(limit, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+        } else null
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                Text(window.label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text("$remaining ${window.unit}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            if (limit != null && fraction != null) {
+                LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            }
+            if (limit != null) {
+                Text("${copy.limit}: ${formatQuantity(limit)} ${window.unit}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            window.resetsAtMillis?.let { Text("${copy.resetsAt}: ${formatUpdatedAt(it)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+    }
+}
+
+@Composable
+private fun CountersSummary(title: String, counters: UsageCounters, copy: AppCopy) {
+    val fields = listOfNotNull(
+        counters.actualCost?.let { copy.cost to formatMoney(it) },
+        counters.requests?.let { copy.requests to formatCount(it) },
+        counters.totalTokens?.let { copy.totalTokens to formatCount(it) },
+        counters.inputTokens?.let { copy.inputTokens to formatCount(it) },
+        counters.outputTokens?.let { copy.outputTokens to formatCount(it) },
+    )
+    if (fields.isEmpty()) return
+    DetailSectionTitle(title)
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        fields.take(3).forEach { (label, value) -> SpendTile(label, value, Modifier.weight(1f)) }
+    }
+}
+
+@Composable
+private fun ModelUsageSummary(models: List<ModelUsage>, copy: AppCopy) {
+    DetailSectionTitle(copy.models)
+    models.forEachIndexed { index, model ->
+        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(model.model, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            model.actualCost?.let { Text(formatMoney(it), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
+            model.requests?.let { Text(formatCount(it), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp)) }
+        }
+        if (index < models.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+    }
+}
+
+@Composable
+private fun DailyUsageChart(entries: List<DailyUsage>, copy: AppCopy) {
+    val points = entries.takeLast(7)
+    if (points.isEmpty()) return
+    val maxValue = points.maxOfOrNull { it.actualCost.value } ?: BigDecimal.ZERO
+    val total = points.fold(BigDecimal.ZERO) { sum, entry -> sum.add(entry.actualCost.value) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(copy.recentUsage, style = MaterialTheme.typography.titleSmall)
+                    Text(copy.lastSevenDays, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Text(formatMoney(Money.fromNumber(total, points.first().actualCost.currency)), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+                points.forEach { entry ->
+                    val ratio = if (maxValue.signum() > 0) entry.actualCost.value.divide(maxValue, 4, RoundingMode.HALF_UP).toFloat() else 0f
+                    val barHeight = (8f + 56f * ratio.coerceIn(0f, 1f)).dp
+                    Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(modifier = Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.BottomCenter) {
+                            Box(
+                                modifier = Modifier.width(18.dp).height(barHeight)
+                                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(6.dp)),
+                            )
+                        }
+                        Text(entry.date.takeLast(2), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatUpdatedAt(millis: Long): String {
+    val date = java.time.ZonedDateTime.ofInstant(Instant.ofEpochMilli(millis), java.time.ZoneId.systemDefault())
+    return "${date.monthValue.toString().padStart(2, '0')}-${date.dayOfMonth.toString().padStart(2, '0')} " +
+        "${date.hour.toString().padStart(2, '0')}:${date.minute.toString().padStart(2, '0')}"
 }
 
 @Composable
@@ -601,12 +731,18 @@ private fun DetailLine(label: String, value: String, emphasized: Boolean = false
 }
 
 @Composable
-private fun SpendTile(label: String, value: String, modifier: Modifier) {
+private fun SpendTile(label: String, value: String, modifier: Modifier, emphasize: Boolean = false) {
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.small) {
         Column(modifier = Modifier.padding(11.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(3.dp))
-            Text(value, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                value,
+                style = if (emphasize) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+                fontWeight = if (emphasize) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -630,17 +766,7 @@ private fun CountersDetail(title: String, counters: UsageCounters, copy: AppCopy
 
 @Composable
 private fun DailyUsageSection(dashboard: DashboardState, copy: AppCopy) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionHeading(copy.recentUsage, copy.lastSevenDays)
-        dashboard.aggregate.dailyUsage.forEach { entry ->
-            Surface(color = MaterialTheme.colorScheme.surface, shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(entry.date, style = MaterialTheme.typography.bodyMedium)
-                    Text(formatMoney(entry.actualCost), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-    }
+    DailyUsageChart(dashboard.aggregate.dailyUsage, copy)
 }
 
 @Composable
@@ -895,7 +1021,18 @@ private fun ChoiceChips(labels: List<String>, selectedIndex: Int, onSelected: (I
     }
 }
 
-private fun formatMoney(money: Money): String = "${money.canonicalAmount} ${money.currency}"
+private fun formatMoney(money: Money): String = "${formatDecimal(money.value)} ${money.currency}"
+
+private fun formatQuantity(value: BigDecimal): String = formatDecimal(value)
+
+private fun formatDecimal(value: BigDecimal): String = value
+    .setScale(2, RoundingMode.HALF_UP)
+    .stripTrailingZeros()
+    .toPlainString()
+
+private fun formatCount(value: Long): String = java.text.NumberFormat
+    .getIntegerInstance(Locale.getDefault())
+    .format(value)
 
 internal data class AppCopy(val preferredLanguage: AppLanguage) {
     val chinese get() = preferredLanguage == AppLanguage.Chinese
