@@ -145,6 +145,7 @@ export async function buildCardData(context: common.Context, formId: string): Pr
   const base: CardDataParams = {
     formId: formId,
     dimension: binding.dimension,
+    themeMode: themeMode,
     mode: target === null ? 'aggregate' : 'account',
     title: '',
     balanceText: '',
