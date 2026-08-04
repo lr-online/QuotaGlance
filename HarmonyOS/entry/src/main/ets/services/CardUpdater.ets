@@ -4,6 +4,11 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Account, AccountStore } from '../storage/AccountStore';
 import { FormBindingStore } from '../storage/FormBindingStore';
 import { FormBinding } from '../storage/StateCodecs';
+import {
+  selectAdjacentAccount,
+  SwipeDirection,
+  WidgetAccount
+} from '../widget/FormAccountNavigation';
 import { SnapshotStore, StoredSnapshot, formatSnapshotTexts } from '../storage/SnapshotStore';
 import {
   AggregateAccount,
@@ -262,5 +267,39 @@ export async function updateAllCards(context: common.Context): Promise<void> {
     }
   } catch (error) {
     hilog.warn(DOMAIN, TAG, 'updateAllCards failed: %{public}s', (error as Error).message);
+  }
+}
+
+// Changes the account shown by one form and republishes its payload. The
+// account list is already normalized by AccountStore.load(), so sortOrder is
+// the stable order shared with the in-app account list.
+export async function switchFormAccount(
+  context: common.Context,
+  formId: string,
+  direction: SwipeDirection
+): Promise<void> {
+  try {
+    const bindingStore = await FormBindingStore.create(context);
+    const accountStore = await AccountStore.create(context);
+    const binding = await bindingStore.bindingFor(formId);
+    const accounts = await accountStore.load();
+    const selected = selectAdjacentAccount(
+      accounts.map((account: Account): WidgetAccount => {
+        return {
+          id: account.id,
+          isEnabled: account.isEnabled,
+          sortOrder: account.sortOrder
+        };
+      }),
+      binding?.accountId,
+      direction
+    );
+    if (selected === null) {
+      return;
+    }
+    await bindingStore.setAccount(formId, selected.id);
+    await updateFormCard(context, formId);
+  } catch (error) {
+    hilog.warn(DOMAIN, TAG, 'switchFormAccount failed: %{public}s %{public}s', formId, (error as Error).message);
   }
 }
