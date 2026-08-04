@@ -1,7 +1,5 @@
 package com.liangrui.quotaglance.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,9 +8,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,13 +31,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +59,7 @@ import com.liangrui.quotaglance.core.QuotaAccount
 import com.liangrui.quotaglance.core.UsageCounters
 import com.liangrui.quotaglance.data.AppLanguage
 import com.liangrui.quotaglance.data.AppPreferences
+import com.liangrui.quotaglance.data.AppThemeMode
 import com.liangrui.quotaglance.data.RefreshInterval
 import java.time.Instant
 import java.util.Locale
@@ -65,14 +74,56 @@ fun QuotaGlanceApp(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val copy = appCopy(state.preferences.language)
     val dashboard = DashboardPresenter.present(state.accounts, state.snapshots, Instant.now(), state.route)
-    QuotaGlanceTheme {
+    val summaries = ProviderOverviewPresenter.present(state.accounts, state.snapshots)
+    var themeMenu by remember { mutableStateOf(false) }
+    var languageMenu by remember { mutableStateOf(false) }
+    QuotaGlanceTheme(themeMode = state.preferences.themeMode) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("QuotaGlance") },
+                    title = { Text(if (state.section == AppSection.Overview) "QuotaGlance" else copy.section(state.section)) },
+                    navigationIcon = {
+                        if (state.section != AppSection.Overview) {
+                            IconButton(onClick = { viewModel.setSection(AppSection.Overview) }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = copy.back)
+                            }
+                        }
+                    },
                     actions = {
-                        TextButton(onClick = viewModel::refreshAll, enabled = !state.refreshing) {
-                            Text(if (state.refreshing) copy.refreshing else copy.refresh)
+                        if (state.section == AppSection.Overview) {
+                            IconButton(onClick = viewModel::refreshAll, enabled = !state.refreshing) {
+                                Icon(Icons.Default.Refresh, contentDescription = if (state.refreshing) copy.refreshing else copy.refresh)
+                            }
+                            ToolbarMenu(
+                                expanded = themeMenu,
+                                onExpandedChange = { themeMenu = it },
+                                icon = { Icon(Icons.Default.Palette, contentDescription = copy.themeTitle) },
+                            ) {
+                                AppThemeMode.entries.forEach { mode ->
+                                    DropdownMenuItem(text = { Text(copy.theme(mode)) }, onClick = {
+                                        viewModel.updatePreferences(state.preferences.copy(themeMode = mode))
+                                        themeMenu = false
+                                    })
+                                }
+                            }
+                            ToolbarMenu(
+                                expanded = languageMenu,
+                                onExpandedChange = { languageMenu = it },
+                                icon = { Icon(Icons.Default.Language, contentDescription = copy.languageTitle) },
+                            ) {
+                                AppLanguage.entries.forEach { language ->
+                                    DropdownMenuItem(text = { Text(copy.language(language)) }, onClick = {
+                                        viewModel.updatePreferences(state.preferences.copy(language = language))
+                                        languageMenu = false
+                                    })
+                                }
+                            }
+                            IconButton(onClick = { viewModel.setSection(AppSection.Accounts) }) {
+                                Icon(Icons.Default.ManageAccounts, contentDescription = copy.accounts)
+                            }
+                            IconButton(onClick = { viewModel.setSection(AppSection.Settings) }) {
+                                Icon(Icons.Default.Settings, contentDescription = copy.settings)
+                            }
                         }
                     },
                 )
@@ -81,15 +132,6 @@ fun QuotaGlanceApp(
             Column(
                 modifier = Modifier.fillMaxSize().padding(padding),
             ) {
-                TabRow(selectedTabIndex = state.section.ordinal) {
-                    AppSection.entries.forEach { section ->
-                        Tab(
-                            selected = section == state.section,
-                            onClick = { viewModel.setSection(section) },
-                            text = { Text(copy.section(section)) },
-                        )
-                    }
-                }
                 state.message?.let { message ->
                     Surface(color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -99,7 +141,7 @@ fun QuotaGlanceApp(
                     }
                 }
                 when (state.section) {
-                    AppSection.Overview -> OverviewScreen(state, dashboard, copy, viewModel)
+                    AppSection.Overview -> OverviewScreen(state, dashboard, summaries, copy, viewModel)
                     AppSection.Accounts -> AccountsScreen(state, copy, viewModel)
                     AppSection.Settings -> SettingsScreen(state, copy, viewModel, notificationsGranted, requestNotificationPermission)
                 }
@@ -109,12 +151,42 @@ fun QuotaGlanceApp(
 }
 
 @Composable
+private fun ToolbarMenu(
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    icon: @Composable () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    androidx.compose.foundation.layout.Box {
+        IconButton(onClick = { onExpandedChange(true) }) { icon() }
+        DropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) { content() }
+    }
+}
+
+@Composable
 private fun OverviewScreen(
     state: QuotaGlanceUiState,
     dashboard: DashboardState,
+    summaries: List<ProviderOverview>,
     copy: AppCopy,
     viewModel: QuotaGlanceViewModel,
 ) {
+    if (state.accounts.isEmpty()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            StatusChip(DashboardStatus.Empty, copy)
+            Spacer(Modifier.height(12.dp))
+            Text(copy.emptyOverview, style = MaterialTheme.typography.bodyLarge)
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = { viewModel.setSection(AppSection.Accounts) }) { Text(copy.addAccount) }
+        }
+        return
+    }
+    val selectedAccount = selectedAccountForRoute(state.route, state.accounts)
+    val selectedIndex = selectedAccount?.let { account -> state.accounts.indexOfFirst { it.id == account.id } } ?: 0
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -132,6 +204,34 @@ private fun OverviewScreen(
                 dashboard.aggregate.todayRequests?.let { Text("${copy.requests}: $it") }
             }
         }
+        item {
+            Text(copy.providers, style = MaterialTheme.typography.titleMedium)
+        }
+        items(summaries, key = { it.provider.raw }) { summary ->
+            ProviderOverviewRow(summary, copy)
+        }
+        item {
+            ScrollableTabRow(selectedTabIndex = selectedIndex.coerceIn(0, state.accounts.lastIndex)) {
+                state.accounts.forEachIndexed { index, account ->
+                    Tab(
+                        selected = index == selectedIndex,
+                        onClick = { viewModel.routeTo(AppRoute.Account(account.id)) },
+                        text = {
+                            Text(
+                                account.displayName,
+                                color = if (account.isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+        item {
+            selectedAccount?.let { account ->
+                val snapshot = state.snapshots.firstOrNull { it.accountId == account.id }
+                AccountDetail(snapshot, account, copy)
+            }
+        }
         if (dashboard.aggregate.dailyUsage.isNotEmpty()) {
             item {
                 Text(copy.recentUsage, style = MaterialTheme.typography.titleMedium)
@@ -144,16 +244,36 @@ private fun OverviewScreen(
                 }
             }
         }
-        item { Text(copy.accounts, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp)) }
-        items(state.accounts, key = { it.id }) { account ->
-            val snapshot = state.snapshots.firstOrNull { it.accountId == account.id }
-            AccountRow(account, snapshot, copy, onClick = { viewModel.routeTo(AppRoute.Account(account.id)) })
-        }
-        if (dashboard.route is AppRoute.Account) {
-            item {
-                val snapshot = dashboard.aggregate.accounts.singleOrNull()
-                if (snapshot != null) AccountDetail(snapshot, copy)
+    }
+}
+
+@Composable
+private fun ProviderOverviewRow(summary: ProviderOverview, copy: AppCopy) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(summary.displayName, style = MaterialTheme.typography.titleMedium)
+                Text("${summary.enabledAccountCount} ${copy.accounts.lowercase()}", style = MaterialTheme.typography.labelMedium)
             }
+            if (summary.balances.isEmpty()) {
+                Text(copy.noBalance, style = MaterialTheme.typography.bodyMedium)
+            } else {
+                summary.balances.forEach { Text(formatMoney(it), style = MaterialTheme.typography.bodyLarge) }
+            }
+            if (summary.todayCosts.isNotEmpty()) {
+                Text("${copy.today}: ${summary.todayCosts.joinToString { formatMoney(it) }}", style = MaterialTheme.typography.bodySmall)
+            }
+            summary.todayRequests?.let { requests ->
+                Text("${copy.requests}: $requests (${(summary.requestFraction * 100).toInt()}%)", style = MaterialTheme.typography.bodySmall)
+            }
+            summary.quotaWindows.firstOrNull()?.let { window ->
+                Text("${window.label}: ${window.remaining?.toPlainString() ?: "-"}/${window.limit?.toPlainString() ?: "-"} ${window.unit}", style = MaterialTheme.typography.bodySmall)
+            }
+            if (!summary.hasData) Text(copy.notRefreshed, style = MaterialTheme.typography.bodySmall)
+            if (summary.isStale) Text(copy.staleData, color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -173,27 +293,23 @@ private fun StatusChip(status: DashboardStatus, copy: AppCopy) {
 }
 
 @Composable
-private fun AccountRow(account: QuotaAccount, snapshot: AccountSnapshot?, copy: AppCopy, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(account.displayName, style = MaterialTheme.typography.titleMedium)
-                Text(account.provider.raw, style = MaterialTheme.typography.labelMedium)
-            }
-            Text(snapshot?.remaining?.let(::formatMoney) ?: copy.noBalance, style = MaterialTheme.typography.bodyLarge)
-            Text(snapshot?.let { copy.health(it.health) } ?: copy.notRefreshed, style = MaterialTheme.typography.bodySmall)
-            account.detectedProfile?.let { Text(profileDescription(it, copy), style = MaterialTheme.typography.bodySmall) }
-        }
-    }
-}
-
-@Composable
-private fun AccountDetail(snapshot: AccountSnapshot, copy: AppCopy) {
+private fun AccountDetail(snapshot: AccountSnapshot?, account: QuotaAccount, copy: AppCopy) {
     Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(account.displayName, style = MaterialTheme.typography.titleMedium)
+            Text(account.provider.raw, style = MaterialTheme.typography.labelMedium)
+        }
+        if (snapshot == null) {
+            Text(copy.notRefreshed, style = MaterialTheme.typography.bodyMedium)
+            return@Column
+        }
         Text(copy.details, style = MaterialTheme.typography.titleMedium)
+        Text(copy.health(snapshot.health), style = MaterialTheme.typography.bodySmall)
+        when (val health = snapshot.health) {
+            is AccountHealth.Stale -> Text(localizedError(health.reason, copy), style = MaterialTheme.typography.bodySmall)
+            is AccountHealth.Unavailable -> Text(localizedError(health.reason, copy), style = MaterialTheme.typography.bodySmall)
+            AccountHealth.Healthy, AccountHealth.BelowThreshold -> Unit
+        }
         snapshot.detectedProfile?.let { Text("${copy.profile}: ${profileDescription(it, copy)}") }
         snapshot.usage?.let { usage ->
             usage.providerStatus?.let { Text("${copy.providerStatus}: $it") }
@@ -259,6 +375,7 @@ private fun CountersDetail(title: String, counters: UsageCounters, copy: AppCopy
 @Composable
 private fun AccountsScreen(state: QuotaGlanceUiState, copy: AppCopy, viewModel: QuotaGlanceViewModel) {
     var editing by rememberSaveable { mutableStateOf<String?>(null) }
+    var editorVisible by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("") }
     var apiKey by rememberSaveable { mutableStateOf("") }
     var provider by rememberSaveable { mutableStateOf(ProviderId.API_INFO) }
@@ -285,7 +402,17 @@ private fun AccountsScreen(state: QuotaGlanceUiState, copy: AppCopy, viewModel: 
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!editorVisible) {
+                Button(onClick = { editorVisible = true; load(null) }) {
+                    Text(copy.addAccount)
+                }
+            }
+        }
+        item {
+            Text(copy.accounts, style = MaterialTheme.typography.titleMedium)
+        }
+        item {
+            if (editorVisible) Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(if (editing == null) copy.addAccount else copy.editAccount, style = MaterialTheme.typography.titleLarge)
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text(copy.accountName) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 OutlinedTextField(
@@ -329,22 +456,31 @@ private fun AccountsScreen(state: QuotaGlanceUiState, copy: AppCopy, viewModel: 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
                         viewModel.saveAccount(editing, name, provider, apiKey, enabled, threshold)
-                        if (editing == null) load(null)
+                        if (editing == null) {
+                            editorVisible = false
+                            load(null)
+                        }
                     }) { Text(copy.save) }
-                    if (editing != null) OutlinedButton(onClick = { load(null) }) { Text(copy.cancel) }
+                    OutlinedButton(onClick = { editorVisible = false; load(null) }) { Text(copy.cancel) }
                 }
             }
         }
         item { HorizontalDivider() }
-        items(state.accounts, key = { it.id }) { account ->
+        items(state.accounts.sortedBy { it.sortOrder }, key = { it.id }) { account ->
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(account.displayName, style = MaterialTheme.typography.titleMedium)
                     Text(account.provider.raw, style = MaterialTheme.typography.bodySmall)
                 }
                 Switch(checked = account.isEnabled, onCheckedChange = { viewModel.setEnabled(account, it) })
-                TextButton(onClick = { load(account) }) { Text(copy.edit) }
-                TextButton(onClick = { viewModel.deleteAccount(account.id); if (editing == account.id) load(null) }) { Text(copy.delete) }
+                TextButton(onClick = { editorVisible = true; load(account) }) { Text(copy.edit) }
+                TextButton(onClick = {
+                    viewModel.deleteAccount(account.id)
+                    if (editing == account.id) {
+                        editorVisible = false
+                        load(null)
+                    }
+                }) { Text(copy.delete) }
             }
             HorizontalDivider()
         }
@@ -361,7 +497,7 @@ private fun SettingsScreen(
 ) {
     var defaultMenu by remember { mutableStateOf(false) }
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(copy.settings, style = MaterialTheme.typography.titleLarge)
@@ -372,6 +508,16 @@ private fun SettingsScreen(
                     selected = state.preferences.refreshInterval == interval,
                     onClick = { viewModel.updatePreferences(state.preferences.copy(refreshInterval = interval)) },
                     label = { Text("${interval.minutes}m") },
+                )
+            }
+        }
+        Text(copy.themeTitle, style = MaterialTheme.typography.titleMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppThemeMode.entries.forEach { mode ->
+                FilterChip(
+                    selected = state.preferences.themeMode == mode,
+                    onClick = { viewModel.updatePreferences(state.preferences.copy(themeMode = mode)) },
+                    label = { Text(copy.theme(mode)) },
                 )
             }
         }
@@ -414,6 +560,9 @@ internal data class AppCopy(val preferredLanguage: AppLanguage) {
     val refreshing get() = if (chinese) "刷新中" else "Refreshing"
     val dismiss get() = if (chinese) "关闭" else "Dismiss"
     val accounts get() = if (chinese) "账户" else "Accounts"
+    val providers get() = if (chinese) "服务商概览" else "Provider overview"
+    val staleData get() = if (chinese) "数据可能已过期" else "Data may be stale"
+    val back get() = if (chinese) "返回" else "Back"
     val today get() = if (chinese) "今日" else "Today"
     val requests get() = if (chinese) "请求数" else "Requests"
     val recentUsage get() = if (chinese) "最近 7 天" else "Last 7 days"
@@ -456,6 +605,7 @@ internal data class AppCopy(val preferredLanguage: AppLanguage) {
     val edit get() = if (chinese) "编辑" else "Edit"
     val delete get() = if (chinese) "删除" else "Delete"
     val settings get() = if (chinese) "设置" else "Settings"
+    val themeTitle get() = if (chinese) "主题" else "Theme"
     val refreshInterval get() = if (chinese) "刷新间隔" else "Refresh interval"
     val languageTitle get() = if (chinese) "语言" else "Language"
     val defaultQuickView get() = if (chinese) "默认快速查看" else "Default quick view"
@@ -475,6 +625,11 @@ internal data class AppCopy(val preferredLanguage: AppLanguage) {
         AppLanguage.System -> if (chinese) "跟随系统" else "System"
         AppLanguage.English -> "English"
         AppLanguage.Chinese -> "简体中文"
+    }
+    fun theme(value: AppThemeMode): String = when (value) {
+        AppThemeMode.System -> if (chinese) "跟随系统" else "System"
+        AppThemeMode.Light -> if (chinese) "浅色" else "Light"
+        AppThemeMode.Dark -> if (chinese) "深色" else "Dark"
     }
     fun status(status: DashboardStatus): String = when (status) {
         DashboardStatus.Empty -> if (chinese) "未配置" else "Not configured"

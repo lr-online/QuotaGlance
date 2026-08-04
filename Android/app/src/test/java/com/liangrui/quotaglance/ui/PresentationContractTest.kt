@@ -28,6 +28,18 @@ class PresentationContractTest {
     }
 
     @Test
+    fun `selected account route falls back to first enabled account`() {
+        val accounts = listOf(
+            QuotaAccount("disabled", "Disabled", isEnabled = false),
+            QuotaAccount("enabled", "Enabled", isEnabled = true),
+        )
+        assertEquals(accounts[1], selectedAccountForRoute(AppRoute.All, accounts))
+        assertEquals(accounts[0], selectedAccountForRoute(AppRoute.All, listOf(accounts[0])))
+        assertEquals(accounts[1], selectedAccountForRoute(AppRoute.Account("enabled"), accounts))
+        assertEquals(null, selectedAccountForRoute(AppRoute.Account("deleted"), accounts))
+    }
+
+    @Test
     fun `quick view resolves default and deleted selections to a valid route`() {
         val accounts = listOf(QuotaAccount("one", "Primary"))
         assertEquals(AppRoute.Account("one"), QuickViewSelection.Default.resolve("one", accounts))

@@ -21,6 +21,18 @@ import org.junit.Test
 
 class StorageCodecTest {
     @Test
+    fun `theme mode raw values remain storage compatible`() {
+        assertEquals("system", AppThemeMode.System.raw)
+        assertEquals("light", AppThemeMode.Light.raw)
+        assertEquals("dark", AppThemeMode.Dark.raw)
+    }
+
+    @Test
+    fun `unknown theme mode falls back to system`() {
+        assertEquals(AppThemeMode.System, AppThemeMode.fromRaw("sepia"))
+    }
+
+    @Test
     fun `account metadata survives a JSON round trip without credentials`() {
         val accounts = listOf(
             QuotaAccount(
