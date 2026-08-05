@@ -17,6 +17,7 @@ function IntentBridge() {
         const url = new URL(raw);
         if (url.protocol !== "quotaglance:") return;
         if (url.hostname === "all") navigate("/");
+        if (url.hostname === "settings") navigate("/settings");
         if (url.hostname === "account" && url.pathname.length > 1) {
           navigate(`/accounts/${url.pathname.slice(1)}`);
         }
@@ -32,10 +33,20 @@ function IntentBridge() {
   return null;
 }
 
+function TrayRefreshBridge() {
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void events.onMenuRefreshAll(() => { void commands.refreshAll(); }).then((release) => { unlisten = release; });
+    return () => unlisten?.();
+  }, []);
+  return null;
+}
+
 export default function App() {
   return (
     <HashRouter>
       <IntentBridge />
+      <TrayRefreshBridge />
       <Routes>
         <Route path="/" element={<Overview />} />
         <Route path="/accounts/:id" element={<AccountDetail />} />

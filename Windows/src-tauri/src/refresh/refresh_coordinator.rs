@@ -11,8 +11,8 @@ use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::aggregation::SnapshotAggregator;
-use crate::alerts::AlertEvaluator;
-use crate::domain::{Account, AccountSnapshot, AccountHealth};
+use crate::alerts::{AlertBatchEvaluation, AlertEvaluator};
+use crate::domain::{Account, AccountHealth, AccountSnapshot};
 use crate::providers::provider_error::ProviderError;
 use crate::providers::usage_provider::UsageProvider;
 use crate::storage::account_store::AccountStore;
@@ -35,18 +35,31 @@ pub struct RefreshCoordinator {
 
 impl RefreshCoordinator {
     pub fn new(
-        providers: Arc<std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>>,
+        providers: Arc<
+            std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>,
+        >,
         accounts: Arc<std::sync::Mutex<AccountStore>>,
         snapshots: Arc<SnapshotStore>,
     ) -> Self {
-        Self { providers, accounts, snapshots }
+        Self {
+            providers,
+            accounts,
+            snapshots,
+        }
     }
 
-    pub async fn refresh_one<F>(&self, account: Account, mut resolve_key: F) -> Result<AccountSnapshot, RefreshError>
+    pub async fn refresh_one<F>(
+        &self,
+        account: Account,
+        mut resolve_key: F,
+    ) -> Result<AccountSnapshot, RefreshError>
     where
         F: FnMut(Uuid) -> Option<String>,
     {
-        let provider = self.providers.get(&account.provider).cloned()
+        let provider = self
+            .providers
+            .get(&account.provider)
+            .cloned()
             .ok_or(ProviderError::ProviderUnavailable(account.provider))?;
         let key = resolve_key(account.id).ok_or(ProviderError::InvalidCredential)?;
         let detection = provider.detect(&key).await?;
@@ -77,14 +90,24 @@ impl RefreshCoordinator {
         Ok(provider.detect(api_key).await?.profile)
     }
 
-    pub async fn refresh_all<F>(&self, resolve_key: &F) -> Vec<(Uuid, Result<AccountSnapshot, RefreshError>)>
+    pub async fn refresh_all<F>(
+        &self,
+        resolve_key: &F,
+    ) -> Vec<(Uuid, Result<AccountSnapshot, RefreshError>)>
     where
         F: Fn(Uuid) -> Option<String> + Sync,
     {
         let providers = self.providers.clone();
         let snapshots = self.snapshots.clone();
-        let enabled: Vec<Account> = self.accounts.lock().unwrap().list().iter()
-            .filter(|a| a.is_enabled).cloned().collect();
+        let enabled: Vec<Account> = self
+            .accounts
+            .lock()
+            .unwrap()
+            .list()
+            .iter()
+            .filter(|a| a.is_enabled)
+            .cloned()
+            .collect();
 
         let futures = enabled.into_iter().map(|account| {
             let provider = providers.get(&account.provider).cloned();
@@ -95,7 +118,9 @@ impl RefreshCoordinator {
                 let provider = match provider {
                     Some(p) => p,
                     None => {
-                        let err = RefreshError::Provider(ProviderError::ProviderUnavailable(account.provider));
+                        let err = RefreshError::Provider(ProviderError::ProviderUnavailable(
+                            account.provider,
+                        ));
                         return (id, Err(err));
                     }
                 };
@@ -148,25 +173,35 @@ impl RefreshCoordinator {
         })
     }
 
-    pub fn aggregate_now(&self, now: chrono::DateTime<chrono::Utc>) -> crate::domain::AggregateSnapshot {
+    pub fn aggregate_now(
+        &self,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> crate::domain::AggregateSnapshot {
         let accounts: Vec<Account> = self.accounts.lock().unwrap().list().to_vec();
-        let snapshots: Vec<AccountSnapshot> = self.snapshots.load_all().unwrap_or_default()
+        let snapshots: Vec<AccountSnapshot> = self
+            .snapshots
+            .load_all()
+            .unwrap_or_default()
             .into_iter()
-            .filter(|s| accounts.iter().any(|a| a.id == s.account_id && a.is_enabled))
+            .filter(|s| {
+                accounts
+                    .iter()
+                    .any(|a| a.id == s.account_id && a.is_enabled)
+            })
             .collect();
         SnapshotAggregator::aggregate(&accounts, &snapshots, now)
     }
 
-    pub fn evaluate_alerts(&mut self, fresh: Vec<AccountSnapshot>) -> Vec<AccountSnapshot> {
-        let fresh_by_id: std::collections::HashMap<Uuid, AccountSnapshot> = fresh
-            .iter().cloned().map(|s| (s.account_id, s)).collect();
+    pub fn evaluate_alerts(&self, fresh: Vec<AccountSnapshot>) -> AlertBatchEvaluation {
+        let fresh_by_id: std::collections::HashMap<Uuid, AccountSnapshot> =
+            fresh.iter().cloned().map(|s| (s.account_id, s)).collect();
         let mut accounts = self.accounts.lock().unwrap();
         let mut owned: Vec<Account> = accounts.list().to_vec();
-        let _ = AlertEvaluator::evaluate(&mut owned, &fresh_by_id);
+        let evaluation = AlertEvaluator::evaluate(&mut owned, &fresh_by_id);
         for updated in owned {
             let _ = accounts.update(updated);
         }
-        fresh
+        evaluation
     }
 }
 
@@ -184,10 +219,13 @@ mod tests {
             preferences: dir.path().join("preferences.json"),
             credentials: dir.path().join("credentials.bin"),
         };
-        let accounts = Arc::new(std::sync::Mutex::new(AccountStore::load_or_create(&layout.accounts).unwrap()));
+        let accounts = Arc::new(std::sync::Mutex::new(
+            AccountStore::load_or_create(&layout.accounts).unwrap(),
+        ));
         let snapshots = Arc::new(SnapshotStore::new(&layout));
-        let providers: Arc<std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>> =
-            Arc::new(std::collections::HashMap::new());
+        let providers: Arc<
+            std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>,
+        > = Arc::new(std::collections::HashMap::new());
         let _coord = RefreshCoordinator::new(providers, accounts, snapshots);
     }
 }

@@ -60,12 +60,7 @@
     "security": {
       "csp": "default-src 'self'; img-src 'self' data: asset:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost"
     },
-    "withGlobalTauri": false,
-    "trayIcon": {
-      "id": "main-tray",
-      "iconPath": "icons/tray-icon.png",
-      "tooltip": "QuotaGlance"
-    }
+    "withGlobalTauri": false
   },
   "bundle": {
     "active": true,

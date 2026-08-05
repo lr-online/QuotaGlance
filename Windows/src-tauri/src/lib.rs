@@ -2,8 +2,9 @@
 // and the AppState used by the command surface in commands.rs.
 
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod aggregation;
@@ -52,34 +53,53 @@ pub fn run() {
 
             // Storage layer.
             let layout = PathLayout::new().expect("resolve path layout");
-            let accounts_store = AccountStore::load_or_create(&layout.accounts)
-                .expect("load account store");
+            let accounts_store =
+                AccountStore::load_or_create(&layout.accounts).expect("load account store");
             let snapshots = Arc::new(SnapshotStore::new(&layout));
-            let vault = CredentialVault::open(&layout.credentials)
-                .expect("open credential vault");
-            let preferences = PreferencesStore::load_or_create(&layout.preferences)
-                .expect("load preferences");
+            let vault = CredentialVault::open(&layout.credentials).expect("open credential vault");
+            let preferences =
+                PreferencesStore::load_or_create(&layout.preferences).expect("load preferences");
 
             // Provider registry.
             let accounts = Arc::new(Mutex::new(accounts_store));
             let transport = Arc::new(ReqwestHttpClient::new().expect("create HTTP transport"));
-            let providers = Arc::new(provider_catalog(transport).expect("load provider contract catalog"));
+            let providers =
+                Arc::new(provider_catalog(transport).expect("load provider contract catalog"));
             let coordinator = Arc::new(RefreshCoordinator::new(
                 providers,
                 accounts.clone(),
                 snapshots.clone(),
             ));
+            let vault = Arc::new(Mutex::new(vault));
+            let preferences = Arc::new(Mutex::new(preferences));
 
             app.manage(tray::IntentPayload(Mutex::new(None)));
             app.manage(AppState {
-                coordinator,
+                coordinator: coordinator.clone(),
                 accounts,
                 snapshots,
-                vault: Arc::new(Mutex::new(vault)),
-                preferences: Arc::new(Mutex::new(preferences)),
+                vault: vault.clone(),
+                preferences: preferences.clone(),
             });
 
             tray::build(app.handle())?;
+
+            // Closing a window is a hide-to-tray action. The explicit tray
+            // Quit command remains the only normal way to terminate the
+            // process, so refresh and notifications continue in the tray.
+            for label in ["main", "tray-popover", "widget"] {
+                if let Some(window) = app.get_webview_window(label) {
+                    let window_for_handler = window.clone();
+                    window.on_window_event(move |event| {
+                        if let WindowEvent::CloseRequested { api, .. } = event {
+                            api.prevent_close();
+                            let _ = window_for_handler.hide();
+                        }
+                    });
+                }
+            }
+
+            start_background_refresh(app.handle().clone(), coordinator, vault, preferences);
 
             if let Some(main) = app.get_webview_window("main") {
                 let _ = main.show();
@@ -108,6 +128,46 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Keep refresh, alert evaluation, and native notifications alive while all
+/// WebView windows are hidden. The interval is read before every cycle so a
+/// settings change takes effect without restarting the process.
+fn start_background_refresh(
+    app: tauri::AppHandle,
+    coordinator: Arc<RefreshCoordinator>,
+    vault: Arc<Mutex<CredentialVault>>,
+    preferences: Arc<Mutex<PreferencesStore>>,
+) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            let results = coordinator
+                .refresh_all(&|id| vault.lock().ok().and_then(|vault| vault.get(id).ok()))
+                .await;
+            let fresh = results
+                .iter()
+                .filter_map(|(_, result)| result.as_ref().ok().cloned())
+                .collect();
+            let alerts = coordinator.evaluate_alerts(fresh);
+            let notifications_enabled = preferences
+                .lock()
+                .map(|store| store.current().notifications_enabled)
+                .unwrap_or(false);
+            if notifications_enabled {
+                crate::commands::send_alert_notifications(&app, &alerts);
+            }
+            let _ = app.emit("snapshots-updated", ());
+
+            let interval_minutes = preferences
+                .lock()
+                .map(|store| store.current().refresh_interval_minutes)
+                .unwrap_or(15);
+            tokio::time::sleep(Duration::from_secs(
+                u64::from(interval_minutes).saturating_mul(60),
+            ))
+            .await;
+        }
+    });
 }
 
 #[cfg(test)]
