@@ -73,11 +73,15 @@ jobs:
           ohpm -v
           node -v
 
+      - name: Sync HarmonyOS and Windows parity inputs
+        run: |
+          bash scripts/sync-specs-to-harmonyos.sh
+          bash scripts/sync-contracts-to-harmonyos.sh
+          bash scripts/sync-specs-to-windows.sh
+          bash scripts/sync-contracts-to-windows.sh
+
       - name: Verify provider parity
         run: bash scripts/verify-provider-parity.sh
-
-      - name: Sync shared contract fixtures
-        run: bash scripts/sync-contracts-to-harmonyos.sh
 
       - name: Verify phone + tablet deviceTypes
         run: |

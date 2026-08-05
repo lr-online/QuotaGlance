@@ -20,13 +20,19 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+        with:
+          persist-credentials: false
 
       - name: Install Rust toolchain
         shell: pwsh
@@ -38,17 +44,12 @@ jobs:
           rustup target add x86_64-pc-windows-msvc
           rustc --version
 
-      - name: Install Node.js + pnpm
-        shell: pwsh
-        run: |
-          if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-            winget install --id OpenJS.Nodejs.LTS -e --accept-package-agreements --accept-source-agreements
-          }
-          if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
-            npm install -g pnpm
-          }
-          node --version
-          pnpm --version
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Windows/package-lock.json
 
       - name: Sync spec + contract sources into Windows assets
         shell: bash
@@ -59,7 +60,7 @@ jobs:
       - name: Install front-end dependencies
         working-directory: Windows
         shell: pwsh
-        run: pnpm install --frozen-lockfile || pnpm install
+        run: npm ci
 
       - name: Verify provider parity (Swift / ArkTS / Kotlin / Rust)
         shell: bash

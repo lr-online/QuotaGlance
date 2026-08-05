@@ -95,6 +95,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Sync Windows parity inputs
+        run: |
+          bash scripts/sync-specs-to-windows.sh
+          bash scripts/sync-contracts-to-windows.sh
+
       - name: Verify provider protocol parity
         run: bash scripts/verify-provider-parity.sh
 
