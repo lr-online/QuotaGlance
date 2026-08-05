@@ -11,11 +11,11 @@ will land in their respective milestones:
    Kotlin `ProviderContractTest.kt` suite.
 
 2. `aggregation_contract_fixtures.rs` - replays each fixture in
-   `../assets/contracts/Aggregation/<case>-input.json` through
+   `../assets/contracts/aggregation/<case>-input.json` through
    `SnapshotAggregator` and asserts against `<case>-expected.json`.
 
 3. `alerts_contract_fixtures.rs` - replays each fixture in
-   `../assets/contracts/Alerts/<case>-input.json` through `AlertEvaluator`
+   `../assets/contracts/alerts/<case>-input.json` through `AlertEvaluator`
    and asserts against `<case>-expected.json`.
 
 Until these land the directory is empty; `cargo test` runs the lib-level

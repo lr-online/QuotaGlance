@@ -18,8 +18,9 @@ TARGET_DIR="$REPO_ROOT/Windows/src-tauri/assets/contracts"
 mkdir -p "$TARGET_DIR"
 find "$TARGET_DIR" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
 
-for name in Providers Aggregation Alerts; do
-  cp -R "$SOURCE_DIR/$name" "$TARGET_DIR/$name"
-done
+cp -R "$SOURCE_DIR/Providers" "$TARGET_DIR/Providers"
+mkdir -p "$TARGET_DIR/aggregation" "$TARGET_DIR/alerts"
+cp -R "$SOURCE_DIR/Aggregation/." "$TARGET_DIR/aggregation/"
+cp -R "$SOURCE_DIR/Alerts/." "$TARGET_DIR/alerts/"
 
 echo "Synced provider, aggregation, and alert contracts to Windows test resources."

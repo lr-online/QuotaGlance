@@ -635,12 +635,12 @@ check_windows_contracts() {
     fi
   done
 
-  # No unexpected top-level entries beyond Providers/Aggregation/Alerts.
+  # No unexpected top-level entries beyond Providers/aggregation/alerts.
   local entry
   for entry in "$WINDOWS_CONTRACTS_DIR"/*; do
     [[ -e "$entry" ]] || continue
     name="$(basename "$entry")"
-    [[ "$name" == "Providers" || "$name" == "Aggregation" || "$name" == "Alerts" ]] && continue
+    [[ "$name" == "Providers" || "$name" == "aggregation" || "$name" == "alerts" ]] && continue
     [[ -d "$WINDOWS_CONTRACTS_DIR/Providers/$name" ]] \
       || fail "Windows contract copies have unexpected entry '$name' ($hint)"
   done
