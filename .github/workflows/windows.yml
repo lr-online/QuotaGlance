@@ -76,21 +76,56 @@ jobs:
         shell: pwsh
         run: cargo test --verbose
 
-      - name: Cargo build (NSIS + MSI)
+      - name: Build Windows installer and portable application
         working-directory: Windows/src-tauri
         shell: pwsh
         run: |
-          cargo tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
-          $exe = Get-ChildItem -Path ../target/release -Filter "*.exe" | Select-Object -First 1
-          if ($exe) { Write-Host "portable exe: $($exe.FullName) ($((Get-Item $exe.FullName).Length / 1MB) MB)" }
+          $target = "x86_64-pc-windows-msvc"
+          cargo tauri build --target $target --bundles nsis
 
-      - name: Upload Windows installers
+          $windowsDirectory = Split-Path -Parent $PWD
+          $releaseDirectory = Join-Path $windowsDirectory "target/$target/release"
+          $app = Get-ChildItem -Path $releaseDirectory -Filter "quotaglance.exe" -File | Select-Object -First 1
+          if (-not $app) {
+            throw "Tauri application executable was not produced in $releaseDirectory"
+          }
+
+          $portableDirectory = Join-Path $windowsDirectory "artifacts/QuotaGlance-portable-x64"
+          New-Item -ItemType Directory -Force -Path $portableDirectory | Out-Null
+          Copy-Item -LiteralPath $app.FullName -Destination (Join-Path $portableDirectory "QuotaGlance.exe")
+          @'
+          @echo off
+          setlocal
+          set QUOTAGLANCE_PORTABLE=1
+          start "" "%~dp0QuotaGlance.exe"
+          '@ | Set-Content -LiteralPath (Join-Path $portableDirectory "Start QuotaGlance Portable.cmd") -Encoding ascii
+
+          $installerDirectory = Join-Path $releaseDirectory "bundle/nsis"
+          $installer = Get-ChildItem -Path $installerDirectory -Filter "*.exe" -File | Select-Object -First 1
+          if (-not $installer) {
+            throw "NSIS installer was not produced in $installerDirectory"
+          }
+
+          $installerOutputDirectory = Join-Path $windowsDirectory "artifacts/QuotaGlance-installer-x64"
+          New-Item -ItemType Directory -Force -Path $installerOutputDirectory | Out-Null
+          Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $installerOutputDirectory "QuotaGlance-setup-x64.exe")
+
+          Get-ChildItem -Recurse -File (Join-Path $windowsDirectory "artifacts") | ForEach-Object {
+            Write-Host "$($_.FullName) ($([math]::Round($_.Length / 1MB, 2)) MB)"
+          }
+
+      - name: Upload portable Windows application
         uses: actions/upload-artifact@v4
         with:
-          name: quotaglance-windows-installers
-          path: |
-            Windows/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-            Windows/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-            Windows/target/release/*.exe
-          if-no-files-found: warn
+          name: quotaglance-windows-portable-x64
+          path: Windows/artifacts/QuotaGlance-portable-x64/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotaglance-windows-installer-x64
+          path: Windows/artifacts/QuotaGlance-installer-x64/QuotaGlance-setup-x64.exe
+          if-no-files-found: error
           retention-days: 14
