@@ -57,6 +57,9 @@ App 层（非镜像，平台自有）：`pages/`（UI，含 `Index.ets` 内联�
 7. **后台周期刷新由系统调度。** workScheduler 的最小周期间隔与触发条件由
    系统决定，无法对齐 Swift RefreshCoordinator 的定时器语义（前台
    手动/冷启动刷新语义一致，后台周期为系统调度）。
+8. **服务卡片周期刷新受系统粒度限制。** `form_config.json` 的
+   `updateDuration` 单位为 30 分钟，不能配置五分钟周期；卡片提供“刷新”按钮，
+   通过 `onFormEvent` 触发当前账户或总览账户的即时刷新，三种卡片尺寸共用该入口。
 
 ## 同步脚本与 rawfile 布局
 
