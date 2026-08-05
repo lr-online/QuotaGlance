@@ -8,6 +8,7 @@ RELEASE_WORKFLOW="$ROOT_DIR/.github/workflows/release.yml"
 HARMONYOS_WORKFLOW="$ROOT_DIR/.github/workflows/harmonyos.yml"
 ANDROID_WORKFLOW="$ROOT_DIR/.github/workflows/android.yml"
 QUALITY_WORKFLOW="$ROOT_DIR/.github/workflows/quality.yml"
+WINDOWS_WORKFLOW="$ROOT_DIR/.github/workflows/windows.yml"
 FETCH_SCRIPT="$ROOT_DIR/scripts/fetch-ci-package.sh"
 HARMONYOS_BUILD_SCRIPT="$ROOT_DIR/scripts/build-harmonyos.sh"
 
@@ -22,6 +23,7 @@ fail() {
 [[ -f "$HARMONYOS_WORKFLOW" ]] || fail "missing HarmonyOS workflow"
 [[ -f "$ANDROID_WORKFLOW" ]] || fail "missing Android workflow"
 [[ -f "$QUALITY_WORKFLOW" ]] || fail "missing Quality workflow"
+[[ -f "$WINDOWS_WORKFLOW" ]] || fail "missing Windows workflow"
 [[ -x "$FETCH_SCRIPT" ]] || fail "CI package fetch script is missing or not executable"
 [[ -x "$HARMONYOS_BUILD_SCRIPT" ]] || fail "HarmonyOS build script is missing or not executable"
 
@@ -55,7 +57,9 @@ rg -Fq "xcode-version: '16.2'" "$CI_WORKFLOW" || fail "CI workflow does not pin 
 rg -Fq "command -v rg" "$CI_WORKFLOW" || fail "CI workflow does not ensure ripgrep availability"
 rg -Fq "brew install ripgrep" "$CI_WORKFLOW" || fail "CI workflow lacks the ripgrep install fallback"
 rg -Fq "swift test" "$CI_WORKFLOW" || fail "CI workflow does not run swift test"
-rg -Fq "/bin/bash scripts/verify-provider-parity.sh" "$CI_WORKFLOW" || fail "CI workflow does not run the provider parity check"
+rg -Fq "scripts/verify-provider-parity.sh" "$CI_WORKFLOW" || fail "CI workflow does not run the provider parity check"
+rg -Fq "scripts/sync-specs-to-windows.sh" "$CI_WORKFLOW" || fail "CI workflow does not sync Windows provider specs before global parity"
+rg -Fq "scripts/sync-contracts-to-windows.sh" "$CI_WORKFLOW" || fail "CI workflow does not sync Windows contracts before global parity"
 rg -Fq "Tests/ScriptTests/ProviderParityTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing provider parity tests"
 rg -Fq "Tests/ScriptTests/HarmonyOSStringParityTests.sh" "$CI_WORKFLOW" \
   || fail "CI workflow missing HarmonyOS string parity test"
@@ -130,6 +134,9 @@ rg -Fq "cache: true" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not 
 rg -Fq "libgl1-mesa-dev" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow missing Linux libGL dependency"
 rg -Fq "scripts/build-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not run build-harmonyos.sh"
 rg -Fq "scripts/sync-contracts-to-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync contract fixtures"
+rg -Fq "scripts/sync-specs-to-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync provider specs"
+rg -Fq "scripts/sync-specs-to-windows.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync Windows provider specs before global parity"
+rg -Fq "scripts/sync-contracts-to-windows.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync Windows contracts before global parity"
 rg -Fq "scripts/verify-provider-parity.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not verify provider parity"
 rg -q "upload-artifact" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not upload HAP artifacts"
 rg -Fq 'QuotaGlance-HarmonyOS-${{ steps.metadata.outputs.version }}' "$HARMONYOS_WORKFLOW" \
@@ -172,6 +179,10 @@ rg -Fq 'github.com/zricethezav/gitleaks/v8@v8.28.0' "$QUALITY_WORKFLOW" \
   || fail "Quality workflow uses the wrong gitleaks module path"
 rg -Fq 'scripts/verify-provider-parity.sh' "$QUALITY_WORKFLOW" \
   || fail "Quality workflow missing provider protocol parity check"
+rg -Fq 'scripts/sync-specs-to-windows.sh' "$QUALITY_WORKFLOW" \
+  || fail "Quality workflow does not sync Windows provider specs before global parity"
+rg -Fq 'scripts/sync-contracts-to-windows.sh' "$QUALITY_WORKFLOW" \
+  || fail "Quality workflow does not sync Windows contracts before global parity"
 
 rg -q '^name: Android$' "$ANDROID_WORKFLOW" || fail "Android workflow name changed"
 rg -q 'workflow_dispatch:' "$ANDROID_WORKFLOW" || fail "Android workflow missing workflow_dispatch"
@@ -194,12 +205,36 @@ rg -Fq 'scripts/sync-specs-to-android.sh' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not sync provider specs"
 rg -Fq 'scripts/sync-contracts-to-android.sh' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not sync contract fixtures"
+rg -Fq 'scripts/sync-specs-to-windows.sh' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not sync Windows provider specs before global parity"
+rg -Fq 'scripts/sync-contracts-to-windows.sh' "$ANDROID_WORKFLOW" \
+  || fail "Android workflow does not sync Windows contracts before global parity"
 rg -Fq 'scripts/verify-android-parity.sh' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not verify Android parity"
 rg -Fq ':app:testDebugUnitTest :app:lint :app:assembleDebug :app:assembleRelease' "$ANDROID_WORKFLOW" \
   || fail "Android workflow does not test, lint, and build both APK variants"
 rg -Fq 'QuotaGlance-Android-${{ steps.metadata.outputs.version }}' "$ANDROID_WORKFLOW" \
   || fail "Android artifact is not versioned"
+
+rg -q '^name: Windows Tauri client$' "$WINDOWS_WORKFLOW" || fail "Windows workflow name changed"
+rg -q 'pull_request:' "$WINDOWS_WORKFLOW" || fail "Windows workflow missing pull_request trigger"
+assert_pinned_action "actions/checkout" "$WINDOWS_WORKFLOW"
+assert_pinned_action "actions/setup-node" "$WINDOWS_WORKFLOW"
+assert_read_only_workflow "$WINDOWS_WORKFLOW"
+rg -Fq 'cache-dependency-path: Windows/package-lock.json' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not cache the locked npm dependencies"
+rg -Fq 'run: npm ci' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not use the checked-in npm lockfile"
+rg -Fq 'scripts/sync-specs-to-windows.sh' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not sync provider specs"
+rg -Fq 'scripts/sync-contracts-to-windows.sh' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not sync contract fixtures"
+rg -Fq 'scripts/generate-windows-icons.ps1' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not generate ignored Tauri icon assets"
+rg -Fq 'tray-icon.png' "$ROOT_DIR/scripts/generate-windows-icons.ps1" \
+  || fail "Windows icon generator does not produce the compile-time tray icon"
+rg -Fq 'npm exec -- tauri build' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not use the Tauri CLI installed by npm ci"
 
 [[ -f "$ROOT_DIR/.github/dependabot.yml" ]] \
   || fail "missing Dependabot configuration"

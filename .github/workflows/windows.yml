@@ -1,0 +1,139 @@
+name: Windows Tauri client
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Windows/**"
+      - "Contracts/**"
+      - "scripts/sync-*windows*.sh"
+      - "scripts/verify-*parity*.sh"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "Windows/**"
+      - "Contracts/**"
+      - "scripts/sync-*windows*.sh"
+      - "scripts/verify-*parity*.sh"
+      - ".github/workflows/windows.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.3.0
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        shell: pwsh
+        run: |
+          if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+            winget install --id Rustlang.Rustup -e --accept-package-agreements --accept-source-agreements
+          }
+          rustup default stable
+          rustup target add x86_64-pc-windows-msvc
+          rustc --version
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Windows/package-lock.json
+
+      - name: Sync spec + contract sources into Windows assets
+        shell: bash
+        run: |
+          bash scripts/sync-specs-to-windows.sh
+          bash scripts/sync-contracts-to-windows.sh
+
+      - name: Install front-end dependencies
+        working-directory: Windows
+        shell: pwsh
+        run: npm ci
+
+      - name: Generate Windows icon assets
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-windows-icons.ps1
+
+      - name: Verify provider parity (Swift / ArkTS / Kotlin / Rust)
+        shell: bash
+        run: |
+          bash scripts/verify-provider-parity.sh
+
+      - name: Verify Windows-only parity
+        shell: bash
+        run: |
+          bash scripts/verify-windows-parity.sh
+
+      - name: Cargo test (engine, aggregation, alerts)
+        working-directory: Windows/src-tauri
+        shell: pwsh
+        run: cargo test --verbose
+
+      - name: Build Windows installer and portable application
+        working-directory: Windows
+        shell: pwsh
+        run: |
+          $target = "x86_64-pc-windows-msvc"
+          npm exec -- tauri build --target $target --bundles nsis
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          $windowsDirectory = $PWD.Path
+          $releaseDirectory = Join-Path $windowsDirectory "target/$target/release"
+          $app = Get-ChildItem -Path $releaseDirectory -Filter "quotaglance.exe" -File | Select-Object -First 1
+          if (-not $app) {
+            throw "Tauri application executable was not produced in $releaseDirectory"
+          }
+
+          $portableDirectory = Join-Path $windowsDirectory "artifacts/QuotaGlance-portable-x64"
+          New-Item -ItemType Directory -Force -Path $portableDirectory | Out-Null
+          Copy-Item -LiteralPath $app.FullName -Destination (Join-Path $portableDirectory "QuotaGlance.exe")
+          @'
+          @echo off
+          setlocal
+          set QUOTAGLANCE_PORTABLE=1
+          start "" "%~dp0QuotaGlance.exe"
+          '@ | Set-Content -LiteralPath (Join-Path $portableDirectory "Start QuotaGlance Portable.cmd") -Encoding ascii
+
+          $installerDirectory = Join-Path $releaseDirectory "bundle/nsis"
+          $installer = Get-ChildItem -Path $installerDirectory -Filter "*.exe" -File | Select-Object -First 1
+          if (-not $installer) {
+            throw "NSIS installer was not produced in $installerDirectory"
+          }
+
+          $installerOutputDirectory = Join-Path $windowsDirectory "artifacts/QuotaGlance-installer-x64"
+          New-Item -ItemType Directory -Force -Path $installerOutputDirectory | Out-Null
+          Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $installerOutputDirectory "QuotaGlance-setup-x64.exe")
+
+          Get-ChildItem -Recurse -File (Join-Path $windowsDirectory "artifacts") | ForEach-Object {
+            Write-Host "$($_.FullName) ($([math]::Round($_.Length / 1MB, 2)) MB)"
+          }
+
+      - name: Upload portable Windows application
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotaglance-windows-portable-x64
+          path: Windows/artifacts/QuotaGlance-portable-x64/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotaglance-windows-installer-x64
+          path: Windows/artifacts/QuotaGlance-installer-x64/QuotaGlance-setup-x64.exe
+          if-no-files-found: error
+          retention-days: 14

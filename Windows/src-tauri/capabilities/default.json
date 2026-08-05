@@ -1,0 +1,43 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for the QuotaGlance Windows client (main + widget + tray-popover windows).",
+  "windows": [
+    "main",
+    "widget",
+    "tray-popover"
+  ],
+  "permissions": [
+    "core:default",
+    "core:app:default",
+    "core:event:default",
+    "core:image:default",
+    "core:menu:default",
+    "core:path:default",
+    "core:resources:default",
+    "core:tray:default",
+    "core:tray:allow-set-icon",
+    "core:tray:allow-set-tooltip",
+    "core:tray:allow-set-menu",
+    "core:tray:allow-set-title",
+    "core:tray:allow-set-visible",
+    "core:tray:allow-get-by-id",
+    "core:tray:allow-new",
+    "core:webview:default",
+    "core:window:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "core:window:allow-start-dragging",
+    "notification:default",
+    "notification:allow-notify",
+    "notification:allow-is-permission-granted",
+    "notification:allow-request-permission",
+    "deep-link:default",
+    "store:default",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-save"
+  ]
+}

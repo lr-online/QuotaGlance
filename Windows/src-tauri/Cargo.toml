@@ -1,0 +1,52 @@
+[package]
+name = "quotaglance-tauri"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "QuotaGlance Windows portable client main process (Tauri 2 + WebView2)"
+repository = "https://github.com/QuotaGlance/QuotaGlance"
+
+[lib]
+name = "quotaglance_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "quotaglance"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+rust_decimal = { workspace = true }
+reqwest = { workspace = true }
+async-trait = "0.1"
+futures = "0.3"
+
+# Tauri 2 official plugins
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-store = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+# Windows-only: DPAPI via the `windows` crate.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Security_Cryptography", "Win32_Foundation", "Win32_System_Memory"] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

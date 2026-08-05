@@ -1,0 +1,193 @@
+// RefreshCoordinator: per-account detect+fetch loop. Mirrors Swift
+// Sources/QuotaGlanceCore/Refresh/RefreshCoordinator.swift.
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use futures::future;
+use tokio::task::JoinHandle;
+use tokio::time::interval;
+use tracing::{info, warn};
+use uuid::Uuid;
+
+use crate::aggregation::SnapshotAggregator;
+use crate::alerts::AlertEvaluator;
+use crate::domain::{Account, AccountSnapshot, AccountHealth};
+use crate::providers::provider_error::ProviderError;
+use crate::providers::usage_provider::UsageProvider;
+use crate::storage::account_store::AccountStore;
+use crate::storage::preferences::Preferences;
+use crate::storage::snapshot_store::SnapshotStore;
+
+#[derive(Debug, thiserror::Error)]
+pub enum RefreshError {
+    #[error("provider: {0}")]
+    Provider(#[from] ProviderError),
+    #[error("snapshot: {0}")]
+    Snapshot(#[from] crate::storage::snapshot_store::SnapshotStoreError),
+}
+
+pub struct RefreshCoordinator {
+    providers: Arc<std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>>,
+    accounts: Arc<std::sync::Mutex<AccountStore>>,
+    snapshots: Arc<SnapshotStore>,
+}
+
+impl RefreshCoordinator {
+    pub fn new(
+        providers: Arc<std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>>,
+        accounts: Arc<std::sync::Mutex<AccountStore>>,
+        snapshots: Arc<SnapshotStore>,
+    ) -> Self {
+        Self { providers, accounts, snapshots }
+    }
+
+    pub async fn refresh_one<F>(&self, account: Account, mut resolve_key: F) -> Result<AccountSnapshot, RefreshError>
+    where
+        F: FnMut(Uuid) -> Option<String>,
+    {
+        let provider = self.providers.get(&account.provider).cloned()
+            .ok_or(ProviderError::ProviderUnavailable(account.provider))?;
+        let key = resolve_key(account.id).ok_or(ProviderError::InvalidCredential)?;
+        let detection = provider.detect(&key).await?;
+        let now: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
+        let stored = AccountSnapshot {
+            account_id: account.id,
+            display_name: account.display_name.clone(),
+            provider: account.provider,
+            detected_profile: Some(detection.profile),
+            low_balance_threshold: account.low_balance_threshold,
+            usage: Some(detection.snapshot),
+            health: AccountHealth::Healthy,
+            last_success_at: Some(now),
+        };
+        self.snapshots.save(&stored)?;
+        Ok(stored)
+    }
+
+    pub async fn detect_profile(
+        &self,
+        provider_id: crate::domain::ProviderID,
+        api_key: &str,
+    ) -> Result<crate::domain::ProviderProfile, RefreshError> {
+        let provider = self
+            .providers
+            .get(&provider_id)
+            .ok_or(ProviderError::ProviderUnavailable(provider_id))?;
+        Ok(provider.detect(api_key).await?.profile)
+    }
+
+    pub async fn refresh_all<F>(&self, resolve_key: &F) -> Vec<(Uuid, Result<AccountSnapshot, RefreshError>)>
+    where
+        F: Fn(Uuid) -> Option<String> + Sync,
+    {
+        let providers = self.providers.clone();
+        let snapshots = self.snapshots.clone();
+        let enabled: Vec<Account> = self.accounts.lock().unwrap().list().iter()
+            .filter(|a| a.is_enabled).cloned().collect();
+
+        let futures = enabled.into_iter().map(|account| {
+            let provider = providers.get(&account.provider).cloned();
+            let snapshots = snapshots.clone();
+            async move {
+                let id = account.id;
+                let api_key = resolve_key(id).unwrap_or_default();
+                let provider = match provider {
+                    Some(p) => p,
+                    None => {
+                        let err = RefreshError::Provider(ProviderError::ProviderUnavailable(account.provider));
+                        return (id, Err(err));
+                    }
+                };
+                match provider.detect(&api_key).await {
+                    Ok(detection) => {
+                        let now = chrono::Utc::now();
+                        let stored = AccountSnapshot {
+                            account_id: id,
+                            display_name: account.display_name.clone(),
+                            provider: account.provider,
+                            detected_profile: Some(detection.profile),
+                            low_balance_threshold: account.low_balance_threshold,
+                            usage: Some(detection.snapshot),
+                            health: AccountHealth::Healthy,
+                            last_success_at: Some(now),
+                        };
+                        if let Err(e) = snapshots.save(&stored) {
+                            (id, Err(RefreshError::Snapshot(e)))
+                        } else {
+                            (id, Ok(stored))
+                        }
+                    }
+                    Err(e) => (id, Err(RefreshError::Provider(e))),
+                }
+            }
+        });
+
+        future::join_all(futures).await
+    }
+
+    pub fn start_interval(
+        self: Arc<Self>,
+        prefs: Preferences,
+        resolve_key: impl Fn(Uuid) -> Option<String> + Sync + Send + 'static,
+    ) -> JoinHandle<()> {
+        tokio::spawn(async move {
+            let mut timer = interval(Duration::from_secs(
+                prefs.refresh_interval_minutes.saturating_mul(60) as u64,
+            ));
+            timer.tick().await;
+            loop {
+                timer.tick().await;
+                info!("refresh interval fired");
+                let res = self.refresh_all(&resolve_key).await;
+                let failures = res.iter().filter(|(_, r)| r.is_err()).count();
+                if failures > 0 {
+                    warn!(failures, "one or more accounts failed to refresh");
+                }
+            }
+        })
+    }
+
+    pub fn aggregate_now(&self, now: chrono::DateTime<chrono::Utc>) -> crate::domain::AggregateSnapshot {
+        let accounts: Vec<Account> = self.accounts.lock().unwrap().list().to_vec();
+        let snapshots: Vec<AccountSnapshot> = self.snapshots.load_all().unwrap_or_default()
+            .into_iter()
+            .filter(|s| accounts.iter().any(|a| a.id == s.account_id && a.is_enabled))
+            .collect();
+        SnapshotAggregator::aggregate(&accounts, &snapshots, now)
+    }
+
+    pub fn evaluate_alerts(&mut self, fresh: Vec<AccountSnapshot>) -> Vec<AccountSnapshot> {
+        let fresh_by_id: std::collections::HashMap<Uuid, AccountSnapshot> = fresh
+            .iter().cloned().map(|s| (s.account_id, s)).collect();
+        let mut accounts = self.accounts.lock().unwrap();
+        let mut owned: Vec<Account> = accounts.list().to_vec();
+        let _ = AlertEvaluator::evaluate(&mut owned, &fresh_by_id);
+        for updated in owned {
+            let _ = accounts.update(updated);
+        }
+        fresh
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refresh_coordinator_constructs() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let layout = crate::storage::path_layout::PathLayout {
+            root: dir.path().to_path_buf(),
+            accounts: dir.path().join("accounts.json"),
+            snapshots: dir.path().join("snapshots"),
+            preferences: dir.path().join("preferences.json"),
+            credentials: dir.path().join("credentials.bin"),
+        };
+        let accounts = Arc::new(std::sync::Mutex::new(AccountStore::load_or_create(&layout.accounts).unwrap()));
+        let snapshots = Arc::new(SnapshotStore::new(&layout));
+        let providers: Arc<std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>> =
+            Arc::new(std::collections::HashMap::new());
+        let _coord = RefreshCoordinator::new(providers, accounts, snapshots);
+    }
+}

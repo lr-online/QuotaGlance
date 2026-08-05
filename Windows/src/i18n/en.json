@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "QuotaGlance",
+    "noAccounts": "Add an API account to see balances and quotas here.",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "refreshPartial": "Some accounts could not be refreshed. Existing data is still shown."
+  },
+  "nav": { "overview": "Overview", "settings": "Settings", "addProvider": "Add account" },
+  "actions": { "refresh": "Refresh", "add": "Add", "edit": "Edit", "save": "Save changes", "saveAccount": "Save account", "delete": "Delete account", "show": "Show API key", "hide": "Hide API key" },
+  "status": { "healthy": "Healthy", "belowThreshold": "Below threshold", "stale": "Stale", "unavailable": "Unavailable", "partial": "Partial", "loading": "Loading snapshot..." },
+  "metrics": {
+    "balance": "Balance", "todayCost": "Today's cost", "todayRequests": "Today requests", "quotaLimit": "Limit", "quotaUsed": "Used", "quotaRemaining": "Remaining", "quotaWindow": "Quota windows", "spendToday": "Today", "spendWeek": "This week", "spendMonth": "This month", "spendTotal": "Total"
+  },
+  "overview": {
+    "subtitle": "AI provider balances and quotas", "emptyTitle": "Your quota view starts here", "summary": "Account summary", "allAccounts": "All enabled accounts", "weeklyUsage": "Usage trend", "lastSevenDays": "Last 7 days", "noUsage": "No daily usage is available yet.", "accounts": "Accounts"
+  },
+  "detail": {
+    "notFound": "This account no longer exists.", "refreshed": "Refreshed", "neverRefreshed": "Not refreshed yet", "disabled": "This account is disabled and is excluded from refresh and totals.", "noSnapshot": "No snapshot has been captured for this account.", "notProvided": "Not provided", "balanceBreakdown": "Balance breakdown", "spending": "Spending", "dailyUsage": "Daily usage", "modelUsage": "Model usage", "providerStatus": "Provider status"
+  },
+  "addAccount": {
+    "title": "Add account", "subtitle": "Connect an API key", "selectProvider": "Provider", "displayName": "Display name", "pasteKey": "API key", "detect": "Detect profile", "detected": "Detected", "detectHelp": "Detect the region and credential kind before saving.", "detectRequired": "Detect the API key profile before saving.", "refreshNow": "Refresh now", "saved": "Account added", "missingKey": "An API key is required", "missingName": "A display name is required", "nameHelp": "Use a distinct name so you can recognize this account.", "keyPlaceholder": "Paste API key", "keyHelp": "The key is stored with Windows DPAPI and is never displayed again.", "region": "Region"
+  },
+  "edit": {
+    "title": "Edit account", "threshold": "Low balance threshold", "thresholdHelp": "Leave empty to turn off low-balance alerts for this account.", "invalidThreshold": "The threshold must be a valid decimal number.", "replaceKey": "Replace API key", "replaceKeyPlaceholder": "Leave empty to keep the current key", "replaceKeyHelp": "A new key is checked against the provider before it replaces the stored credential.", "enabled": "Include this account", "enabledHelp": "It participates in refreshes, totals, and alerts.", "disabledHelp": "It is kept locally but excluded from refreshes and totals.", "deleteConfirm": "Delete this account and its stored API key? This cannot be undone."
+  },
+  "settings": {
+    "title": "Settings", "subtitle": "Refresh and quick view preferences", "refreshInterval": "Refresh interval", "language": "Language", "notifications": "Low balance notifications", "notificationsHelp": "Notifications are sent only for a new low-balance episode.", "launchAtLogin": "Launch at sign-in", "launchAtLoginHelp": "Optional Windows startup preference for this portable client.", "defaultWidget": "Desktop widget target", "widgetHelp": "Choose what the floating desktop widget shows.", "minute1": "Every minute", "minute5": "Every 5 minutes", "minute15": "Every 15 minutes", "minute30": "Every 30 minutes", "minute60": "Every hour", "languageSystem": "Follow system", "languageEn": "English", "languageZhCn": "Chinese (Simplified)", "widgetAll": "All accounts", "widgetDefault": "First enabled account"
+  },
+  "popover": { "title": "Quick view", "openMain": "Open main window", "refreshAll": "Refresh all" },
+  "widget": { "refresh": "Refresh", "noData": "No account data" },
+  "region": { "global": "Global", "china": "China", "international": "International" },
+  "credential": { "standard": "Standard key", "management": "Management key", "tokenPlan": "Token plan" },
+  "errors": { "invalidCredential": "Invalid API key", "rateLimited": "Rate limited; try again later", "httpStatus": "Provider request failed", "invalidResponse": "Provider returned an unexpected response", "providerInactive": "Provider account is inactive", "unsupportedCredential": "This credential kind is unsupported", "regionDetectionFailed": "Could not detect the provider region", "profileMismatch": "Detected profile does not match the saved account", "providerUnavailable": "Provider is unavailable", "offline": "Offline", "timeout": "Request timed out" }
+}

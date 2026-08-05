@@ -6,12 +6,6 @@
       "breakdown": []
     }
   ],
-  "spendingLimit": {
-    "label": "Quota",
-    "used": { "amount": "6655.9", "currency": "USD" },
-    "limit": { "amount": "7200", "currency": "USD" },
-    "remaining": { "amount": "544.045471", "currency": "USD" }
-  },
   "spend": {
     "today": { "amount": "12.34", "currency": "USD" },
     "total": { "amount": "6650.22", "currency": "USD" }
@@ -61,6 +55,5 @@
       "requests": 2,
       "totalTokens": 50
     }
-  ],
-  "providerStatus": "active"
+  ]
 }

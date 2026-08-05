@@ -1,0 +1,102 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "QuotaGlance",
+  "version": "0.1.0",
+  "identifier": "ai.quotaglance.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "QuotaGlance",
+        "url": "index.html",
+        "width": 960,
+        "height": 720,
+        "minWidth": 640,
+        "minHeight": 480,
+        "visible": false,
+        "decorations": true,
+        "resizable": true,
+        "center": true,
+        "dragDropEnabled": false,
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
+      },
+      {
+        "label": "widget",
+        "title": "QuotaGlance Widget",
+        "url": "widget.html",
+        "width": 240,
+        "height": 160,
+        "minWidth": 200,
+        "minHeight": 120,
+        "visible": false,
+        "decorations": false,
+        "resizable": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "dragDropEnabled": false
+      },
+      {
+        "label": "tray-popover",
+        "title": "QuotaGlance",
+        "url": "popover.html",
+        "width": 300,
+        "height": 420,
+        "minWidth": 280,
+        "minHeight": 360,
+        "visible": false,
+        "decorations": false,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: asset:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost"
+    },
+    "withGlobalTauri": false,
+    "trayIcon": {
+      "id": "main-tray",
+      "iconPath": "icons/tray-icon.png",
+      "tooltip": "QuotaGlance"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "assets/providerspecs/*.json"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "QuotaGlance Windows portable client",
+    "longDescription": "QuotaGlance is a cross-platform menu bar / taskbar app that surfaces multiple AI API provider balances and quotas from a single window.",
+    "windows": {
+      "wix": {
+        "language": ["en-US", "zh-CN"]
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "languages": ["English", "SimpChinese"]
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["quotaglance"]
+      }
+    }
+  }
+}

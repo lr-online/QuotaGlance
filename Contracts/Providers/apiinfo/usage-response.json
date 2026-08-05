@@ -1,13 +1,10 @@
 {
+  "balance": 544.045471,
   "isValid": true,
-  "status": "active",
+  "mode": "subscription",
+  "planName": "Standard",
   "unit": "USD",
   "remaining": 544.045471,
-  "quota": {
-    "limit": 7200,
-    "used": 6655.90,
-    "remaining": 544.045471
-  },
   "usage": {
     "today": {
       "actual_cost": 12.34,
