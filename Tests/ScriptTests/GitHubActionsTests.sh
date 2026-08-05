@@ -231,6 +231,8 @@ rg -Fq 'scripts/sync-contracts-to-windows.sh' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not sync contract fixtures"
 rg -Fq 'scripts/generate-windows-icons.ps1' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not generate ignored Tauri icon assets"
+rg -Fq 'tray-icon.png' "$ROOT_DIR/scripts/generate-windows-icons.ps1" \
+  || fail "Windows icon generator does not produce the compile-time tray icon"
 rg -Fq 'npm exec -- tauri build' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not use the Tauri CLI installed by npm ci"
 
