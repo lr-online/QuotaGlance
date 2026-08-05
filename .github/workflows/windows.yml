@@ -62,6 +62,10 @@ jobs:
         shell: pwsh
         run: npm ci
 
+      - name: Generate Windows icon assets
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/generate-windows-icons.ps1
+
       - name: Verify provider parity (Swift / ArkTS / Kotlin / Rust)
         shell: bash
         run: |
@@ -78,13 +82,16 @@ jobs:
         run: cargo test --verbose
 
       - name: Build Windows installer and portable application
-        working-directory: Windows/src-tauri
+        working-directory: Windows
         shell: pwsh
         run: |
           $target = "x86_64-pc-windows-msvc"
-          cargo tauri build --target $target --bundles nsis
+          npm exec -- tauri build -- --target $target --bundles nsis
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
-          $windowsDirectory = Split-Path -Parent $PWD
+          $windowsDirectory = $PWD.Path
           $releaseDirectory = Join-Path $windowsDirectory "target/$target/release"
           $app = Get-ChildItem -Path $releaseDirectory -Filter "quotaglance.exe" -File | Select-Object -First 1
           if (-not $app) {

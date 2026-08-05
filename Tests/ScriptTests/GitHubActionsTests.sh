@@ -229,6 +229,10 @@ rg -Fq 'scripts/sync-specs-to-windows.sh' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not sync provider specs"
 rg -Fq 'scripts/sync-contracts-to-windows.sh' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not sync contract fixtures"
+rg -Fq 'scripts/generate-windows-icons.ps1' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not generate ignored Tauri icon assets"
+rg -Fq 'npm exec -- tauri build' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not use the Tauri CLI installed by npm ci"
 
 [[ -f "$ROOT_DIR/.github/dependabot.yml" ]] \
   || fail "missing Dependabot configuration"
