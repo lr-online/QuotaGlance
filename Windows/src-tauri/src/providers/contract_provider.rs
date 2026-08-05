@@ -210,7 +210,7 @@ impl ContractProvider {
 
             let parse = step.get("parse").ok_or(ProviderError::InvalidResponse)?;
             run_checks(parse.get("checks"), &response.body)?;
-            let values = parse_values(parse.get("values"), &response.body, profile)?;
+            let values = parse_values(parse.get("values"), &response.body, profile, None)?;
             if let Some(kind_detection) = parse.get("credentialKindDetection") {
                 detected_credential_kind = detect_credential_kind(kind_detection, &response.body)?;
             }
@@ -317,8 +317,13 @@ fn ensure_check(value: Option<&Value>, check: &Map<String, Value>, fallback_erro
     Ok(())
 }
 
-fn parse_values(raw: Option<&Value>, body: &Value, profile: ProviderProfile) -> Result<HashMap<String, Value>, ProviderError> {
-    let mut values = HashMap::new();
+fn parse_values(
+    raw: Option<&Value>,
+    body: &Value,
+    profile: ProviderProfile,
+    inherited_values: Option<&HashMap<String, Value>>,
+) -> Result<HashMap<String, Value>, ProviderError> {
+    let mut values = inherited_values.cloned().unwrap_or_default();
     for (name, expr) in raw.and_then(Value::as_object).into_iter().flatten() {
         if let Some(value) = build_value(expr, body, &values, profile)? {
             values.insert(name.clone(), value);
@@ -387,7 +392,7 @@ fn build_value(
         let mut out = Vec::new();
         for item in value_at(body, items_path).and_then(Value::as_array).into_iter().flatten() {
             if map.get("skipItemWhen").is_some_and(|condition| condition_matches_value(condition, item).unwrap_or(false)) { continue; }
-            let item_values = parse_values(map.get("itemValues"), item, profile)?;
+            let item_values = parse_values(map.get("itemValues"), item, profile, Some(values))?;
             if let Some(value) = build_object(map.get("item").ok_or(ProviderError::InvalidResponse)?, item, &item_values, profile)? {
                 out.push(value);
             }
@@ -676,4 +681,76 @@ pub fn provider_catalog(http: Arc<dyn HttpClient>) -> Result<HashMap<ProviderID,
         providers.insert(id, Arc::new(ContractProvider::new(id, spec, http.clone())?));
     }
     Ok(providers)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::providers::http_client::{RawResponse, ReqwestHttpClient};
+
+    #[derive(Clone)]
+    struct StubHttpClient {
+        response: RawResponse,
+    }
+
+    #[async_trait::async_trait]
+    impl HttpClient for StubHttpClient {
+        async fn get_json(
+            &self,
+            _url: &str,
+            _headers: &[(&str, &str)],
+        ) -> Result<RawResponse, crate::providers::provider_error::TransportError> {
+            Ok(self.response.clone())
+        }
+    }
+
+    #[tokio::test]
+    async fn api_info_array_items_inherit_step_values() {
+        let response = serde_json::from_str(include_str!(
+            "../../assets/contracts/Providers/apiinfo/usage-response.json"
+        ))
+        .expect("parse API Info contract fixture");
+        let http = Arc::new(StubHttpClient {
+            response: RawResponse { status: 200, body: response },
+        });
+        let spec: Value = serde_json::from_str(include_str!("../../assets/providerspecs/apiInfo.json"))
+            .expect("parse API Info spec");
+        let provider = ContractProvider::new(ProviderID::ApiInfo, spec, http)
+            .expect("create API Info provider");
+
+        let snapshot = provider
+            .fetch(
+                "redacted-test-key",
+                ProviderProfile::new(ProviderRegion::Global, ProviderCredentialKind::Standard),
+            )
+            .await
+            .expect("API Info contract fixture must parse");
+
+        assert_eq!(snapshot.daily_usage.len(), 2);
+        assert_eq!(snapshot.daily_usage[0].actual_cost.amount, "12.34");
+        assert_eq!(snapshot.model_usage.len(), 2);
+        assert_eq!(snapshot.model_usage[0].actual_cost.as_ref().map(|cost| cost.currency.as_str()), Some("USD"));
+    }
+
+    #[tokio::test]
+    #[ignore = "requires QUOTAGLANCE_API_INFO_TEST_KEY and live network access"]
+    async fn api_info_live_response_matches_contract() {
+        let api_key = std::env::var("QUOTAGLANCE_API_INFO_TEST_KEY")
+            .expect("set QUOTAGLANCE_API_INFO_TEST_KEY before running this ignored smoke test");
+        let http = Arc::new(ReqwestHttpClient::new().expect("create HTTP transport"));
+        let spec: Value = serde_json::from_str(include_str!("../../assets/providerspecs/apiInfo.json"))
+            .expect("parse API Info spec");
+        let provider = ContractProvider::new(ProviderID::ApiInfo, spec, http.clone())
+            .expect("create API Info provider");
+        let profile = ProviderProfile::new(ProviderRegion::Global, ProviderCredentialKind::Standard);
+
+        let detection = provider
+            .detect(&api_key)
+            .await
+            .expect("API Info live response must satisfy its contract");
+
+        assert_eq!(detection.profile, profile);
+        assert_eq!(detection.snapshot.balances.len(), 1);
+        assert!(!detection.snapshot.balances[0].available.amount.is_empty());
+    }
 }

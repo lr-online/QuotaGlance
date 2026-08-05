@@ -57,11 +57,11 @@ import sys
 swift_path, rust_path = sys.argv[1], sys.argv[2]
 
 swift_src = open(swift_path).read()
-m = re.search(r"static let allCases[^\]]*\]", swift_src, re.DOTALL)
+m = re.search(r"static let allCases[^\n]*=\s*\[(.*?)\]", swift_src, re.DOTALL)
 if not m:
     print("error: cannot extract Swift allCases", file=sys.stderr)
     sys.exit(1)
-swift_cases = re.findall(r"\s*\.\s*(\w+)\s*,", m.group(0))
+swift_cases = re.findall(r"\.\s*(\w+)\s*,", m.group(0))
 
 # Swift's enum case names map directly onto the Rust raw value strings
 # (deepSeek == deepSeek, openRouter == openRouter, miniMax == miniMax,
@@ -90,17 +90,18 @@ fi
 # --- KNOWN_* allow-list parity (Rust), enum cases (Swift) -------------------
 
 status=0
-python3 - "$SWIFT_SPEC_FILE" "$SWIFT_PROVIDER_FILE" "$RUST_SPEC_FILE" <<'PY' || status=$?
+python3 - "$SWIFT_SPEC_FILE" "$SWIFT_PROVIDER_FILE" "$RUST_SPEC_FILE" "$RUST_ERROR_FILE" <<'PY' || status=$?
 import re
 import sys
 
-swift_spec_path, swift_provider_path, rust_spec_path = sys.argv[1:4]
+swift_spec_path, swift_provider_path, rust_spec_path, rust_error_path = sys.argv[1:5]
 swift_spec = open(swift_spec_path).read()
 swift_provider = open(swift_provider_path).read()
 rust_spec = open(rust_spec_path).read()
+rust_error = open(rust_error_path).read()
 
 def rust_const_array(src, name):
-    m = re.search(rf"pub const {name}:[^[]*\[(.*?)\]", src, re.DOTALL)
+    m = re.search(rf"pub const {name}:[^=]*=\s*&?\s*\[(.*?)\]", src, re.DOTALL)
     if not m:
         return set()
     return set(re.findall(r'"([^"]+)"', m.group(1)))
@@ -113,7 +114,7 @@ def swift_set(src, decl):
 
 # Error tokens
 swift_errors = swift_set(swift_spec, "knownErrorTokens")
-rust_errors = rust_const_array(rust_spec, "KNOWN_ERROR_TOKENS")
+rust_errors = rust_const_array(rust_error, "KNOWN_ERROR_TOKENS")
 
 # Snapshot fields
 swift_fields = swift_set(swift_spec, "knownSnapshotFields")
@@ -257,9 +258,9 @@ else
   for dir in "$CONTRACTS_DIR"/*; do
     [[ -d "$dir" ]] || continue
     name="$(basename "$dir")"
-    if [[ ! -d "$FIXTURE_TARGET/$name" ]]; then
-      fail "missing fixture tree $FIXTURE_TARGET/$name"
-    elif ! diff -qr "$dir" "$FIXTURE_TARGET/$name" >/dev/null 2>&1; then
+    if [[ ! -d "$FIXTURE_TARGET/Providers/$name" ]]; then
+      fail "missing fixture tree $FIXTURE_TARGET/Providers/$name"
+    elif ! diff -qr "$dir" "$FIXTURE_TARGET/Providers/$name" >/dev/null 2>&1; then
       fail "Windows contract fixture tree out of sync for provider '$name'"
     fi
   done

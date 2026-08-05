@@ -91,6 +91,9 @@ compare_sets() {
   local actual="$3"
   local diff_output
 
+  expected="${expected//$'\r'/}"
+  actual="${actual//$'\r'/}"
+
   if ! diff_output="$(diff -u <(printf '%s\n' "$expected") <(printf '%s\n' "$actual"))"; then
     fail "$label differ:"$'\n'"$diff_output"
   fi
@@ -100,6 +103,9 @@ compare_ordered_lists() {
   local label="$1"
   local expected="$2"
   local actual="$3"
+
+  expected="${expected//$'\r'/}"
+  actual="${actual//$'\r'/}"
 
   if [[ "$expected" != "$actual" ]]; then
     fail "$label differ (order is part of the persisted protocol):"$'\n'"expected:"$'\n'"$expected"$'\n'"actual:"$'\n'"$actual"
@@ -126,7 +132,7 @@ extract_rust_const_array() {
 import re
 import sys
 src = open(sys.argv[1]).read()
-m = re.search(rf"pub const {re.escape(sys.argv[2])}:\s*[^\[]*\[(.*?)\]", src, re.DOTALL)
+m = re.search(rf"pub const {re.escape(sys.argv[2])}:\s*[^=]*=\s*&?\s*\[(.*?)\]", src, re.DOTALL)
 if not m:
     sys.exit(0)
 strings = sorted(set(re.findall(r'"([^"]+)"', m.group(1))))
@@ -610,10 +616,10 @@ check_windows_contracts() {
   local hint="run scripts/sync-contracts-to-windows.sh"
   local dir name diff_output
 
-  # Provider trees: contracts/<provider>/ matches Contracts/Providers/<provider>/.
+  # Provider trees: contracts/Providers/<provider>/ mirrors Contracts/Providers/<provider>/.
   for dir in "$CONTRACTS_DIR"/*/; do
     name="$(basename "$dir")"
-    if ! diff_output="$(diff -r "$dir" "$WINDOWS_CONTRACTS_DIR/$name" 2>&1)"; then
+    if ! diff_output="$(diff -r "$dir" "$WINDOWS_CONTRACTS_DIR/Providers/$name" 2>&1)"; then
       fail "Windows contract copies for provider '$name' are out of sync ($hint):"$'\n'"$diff_output"
     fi
   done
@@ -629,13 +635,13 @@ check_windows_contracts() {
     fi
   done
 
-  # No unexpected top-level entries beyond providers and aggregation/alerts.
+  # No unexpected top-level entries beyond Providers/Aggregation/Alerts.
   local entry
   for entry in "$WINDOWS_CONTRACTS_DIR"/*; do
     [[ -e "$entry" ]] || continue
     name="$(basename "$entry")"
-    [[ "$name" == "aggregation" || "$name" == "alerts" ]] && continue
-    [[ -d "$CONTRACTS_DIR/$name" ]] \
+    [[ "$name" == "Providers" || "$name" == "Aggregation" || "$name" == "Alerts" ]] && continue
+    [[ -d "$WINDOWS_CONTRACTS_DIR/Providers/$name" ]] \
       || fail "Windows contract copies have unexpected entry '$name' ($hint)"
   done
 }
