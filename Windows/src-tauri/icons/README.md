@@ -8,15 +8,10 @@ This directory holds the icon files referenced by `tauri.conf.json`:
 - `icon.ico` (Windows install + Explorer icon)
 - `tray-icon.png` (system-tray icon, used by `app.trayIcon.iconPath`)
 
-The files are intentionally not committed (see `Windows/.gitignore`). They
-are produced by the icon-generation script that lands in a follow-up
-milestone, mirroring the existing `scripts/generate-app-icon.swift` (which
-generates the macOS `.appiconset`) and `scripts/generate-harmonyos-icon.swift`.
+Generate them from the existing QuotaGlance app icon set:
 
-Until that script lands, local builds need placeholder files:
-- run `cargo tauri icon path/to/source.png` against any 1024x1024 source PNG
-  to populate this directory with the correct size set;
-- or supply a single `icon.ico` (multi-resolution) and a 256x256 `tray-icon.png`
-  by hand before running `cargo tauri build`.
+- source: `App/Assets.xcassets/AppIcon.appiconset/icon-1024.png`
+- command: `bash scripts/generate-windows-icons.sh`
 
-The contract is: do not commit binary icon files, the script owns them.
+Windows must reuse the same icon already used by the other clients. Do not
+replace these files with placeholder artwork.

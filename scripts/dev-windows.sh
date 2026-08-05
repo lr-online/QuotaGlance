@@ -7,6 +7,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 cd "$REPO_ROOT"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/scripts/generate-windows-icons.ps1"
 bash scripts/sync-specs-to-windows.sh
 bash scripts/sync-contracts-to-windows.sh
 

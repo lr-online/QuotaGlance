@@ -94,15 +94,9 @@
   },
   "plugins": {
     "deep-link": {
-      "mobile": [],
       "desktop": {
         "schemes": ["quotaglance"]
       }
-    },
-    "single-instance": {
-      "args": [],
-      "deeplink": true
-    },
-    "notification": {}
+    }
   }
 }

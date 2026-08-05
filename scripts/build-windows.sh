@@ -8,6 +8,7 @@ WINDOWS_DIR="$REPO_ROOT/Windows"
 TAURI_DIR="$WINDOWS_DIR/src-tauri"
 
 cd "$REPO_ROOT"
+powershell -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/scripts/generate-windows-icons.ps1"
 bash scripts/sync-specs-to-windows.sh
 bash scripts/sync-contracts-to-windows.sh
 
