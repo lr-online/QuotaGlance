@@ -152,4 +152,14 @@ export const events = {
     const { listen } = await import("@tauri-apps/api/event");
     return listen<string>("deep-link", (event) => callback(event.payload));
   },
+  onSnapshotsUpdated: async (callback: () => void) => {
+    if (!hasTauriRuntime) return () => undefined;
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen("snapshots-updated", () => callback());
+  },
+  onMenuRefreshAll: async (callback: () => void) => {
+    if (!hasTauriRuntime) return () => undefined;
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen("menu-refresh-all", () => callback());
+  },
 };

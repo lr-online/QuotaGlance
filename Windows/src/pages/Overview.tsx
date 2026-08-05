@@ -8,7 +8,7 @@ import { PageShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
-import { commands, type AccountSummary, type AggregateSnapshot } from "@/lib/tauri-bindings";
+import { commands, events, type AccountSummary, type AggregateSnapshot } from "@/lib/tauri-bindings";
 import { formatMoney, formatNumber, healthKind, PROVIDER_NAMES, relativeTime } from "@/lib/format";
 
 export default function Overview() {
@@ -37,6 +37,11 @@ export default function Overview() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void events.onSnapshotsUpdated(() => void load()).then((release) => { unlisten = release; });
+    return () => unlisten?.();
+  }, [load]);
 
   const refresh = async () => {
     setRefreshing(true);

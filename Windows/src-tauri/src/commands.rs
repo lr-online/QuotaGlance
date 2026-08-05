@@ -19,11 +19,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use tauri::{Emitter, Manager, State};
+use tauri::{Emitter, Manager, Runtime, State};
 use uuid::Uuid;
 
-use crate::alerts::{AlertBatchEvaluation, AlertEvaluator};
-use crate::domain::{Account, AccountSnapshot, AggregateSnapshot, ProviderID, ProviderProfile, ProviderRegion, ProviderCredentialKind};
+use crate::alerts::AlertBatchEvaluation;
+use crate::domain::{
+    Account, AccountSnapshot, AggregateSnapshot, ProviderCredentialKind, ProviderID,
+    ProviderProfile, ProviderRegion,
+};
 use crate::refresh::refresh_coordinator::{RefreshCoordinator, RefreshError};
 use crate::storage::account_store::AccountStore;
 use crate::storage::credential_vault::CredentialVault;
@@ -74,7 +77,10 @@ pub fn get_account_snapshot(
     state: State<'_, AppState>,
     id: Uuid,
 ) -> Result<Option<AccountSnapshot>, String> {
-    state.snapshots.load(id).map_err(|error| format!("snapshots: {error}"))
+    state
+        .snapshots
+        .load(id)
+        .map_err(|error| format!("snapshots: {error}"))
 }
 
 #[tauri::command]
@@ -83,7 +89,11 @@ pub fn get_aggregate_snapshot(state: State<'_, AppState>) -> AggregateSnapshot {
 }
 
 #[tauri::command]
-pub fn add_account(state: State<'_, AppState>, request: AddAccountRequest) -> Result<Uuid, String> {
+pub fn add_account(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    request: AddAccountRequest,
+) -> Result<Uuid, String> {
     let mut accounts = state.accounts.lock().unwrap();
     let mut vault = state.vault.lock().unwrap();
     let id = Uuid::new_v4();
@@ -111,6 +121,9 @@ pub fn add_account(state: State<'_, AppState>, request: AddAccountRequest) -> Re
     vault
         .set(id, &request.api_key)
         .map_err(|e| format!("vault: {e}"))?;
+    drop(vault);
+    drop(accounts);
+    let _ = crate::tray::refresh_menu(&app);
     Ok(id)
 }
 
@@ -129,6 +142,7 @@ pub async fn detect_provider_profile(
 
 #[tauri::command]
 pub async fn update_account(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     request: UpdateAccountRequest,
 ) -> Result<(), String> {
@@ -152,31 +166,46 @@ pub async fn update_account(
     if let Some(enabled) = request.is_enabled {
         updated.is_enabled = enabled;
     }
-    accounts.update(updated).map_err(|e| format!("store: {e}"))?;
+    accounts
+        .update(updated)
+        .map_err(|e| format!("store: {e}"))?;
+    drop(accounts);
+    let _ = crate::tray::refresh_menu(&app);
     Ok(())
 }
 
 #[tauri::command]
-pub fn delete_account(state: State<'_, AppState>, id: Uuid) -> Result<bool, String> {
+pub fn delete_account(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    id: Uuid,
+) -> Result<bool, String> {
     let mut accounts = state.accounts.lock().unwrap();
     let mut vault = state.vault.lock().unwrap();
     let removed = accounts.delete(id).map_err(|e| format!("store: {e}"))?;
     if removed.is_some() {
         vault.remove(id).map_err(|e| format!("vault: {e}"))?;
-        state.snapshots.delete(id).map_err(|e| format!("snapshots: {e}"))?;
+        state
+            .snapshots
+            .delete(id)
+            .map_err(|e| format!("snapshots: {e}"))?;
+        drop(vault);
+        drop(accounts);
+        let _ = crate::tray::refresh_menu(&app);
     }
     Ok(removed.is_some())
 }
 
 #[tauri::command]
-pub async fn refresh_all(state: State<'_, AppState>) -> Result<RefreshReport, String> {
+pub async fn refresh_all(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<RefreshReport, String> {
     let prefs = state.preferences.lock().unwrap().current().clone();
     let vault = state.vault.clone();
     let coord = state.coordinator.clone();
     let report = coord
-        .refresh_all_async(&prefs, move |id| {
-            vault.lock().unwrap().get(id).ok()
-        })
+        .refresh_all_async(&prefs, move |id| vault.lock().unwrap().get(id).ok())
         .await;
     let total = report.len();
     let failures = report.iter().filter(|(_, r)| r.is_err()).count();
@@ -184,6 +213,15 @@ pub async fn refresh_all(state: State<'_, AppState>) -> Result<RefreshReport, St
         .iter()
         .find_map(|(_, r)| r.as_ref().err().map(|e| format!("{e}")))
         .or_else(|| None);
+    let fresh: Vec<AccountSnapshot> = report
+        .iter()
+        .filter_map(|(_, result)| result.as_ref().ok().cloned())
+        .collect();
+    let alerts = state.coordinator.evaluate_alerts(fresh);
+    if prefs.notifications_enabled {
+        send_alert_notifications(&app, &alerts);
+    }
+    let _ = app.emit("snapshots-updated", ());
     Ok(RefreshReport {
         total,
         failures,
@@ -226,7 +264,9 @@ pub async fn refresh_account(
     let vault = state.vault.clone();
     state
         .coordinator
-        .refresh_one(account, move |account_id| vault.lock().unwrap().get(account_id).ok())
+        .refresh_one(account, move |account_id| {
+            vault.lock().unwrap().get(account_id).ok()
+        })
         .await
         .map_err(|error| format!("refresh: {error}"))
 }
@@ -252,13 +292,27 @@ pub fn update_preferences(
 #[tauri::command]
 pub fn evaluate_alerts(state: State<'_, AppState>) -> AlertBatchEvaluation {
     let fresh = state.snapshots.load_all().unwrap_or_default();
-    let fresh_map: std::collections::HashMap<Uuid, crate::domain::AccountSnapshot> = fresh
-        .iter()
-        .cloned()
-        .map(|s| (s.account_id, s))
-        .collect();
-    let mut owned: Vec<Account> = state.accounts.lock().unwrap().list().to_vec();
-    AlertEvaluator::evaluate(&mut owned, &fresh_map)
+    state.coordinator.evaluate_alerts(fresh)
+}
+
+/// Deliver only newly-started low-balance episodes. The evaluator already
+/// suppresses duplicate notifications and ignores stale/unavailable data.
+pub fn send_alert_notifications<R: Runtime>(
+    app: &tauri::AppHandle<R>,
+    evaluation: &AlertBatchEvaluation,
+) {
+    use tauri_plugin_notification::NotificationExt;
+
+    for pending in &evaluation.notifications {
+        let title = format!("Low balance: {}", pending.account.display_name);
+        let body = format!(
+            "Remaining balance: {} {}",
+            pending.remaining.amount, pending.remaining.currency
+        );
+        if let Err(error) = app.notification().builder().title(title).body(body).show() {
+            tracing::warn!(%error, "could not show low-balance notification");
+        }
+    }
 }
 
 #[tauri::command]
@@ -272,11 +326,7 @@ pub fn open_window_by_label(app: tauri::AppHandle, label: String) -> Result<(), 
 }
 
 #[tauri::command]
-pub fn show_notification(
-    app: tauri::AppHandle,
-    title: String,
-    body: String,
-) -> Result<(), String> {
+pub fn show_notification(app: tauri::AppHandle, title: String, body: String) -> Result<(), String> {
     use tauri_plugin_notification::NotificationExt;
     app.notification()
         .builder()
@@ -301,7 +351,7 @@ pub fn get_intent_payload(app: tauri::AppHandle) -> Option<String> {
 
 /// Take a snapshot atomically and turn the deep-link URL into an event
 /// the front-end subscribes to. Pulled from lib.rs's `setup`.
-pub fn emit_intent(app: &tauri::AppHandle, payload: String) {
+pub fn emit_intent<R: Runtime>(app: &tauri::AppHandle<R>, payload: String) {
     let _ = app.emit("deep-link", payload.clone());
     if let Some(state) = app.try_state::<crate::tray::IntentPayload>() {
         *state.0.lock().unwrap() = Some(payload);
@@ -353,6 +403,9 @@ mod tests {
     fn api_info_profile_is_global_standard() {
         let p = api_info_profile();
         assert!(matches!(p.region, ProviderRegion::Global));
-        assert!(matches!(p.credential_kind, ProviderCredentialKind::Standard));
+        assert!(matches!(
+            p.credential_kind,
+            ProviderCredentialKind::Standard
+        ));
     }
 }

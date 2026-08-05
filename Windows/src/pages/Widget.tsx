@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { commands, type AccountSummary, type AggregateSnapshot, type PreferencesDTO } from "@/lib/tauri-bindings";
+import { commands, events, type AccountSummary, type AggregateSnapshot, type PreferencesDTO } from "@/lib/tauri-bindings";
 import { formatMoney, PROVIDER_NAMES } from "@/lib/format";
 
 export default function WidgetApp() {
@@ -18,6 +18,11 @@ export default function WidgetApp() {
     setPreferences(prefs);
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void events.onSnapshotsUpdated(() => void load()).then((release) => { unlisten = release; });
+    return () => unlisten?.();
+  }, [load]);
   const refresh = async () => { setRefreshing(true); try { await commands.refreshAll(); await load(); } finally { setRefreshing(false); } };
   const target = preferences?.default_widget_target;
   const selectedId = target?.kind === "account" ? target.account_id : accounts[0]?.id;

@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
-import { commands, type AccountSummary, type AggregateSnapshot } from "@/lib/tauri-bindings";
+import { commands, events, type AccountSummary, type AggregateSnapshot } from "@/lib/tauri-bindings";
 import { formatMoney, healthKind, PROVIDER_NAMES } from "@/lib/format";
 
 export default function PopoverApp() {
@@ -19,6 +19,11 @@ export default function PopoverApp() {
     setAggregate(snapshot);
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void events.onSnapshotsUpdated(() => void load()).then((release) => { unlisten = release; });
+    return () => unlisten?.();
+  }, [load]);
   const refresh = async () => { setRefreshing(true); try { await commands.refreshAll(); await load(); } finally { setRefreshing(false); } };
   const snapshots = new Map((aggregate?.accounts ?? []).map((snapshot) => [snapshot.account_id, snapshot]));
 

@@ -6,7 +6,7 @@ This directory holds the icon files referenced by `tauri.conf.json`:
 - `128x128.png`
 - `128x128@2x.png`
 - `icon.ico` (Windows install + Explorer icon)
-- `tray-icon.png` (system-tray icon, used by `app.trayIcon.iconPath`)
+- `tray-icon.png` (system-tray icon, loaded by `src/tray/mod.rs`)
 
 Generate them from the existing QuotaGlance app icon set:
 
