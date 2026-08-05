@@ -86,7 +86,7 @@ jobs:
         shell: pwsh
         run: |
           $target = "x86_64-pc-windows-msvc"
-          npm exec -- tauri build -- --target $target --bundles nsis
+          npm exec -- tauri build --target $target --bundles nsis
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
