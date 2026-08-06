@@ -75,6 +75,13 @@ jobs:
             HOMEBREW_NO_AUTO_UPDATE=1 brew install ripgrep
           fi
 
+      # Windows assets are generated and ignored, but the global parity check
+      # consumes them.
+      - name: Sync Windows parity inputs
+        run: |
+          /bin/bash scripts/sync-specs-to-windows.sh
+          /bin/bash scripts/sync-contracts-to-windows.sh
+
       - name: Run Swift tests
         run: swift test
 
