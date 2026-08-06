@@ -111,6 +111,8 @@ rg -Fq "scripts/sync-specs-to-windows.sh" "$RELEASE_WORKFLOW" \
   || fail "release workflow does not sync Windows provider specs before global parity"
 rg -Fq "scripts/sync-contracts-to-windows.sh" "$RELEASE_WORKFLOW" \
   || fail "release workflow does not sync Windows contracts before global parity"
+rg -Fq "name: Sync parity inputs" "$RELEASE_WORKFLOW" \
+  || fail "release Android job does not prepare all parity inputs"
 rg -Fq 'QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.tag }}' "$RELEASE_WORKFLOW" \
   || fail "release workflow does not pass the selected tag to macOS packaging"
 rg -Fq "quotaglanceVersionCode" "$RELEASE_WORKFLOW" \
