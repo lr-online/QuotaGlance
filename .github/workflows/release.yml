@@ -143,10 +143,13 @@ jobs:
       - name: Install Android API 36 build inputs
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Sync shared contracts
+      # The global parity check also compares ignored Windows generated assets.
+      - name: Sync parity inputs
         run: |
           bash scripts/sync-specs-to-android.sh
           bash scripts/sync-contracts-to-android.sh
+          bash scripts/sync-specs-to-windows.sh
+          bash scripts/sync-contracts-to-windows.sh
 
       - name: Verify contract parity
         run: |
