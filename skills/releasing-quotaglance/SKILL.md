@@ -36,8 +36,10 @@ bash Tests/ScriptTests/GitHubActionsTests.sh
 ```
 
 Show the exact tag and commit SHA, the previous-tag-to-current-tag commit
-range, the macOS 12/macOS 14 DMGs, the Android universal APK, and the explicit
-exclusion of the unsigned HarmonyOS HAP. Ask for a distinct final approval.
+range, the macOS 12/macOS 14 DMGs, Android universal APK, Windows x64 portable
+ZIP, NSIS installer, English and Simplified Chinese MSI installers, and every
+SHA-256 file. Also state the explicit exclusion of the unsigned HarmonyOS HAP.
+Ask for a distinct final approval.
 
 ## Publish
 
@@ -52,4 +54,5 @@ gh workflow run "Release" --ref main -f tag="$SELECTED_TAG"
 
 Find the new `Release` workflow run, report its URL, and wait for its final
 conclusion. Do not claim a release completed until the run succeeds and the
-GitHub Release contains the macOS DMGs, Android APK, and all SHA-256 files.
+GitHub Release contains the macOS DMGs, Android APK, Windows ZIP/NSIS/MSI
+assets, and all SHA-256 files.

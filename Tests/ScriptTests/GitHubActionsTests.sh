@@ -94,6 +94,7 @@ rg -Fq "ref: \${{ inputs.tag }}" "$RELEASE_WORKFLOW" || fail "release workflow d
 ! rg -q "tags:" "$RELEASE_WORKFLOW" || fail "release workflow must not use a tag trigger"
 assert_pinned_action "actions/checkout" "$RELEASE_WORKFLOW"
 assert_pinned_action "maxim-lobanov/setup-xcode" "$RELEASE_WORKFLOW"
+assert_pinned_action "actions/setup-node" "$RELEASE_WORKFLOW"
 assert_pinned_action "actions/upload-artifact" "$RELEASE_WORKFLOW"
 assert_pinned_action "actions/download-artifact" "$RELEASE_WORKFLOW"
 assert_pinned_action "softprops/action-gh-release" "$RELEASE_WORKFLOW"
@@ -115,6 +116,22 @@ rg -Fq 'QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.tag }}' "$RELEASE_WORKFLO
 rg -Fq "quotaglanceVersionCode" "$RELEASE_WORKFLOW" \
   || fail "release workflow does not set Android version code"
 rg -Fq "./scripts/package-dmg.sh" "$RELEASE_WORKFLOW" || fail "release workflow does not package DMGs"
+rg -Fq "runs-on: windows-latest" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not build Windows assets"
+rg -Fq "npm exec -- tauri build --target \$target --bundles nsis,msi" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not build NSIS and MSI Windows installers"
+rg -Fq "Compress-Archive" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not package the Windows portable ZIP"
+rg -Fq "Get-FileHash" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not generate Windows SHA-256 files"
+rg -Fq 'QuotaGlance-Windows-${{ needs.prepare.outputs.version }}' "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not version Windows artifacts"
+rg -Fq "release-assets/windows/*-windows-x64-*.zip" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not publish the Windows portable ZIP"
+rg -Fq "release-assets/windows/*-windows-x64-*.exe" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not publish the Windows NSIS installer"
+rg -Fq "release-assets/windows/*-windows-x64-*.msi" "$RELEASE_WORKFLOW" \
+  || fail "release workflow does not publish the Windows MSI installers"
 rg -q "upload-artifact" "$RELEASE_WORKFLOW" || fail "release workflow does not upload artifacts"
 rg -q "softprops/action-gh-release" "$RELEASE_WORKFLOW" || fail "release workflow does not publish a GitHub release"
 rg -Fq "git log --no-merges" "$RELEASE_WORKFLOW" || fail "release workflow does not derive notes from commits"
@@ -155,7 +172,7 @@ HARMONYOS_GITIGNORE="$ROOT_DIR/HarmonyOS/.gitignore"
 [[ -f "$HARMONYOS_BUILD_PROFILE_TEMPLATE" ]] || fail "missing HarmonyOS build profile template"
 rg -Fq '"signingConfigs": []' "$HARMONYOS_BUILD_PROFILE_TEMPLATE" \
   || fail "HarmonyOS build profile template must not contain signing material"
-rg -Fxq '/build-profile.json5' "$HARMONYOS_GITIGNORE" \
+grep -Fxq '/build-profile.json5' "$HARMONYOS_GITIGNORE" \
   || fail "machine-local HarmonyOS build profile is not ignored"
 rg -Fq 'build-profile.template.json5' "$HARMONYOS_BUILD_SCRIPT" \
   || fail "HarmonyOS build script does not initialize the local build profile"
@@ -239,6 +256,8 @@ rg -Fq 'tray-icon.png' "$ROOT_DIR/scripts/generate-windows-icons.ps1" \
   || fail "Windows icon generator does not produce the compile-time tray icon"
 rg -Fq 'npm exec -- tauri build' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not use the Tauri CLI installed by npm ci"
+rg -Fq 'npm exec -- tauri build --target $target --bundles nsis,msi' "$WINDOWS_WORKFLOW" \
+  || fail "Windows workflow does not build both NSIS and MSI installers"
 
 [[ -f "$ROOT_DIR/.github/dependabot.yml" ]] \
   || fail "missing Dependabot configuration"
