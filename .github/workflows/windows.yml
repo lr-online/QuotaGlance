@@ -86,7 +86,7 @@ jobs:
         shell: pwsh
         run: |
           $target = "x86_64-pc-windows-msvc"
-          npm exec -- tauri build --target $target --bundles nsis
+          npm exec -- tauri build --target $target --bundles nsis,msi
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
@@ -112,6 +112,12 @@ jobs:
           $installer = Get-ChildItem -Path $installerDirectory -Filter "*.exe" -File | Select-Object -First 1
           if (-not $installer) {
             throw "NSIS installer was not produced in $installerDirectory"
+          }
+
+          $msiDirectory = Join-Path $releaseDirectory "bundle/msi"
+          $msis = @(Get-ChildItem -Path $msiDirectory -Filter "*.msi" -File)
+          if ($msis.Count -lt 2) {
+            throw "Expected English and Simplified Chinese MSI installers in $msiDirectory"
           }
 
           $installerOutputDirectory = Join-Path $windowsDirectory "artifacts/QuotaGlance-installer-x64"
