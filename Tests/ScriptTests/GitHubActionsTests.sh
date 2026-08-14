@@ -163,6 +163,11 @@ rg -Fq "scripts/sync-specs-to-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "Harmo
 rg -Fq "scripts/sync-specs-to-windows.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync Windows provider specs before global parity"
 rg -Fq "scripts/sync-contracts-to-windows.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync Windows contracts before global parity"
 rg -Fq "scripts/verify-provider-parity.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not verify provider parity"
+rg -Fq "find Platforms/HarmonyOS -type f -name '*.hap'" "$HARMONYOS_WORKFLOW" \
+  || fail "HarmonyOS artifact discovery does not use the canonical platform root"
+if rg -Fq "find HarmonyOS -type f -name '*.hap'" "$HARMONYOS_WORKFLOW"; then
+  fail "HarmonyOS artifact discovery still references the removed legacy root"
+fi
 rg -q "upload-artifact" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not upload HAP artifacts"
 rg -Fq 'QuotaGlance-HarmonyOS-${{ steps.metadata.outputs.version }}' "$HARMONYOS_WORKFLOW" \
   || fail "HarmonyOS artifact is not versioned"

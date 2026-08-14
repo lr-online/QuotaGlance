@@ -109,7 +109,7 @@ jobs:
             echo "Unable to read HarmonyOS versionName" >&2
             exit 1
           }
-          source="$(find HarmonyOS -type f -name '*.hap' -print -quit)"
+          source="$(find Platforms/HarmonyOS -type f -name '*.hap' -print -quit)"
           [[ -n "$source" && -f "$source" ]] || {
             echo "HarmonyOS build did not produce a HAP" >&2
             exit 1

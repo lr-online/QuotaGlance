@@ -202,14 +202,14 @@ agent 添加平台支持时，按本清单逐项检查功能缺失，除非明�
    - ArkTS：在 `Platforms/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets` 的
      `CONTRACT_CASES` 数组手工加条目（provider、case 名、profile、每步
      URL/file/HTTP status）。
-7. **验证**：`swift test` 全绿；`bash scripts/verify-provider-parity.sh` 全绿；
+7. **验证**：`swift test --package-path Shared/SwiftCore` 全绿；`bash scripts/verify-provider-parity.sh` 全绿；
    `bash scripts/build-harmonyos.sh` 构建通过；有条件时在模拟器/真机跑 ohosTest。
 
 ## 常用命令
 
 | 目的 | 命令 |
 | --- | --- |
-| Swift 全部测试（含契约/引擎/聚合/告警） | `swift test` |
+| Swift 全部测试（含契约/引擎/聚合/告警） | `swift test --package-path Shared/SwiftCore` |
 | 脚本测试（单个） | `bash Tests/ScriptTests/<X>.sh`（AppIconTests / BuildEditionTests / DMGPackagingTests / GitHubActionsTests / LocalInstallSafetyTests） |
 | 同步 spec → Swift 资源 | `bash scripts/sync-specs-to-core.sh` |
 | 同步 spec → HarmonyOS rawfile | `bash scripts/sync-specs-to-harmonyos.sh` |
@@ -223,12 +223,12 @@ agent 添加平台支持时，按本清单逐项检查功能缺失，除非明�
 | Windows 端单平台 parity | `bash scripts/verify-windows-parity.sh` |
 | HarmonyOS 构建 HAP | `bash scripts/build-harmonyos.sh`（需 `DEVECO_SDK_HOME` 或 `HOS_SDK_HOME`，ohpm 与 hvigorw 在 PATH；DevEco 本地环境另需 `JAVA_HOME` 指向 DevEco JBR） |
 
-CI 现状：`.github/workflows/ci.yml`（macos-14 + Xcode 16.2）跑 `swift test` +
+CI 现状：`.github/workflows/ci.yml`（macos-14 + Xcode 16.2）跑 `swift test --package-path Shared/SwiftCore` +
 五个 ScriptTests；`.github/workflows/harmonyos.yml`（ubuntu +
 ErBWs/setup-ohos 6.1.1.280）只做契约同步 + 构建 HAP，**不跑 ohosTest**
 （需要模拟器/真机）。
 
-本地验证依赖宿主机工具链：macOS 侧若缺少 Xcode / XCTest，`swift test` 与打包脚本可能
+本地验证依赖宿主机工具链：macOS 侧若缺少 Xcode / XCTest，`swift test --package-path Shared/SwiftCore` 与打包脚本可能
 无法运行；HarmonyOS 侧若缺少 DevEco SDK、`ohpm`、`hvigorw` 或签名环境，
 `bash scripts/build-harmonyos.sh` / ohosTest 也可能无法运行。遇到这类环境缺口时，
 必须在任务或 PR 中明确说明，并以 GitHub Actions 作为构建/打包验证路径：至少查看
