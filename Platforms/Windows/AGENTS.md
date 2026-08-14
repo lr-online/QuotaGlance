@@ -1,4 +1,4 @@
-# Windows/AGENTS.md - mirror of HarmonyOS/AGENTS.md and Android/AGENTS.md.
+# Platforms/Windows/AGENTS.md - mirror of HarmonyOS/AGENTS.md and Android/AGENTS.md.
 
 # AGENTS.md - QuotaGlance Windows portable client
 
@@ -15,7 +15,7 @@ file only describes what is specific to Windows.
 ## Layout
 
 ```
-Windows/
+Platforms/Windows/
 +-- src/                       Front end (React + TypeScript + Vite + Tailwind)
 |   +-- main.tsx               Main window entry
 |   +-- popover-entry.tsx      Tray popover entry
@@ -59,7 +59,7 @@ Windows/
 
 ## Mirror relationship
 
-| Rust (Windows/src-tauri/src)                            | Swift (Sources/QuotaGlanceCore/)          | ArkTS (HarmonyOS/entry/src/main/ets/) | Kotlin (Android/app/src/main/java)               |
+| Rust (Platforms/Windows/src-tauri/src)                            | Swift (Sources/QuotaGlanceCore/)          | ArkTS (HarmonyOS/entry/src/main/ets/) | Kotlin (Android/app/src/main/java)               |
 | ---                                                     | ---                                         | --- | --- |
 | `domain.rs`                                              | `Domain/Provider.swift` / `UsageSnapshot.swift` | `Domain/` | `core/ProviderId.kt` / `UsageSnapshot.kt` |
 | `providers/usage_provider.rs`                            | `Providers/UsageProvider.swift`              | `providers/UsageProvider.ets` | `core/UsageProvider.kt` |
@@ -81,8 +81,8 @@ chain, `tauri.conf.json`, the front-end React shell.
 
 ## Sync sources
 
-- `scripts/sync-specs-to-windows.sh` -> `Windows/src-tauri/assets/providerspecs/`
-- `scripts/sync-contracts-to-windows.sh` -> `Windows/src-tauri/assets/contracts/`
+- `scripts/sync-specs-to-windows.sh` -> `Platforms/Windows/src-tauri/assets/providerspecs/`
+- `scripts/sync-contracts-to-windows.sh` -> `Platforms/Windows/src-tauri/assets/contracts/`
 - `scripts/verify-windows-parity.sh` -> parity gate (Swift enum, KNOWN_*
   allow-lists, spec_version, fixture triples, byte-identical sync)
 - `scripts/verify-provider-parity.sh` -> cross-platform four-end parity
@@ -103,7 +103,7 @@ Initial entries — extend as decisions land:
    registration that Tauri does not yet provide; the v1 deliverable is a
    decorationless, always-on-top `WebviewWindow` (240×160, `label:
    "widget"`) that re-renders on snapshot writes. Win11 Widget Board
-   support is a v2 task and tracked in `Windows/AGENTS.md` until
+   support is a v2 task and tracked in `Platforms/Windows/AGENTS.md` until
    `tauri-plugin-win11-widget` lands or we hand-roll the WinAppSDK
    binding.
 
@@ -113,7 +113,7 @@ Initial entries — extend as decisions land:
    dropdowns.
 
 4. **DPAPI is the cross-platform equivalent of Keychain.** Storage in
-   `Windows/src-tauri/src/storage/credential_vault.rs` calls
+   `Platforms/Windows/src-tauri/src/storage/credential_vault.rs` calls
    `CryptProtectData`/`CryptUnprotectData` per-call; ciphertext is
    stored at `<root>/credentials.bin`. Trust boundary matches macOS
    Keychain / Android Keystore (per-user OS account).

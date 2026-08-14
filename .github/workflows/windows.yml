@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "Windows/**"
+      - "Platforms/Windows/**"
       - "Contracts/**"
       - "scripts/sync-*windows*.sh"
       - "scripts/verify-*parity*.sh"
       - ".github/workflows/windows.yml"
   pull_request:
     paths:
-      - "Windows/**"
+      - "Platforms/Windows/**"
       - "Contracts/**"
       - "scripts/sync-*windows*.sh"
       - "scripts/verify-*parity*.sh"
@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: Windows/package-lock.json
+          cache-dependency-path: Platforms/Windows/package-lock.json
 
       - name: Sync spec + contract sources into Windows assets
         shell: bash
@@ -58,7 +58,7 @@ jobs:
           bash scripts/sync-contracts-to-windows.sh
 
       - name: Install front-end dependencies
-        working-directory: Windows
+        working-directory: Platforms/Windows
         shell: pwsh
         run: npm ci
 
@@ -77,12 +77,12 @@ jobs:
           bash scripts/verify-windows-parity.sh
 
       - name: Cargo test (engine, aggregation, alerts)
-        working-directory: Windows/src-tauri
+        working-directory: Platforms/Windows/src-tauri
         shell: pwsh
         run: cargo test --verbose
 
       - name: Build Windows installer and portable application
-        working-directory: Windows
+        working-directory: Platforms/Windows
         shell: pwsh
         run: |
           $target = "x86_64-pc-windows-msvc"
@@ -132,7 +132,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: quotaglance-windows-portable-x64
-          path: Windows/artifacts/QuotaGlance-portable-x64/
+          path: Platforms/Windows/artifacts/QuotaGlance-portable-x64/
           if-no-files-found: error
           retention-days: 14
 
@@ -140,6 +140,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: quotaglance-windows-installer-x64
-          path: Windows/artifacts/QuotaGlance-installer-x64/QuotaGlance-setup-x64.exe
+          path: Platforms/Windows/artifacts/QuotaGlance-installer-x64/QuotaGlance-setup-x64.exe
           if-no-files-found: error
           retention-days: 14

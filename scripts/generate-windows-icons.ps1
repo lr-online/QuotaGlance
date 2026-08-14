@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$windowsDir = Join-Path $repoRoot "Windows"
+$windowsDir = Join-Path $repoRoot "Platforms\Windows"
 $iconDir = Join-Path $windowsDir "src-tauri\icons"
 $sourceIcon = Join-Path $repoRoot "Platforms\macOS\App\Assets.xcassets\AppIcon.appiconset\icon-1024.png"
 Set-Location (Join-Path $windowsDir "src-tauri")

@@ -246,7 +246,7 @@ rg -q 'pull_request:' "$WINDOWS_WORKFLOW" || fail "Windows workflow missing pull
 assert_pinned_action "actions/checkout" "$WINDOWS_WORKFLOW"
 assert_pinned_action "actions/setup-node" "$WINDOWS_WORKFLOW"
 assert_read_only_workflow "$WINDOWS_WORKFLOW"
-rg -Fq 'cache-dependency-path: Windows/package-lock.json' "$WINDOWS_WORKFLOW" \
+rg -Fq 'cache-dependency-path: Platforms/Windows/package-lock.json' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not cache the locked npm dependencies"
 rg -Fq 'run: npm ci' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not use the checked-in npm lockfile"

@@ -11,5 +11,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/scripts/generate
 bash scripts/sync-specs-to-windows.sh
 bash scripts/sync-contracts-to-windows.sh
 
-cd "$REPO_ROOT/Windows/src-tauri"
+cd "$REPO_ROOT/Platforms/Windows/src-tauri"
 exec cargo tauri dev "$@"
