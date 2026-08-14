@@ -18,6 +18,10 @@ HarmonyOS（ArkTS）端是同一套领域逻辑的镜像实现，双端通过 `C
 
 ## 架构地图
 
+仓库目录的目标归属、迁移期兼容策略和路径验证见
+[`docs/repository-topology.md`](docs/repository-topology.md)。`Contracts/` 始终保留在
+仓库顶层，是跨平台行为的权威源。
+
 Swift 包：`Package.swift`，核心库 `QuotaGlanceCore`（`Sources/QuotaGlanceCore/`），按层分目录：
 
 - `Domain/` — 纯领域模型：`Account`、`UsageSnapshot`、`Provider.swift`（`ProviderID`
