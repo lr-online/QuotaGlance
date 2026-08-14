@@ -53,6 +53,9 @@ jobs:
       - name: Verify provider parity
         run: /bin/bash scripts/verify-provider-parity.sh
 
+      - name: Verify repository topology
+        run: /bin/bash Tests/ScriptTests/RepositoryTopologyTests.sh
+
       - name: Run provider parity tests
         run: /bin/bash Tests/ScriptTests/ProviderParityTests.sh
 

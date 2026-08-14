@@ -58,6 +58,8 @@ rg -Fq "command -v rg" "$CI_WORKFLOW" || fail "CI workflow does not ensure ripgr
 rg -Fq "brew install ripgrep" "$CI_WORKFLOW" || fail "CI workflow lacks the ripgrep install fallback"
 rg -Fq "swift test" "$CI_WORKFLOW" || fail "CI workflow does not run swift test"
 rg -Fq "scripts/verify-provider-parity.sh" "$CI_WORKFLOW" || fail "CI workflow does not run the provider parity check"
+rg -Fq "Tests/ScriptTests/RepositoryTopologyTests.sh" "$CI_WORKFLOW" \
+  || fail "CI workflow missing repository topology test"
 rg -Fq "scripts/sync-specs-to-windows.sh" "$CI_WORKFLOW" || fail "CI workflow does not sync Windows provider specs before global parity"
 rg -Fq "scripts/sync-contracts-to-windows.sh" "$CI_WORKFLOW" || fail "CI workflow does not sync Windows contracts before global parity"
 rg -Fq "Tests/ScriptTests/ProviderParityTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing provider parity tests"
