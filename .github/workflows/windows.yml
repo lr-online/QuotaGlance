@@ -129,7 +129,7 @@ jobs:
           }
 
       - name: Upload portable Windows application
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quotaglance-windows-portable-x64
           path: Windows/artifacts/QuotaGlance-portable-x64/
@@ -137,7 +137,7 @@ jobs:
           retention-days: 14
 
       - name: Upload Windows installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: quotaglance-windows-installer-x64
           path: Windows/artifacts/QuotaGlance-installer-x64/QuotaGlance-setup-x64.exe
