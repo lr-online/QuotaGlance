@@ -12,6 +12,10 @@ require_directory() {
   [[ -d "$1" ]] || fail "missing required directory: ${1#"$REPO_ROOT"/}"
 }
 
+require_file() {
+  [[ -f "$1" ]] || fail "missing required file: ${1#"$REPO_ROOT"/}"
+}
+
 require_exactly_one_layout() {
   local name="$1"
   local legacy_path="$2"
@@ -45,6 +49,71 @@ check_macos_layout() {
     6:1) fail "macOS host exists at both legacy and canonical paths; migrate it as one unit" ;;
     *) fail "macOS legacy host is partial; App, Widget, NCWidget, NCIntents, Config, and Distribution move together" ;;
   esac
+
+  if [[ "$legacy_count" -eq 6 ]]; then
+    require_file "$REPO_ROOT/App/Info.plist"
+    require_file "$REPO_ROOT/Widget/Info.plist"
+    require_file "$REPO_ROOT/NCWidget/Info.plist"
+    require_file "$REPO_ROOT/NCIntents/Info.plist"
+  else
+    require_directory "$REPO_ROOT/Platforms/macOS/App"
+    require_directory "$REPO_ROOT/Platforms/macOS/Widget"
+    require_directory "$REPO_ROOT/Platforms/macOS/NCWidget"
+    require_directory "$REPO_ROOT/Platforms/macOS/NCIntents"
+    require_directory "$REPO_ROOT/Platforms/macOS/Config"
+    require_directory "$REPO_ROOT/Platforms/macOS/Distribution"
+    require_file "$REPO_ROOT/Platforms/macOS/App/Info.plist"
+    require_file "$REPO_ROOT/Platforms/macOS/Widget/Info.plist"
+    require_file "$REPO_ROOT/Platforms/macOS/NCWidget/Info.plist"
+    require_file "$REPO_ROOT/Platforms/macOS/NCIntents/Info.plist"
+  fi
+}
+
+check_swift_core_layout() {
+  local legacy_path="$REPO_ROOT/Sources/QuotaGlanceCore"
+  local canonical_path="$REPO_ROOT/Shared/SwiftCore"
+  require_exactly_one_layout "SwiftCore" "$legacy_path" "$canonical_path"
+
+  if [[ -d "$legacy_path" ]]; then
+    require_file "$REPO_ROOT/Package.swift"
+  else
+    require_file "$canonical_path/Package.swift"
+    require_directory "$canonical_path/Sources/QuotaGlanceCore"
+    require_directory "$canonical_path/Tests/QuotaGlanceCoreTests"
+  fi
+}
+
+check_android_layout() {
+  local legacy_path="$REPO_ROOT/Android"
+  local canonical_path="$REPO_ROOT/Platforms/Android"
+  require_exactly_one_layout "Android" "$legacy_path" "$canonical_path"
+  local root="$legacy_path"
+  [[ -d "$canonical_path" ]] && root="$canonical_path"
+  require_file "$root/settings.gradle.kts"
+  require_file "$root/app/build.gradle.kts"
+}
+
+check_harmonyos_layout() {
+  local legacy_path="$REPO_ROOT/HarmonyOS"
+  local canonical_path="$REPO_ROOT/Platforms/HarmonyOS"
+  require_exactly_one_layout "HarmonyOS" "$legacy_path" "$canonical_path"
+  local root="$legacy_path"
+  [[ -d "$canonical_path" ]] && root="$canonical_path"
+  require_file "$root/build-profile.template.json5"
+  require_file "$root/hvigorfile.ts"
+  require_file "$root/entry/hvigorfile.ts"
+}
+
+check_windows_layout() {
+  local legacy_path="$REPO_ROOT/Windows"
+  local canonical_path="$REPO_ROOT/Platforms/Windows"
+  require_exactly_one_layout "Windows" "$legacy_path" "$canonical_path"
+  local root="$legacy_path"
+  [[ -d "$canonical_path" ]] && root="$canonical_path"
+  require_file "$root/package.json"
+  require_file "$root/Cargo.toml"
+  require_file "$root/src-tauri/Cargo.toml"
+  require_file "$root/src-tauri/tauri.conf.json"
 }
 
 check_platforms_directory() {
@@ -73,19 +142,20 @@ check_legacy_script_alias() {
   [[ "${#entries[@]}" -eq 1 && "${entries[0]}" == "build_and_run.sh" ]] \
     || fail "script/ is a temporary compatibility alias and may contain only build_and_run.sh"
   [[ -x "$legacy_dir/build_and_run.sh" ]] || fail "script/build_and_run.sh must remain executable while the compatibility alias exists"
-  rg -Fq 'scripts/build-local.sh' "$legacy_dir/build_and_run.sh" \
-    || fail "script/build_and_run.sh must delegate to scripts/build-local.sh"
+  [[ -x "$REPO_ROOT/scripts/run-local.sh" ]] || fail "scripts/run-local.sh must provide the canonical local-run entrypoint"
+  rg -Fq 'exec "$ROOT_DIR/scripts/run-local.sh" "$@"' "$legacy_dir/build_and_run.sh" \
+    || fail "script/build_and_run.sh must be a pure exec adapter to scripts/run-local.sh"
 }
 
 require_directory "$REPO_ROOT"
 require_directory "$REPO_ROOT/Contracts"
 require_directory "$REPO_ROOT/scripts"
 
-require_exactly_one_layout "SwiftCore" "$REPO_ROOT/Sources/QuotaGlanceCore" "$REPO_ROOT/Shared/SwiftCore"
+check_swift_core_layout
 check_macos_layout
-require_exactly_one_layout "Android" "$REPO_ROOT/Android" "$REPO_ROOT/Platforms/Android"
-require_exactly_one_layout "HarmonyOS" "$REPO_ROOT/HarmonyOS" "$REPO_ROOT/Platforms/HarmonyOS"
-require_exactly_one_layout "Windows" "$REPO_ROOT/Windows" "$REPO_ROOT/Platforms/Windows"
+check_android_layout
+check_harmonyos_layout
+check_windows_layout
 check_platforms_directory
 check_legacy_script_alias
 

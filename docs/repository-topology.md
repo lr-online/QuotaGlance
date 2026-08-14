@@ -23,10 +23,11 @@ skills/
 .github/
 ```
 
-`Package.swift`, `project.yml`, and the generated Xcode project remain at the
-repository root during the migration because the Swift Package Manager and
-XcodeGen consume them there. They are repository build entrypoints, not macOS
-product source.
+`project.yml` and the generated Xcode project remain at the repository root
+during the migration because XcodeGen consumes them there. They must reference
+the macOS host and SwiftCore package through explicit paths. `Package.swift`
+moves with SwiftCore, which owns the package implementation, tests, and
+package-local resources.
 
 ## Migration policy
 
@@ -44,8 +45,9 @@ topology contract, while the final contraction removes every legacy location.
 | Windows | `Windows/` | `Platforms/Windows/` |
 
 The six macOS host directories form one buildable unit and must move together.
-`script/build_and_run.sh` is the sole temporary legacy alias; it forwards to the
-canonical `scripts/build-local.sh`. No new executable belongs in `script/`.
+`script/build_and_run.sh` is the sole temporary legacy alias; it is a pure exec
+adapter to the canonical `scripts/run-local.sh`. No new executable belongs in
+`script/`.
 
 Run `bash scripts/verify-repository-topology.sh` after changing root-level
 ownership. The check is deliberately path-focused: it does not replace the

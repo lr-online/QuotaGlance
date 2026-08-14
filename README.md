@@ -153,7 +153,7 @@ swift test
 开发构建并启动：
 
 ```bash
-./script/build_and_run.sh
+./scripts/run-local.sh
 ```
 
 Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
