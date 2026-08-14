@@ -309,9 +309,9 @@ mod tests {
             None,
             0,
         );
-        let accounts = Arc::new(std::sync::Mutex::new(
-            AccountStore::load_or_create(&layout.accounts).unwrap(),
-        ));
+        let mut account_store = AccountStore::load_or_create(&layout.accounts).unwrap();
+        account_store.add(account.clone()).unwrap();
+        let accounts = Arc::new(std::sync::Mutex::new(account_store));
         let snapshots = Arc::new(SnapshotStore::new(&layout));
         let providers: Arc<
             std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>,
