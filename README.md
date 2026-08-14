@@ -140,14 +140,14 @@ release APK 位于 `Android/app/build/outputs/apk/release/app-release.apk`。Git
 1. 执行 `xcodegen generate`，然后打开 `QuotaGlance.xcodeproj`。
 2. 在 `QuotaGlance` 和 `QuotaGlanceWidget` 两个 target 的 Signing & Capabilities 中选择同一个 Team，并保持 Automatically manage signing 开启。
 3. 确认两个 target 都包含 App Groups capability，且组名均为 `group.com.liangrui.QuotaGlance`。
-4. 若该 App Group 已被其他开发者账号占用，请在 `project.yml`、两个 entitlements 文件和 `Sources/QuotaGlanceCore/Storage/SharedSnapshotStore.swift` 中统一改成属于你的唯一标识，然后重新执行 `xcodegen generate`。
+4. 若该 App Group 已被其他开发者账号占用，请在 `project.yml`、两个 entitlements 文件和 `Shared/SwiftCore/Sources/QuotaGlanceCore/Storage/SharedSnapshotStore.swift` 中统一改成属于你的唯一标识，然后重新执行 `xcodegen generate`。
 
 ## 构建与安装
 
 先运行核心测试：
 
 ```bash
-swift test
+swift test --package-path Shared/SwiftCore
 ```
 
 开发构建并启动：
@@ -187,7 +187,7 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 
 ## GitHub Actions
 
-- `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test`、版本构建约束、DMG 打包约束和本地安装安全检查。
+- `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test --package-path Shared/SwiftCore`、版本构建约束、DMG 打包约束和本地安装安全检查。
 - `Package macOS` 会在 pull request、`main` 和手动触发时构建 macOS DMG，并上传带 macOS 应用版本与短 commit SHA 的 artifact。
 - `Release` 只可手动触发，输入一个已存在的 `vX.Y.Z` tag。它从该 tag 构建 macOS 12/macOS 14 DMG 和 Android universal APK，所有下载包都附 SHA-256；发布说明取自上一个版本 tag 之后的非 merge 提交。
 - `Android` 会在 Android/Contracts 相关 PR 或 `main` 推送时同步契约、执行 JVM 测试和 lint，并上传带版本的 debug/release APK artifact。它不再独立创建 GitHub Release。

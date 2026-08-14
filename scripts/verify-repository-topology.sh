@@ -163,11 +163,21 @@ check_migrated_path_consumers() {
   done
 
   [[ "${#search_roots[@]}" -gt 0 ]] || return 0
-  if rg -l -F "$legacy_path" "${search_roots[@]}" \
-    --glob '!verify-repository-topology.sh' \
-    --glob '!RepositoryTopologyTests.sh' >/dev/null; then
-    fail "$module has moved, but an active build or workflow consumer still references $legacy_path"
-  fi
+  local legacy_name="${legacy_path%/}"
+  local needle
+  for needle in \
+    "$REPO_ROOT/$legacy_path" \
+    '$REPO_ROOT/'"$legacy_path" \
+    '$ROOT_DIR/'"$legacy_path" \
+    '$SOURCE_DIR/'"$legacy_path" \
+    'path: '"$legacy_name"; do
+    if rg -l -F "$needle" "${search_roots[@]}" \
+      --glob '!verify-repository-topology.sh' \
+      --glob '!RepositoryTopologyTests.sh' >/dev/null; then
+      fail "$module has moved, but an active build or workflow consumer still references $legacy_path"
+      return
+    fi
+  done
 }
 
 require_directory "$REPO_ROOT"

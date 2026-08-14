@@ -106,12 +106,12 @@ package_edition() {
   case "$edition" in
     legacy)
       os_tag="macOS12"
-      readme_source="$SOURCE_DIR/Distribution/README-macOS12.txt"
+      readme_source="$SOURCE_DIR/Platforms/macOS/Distribution/README-macOS12.txt"
       volume_name="QuotaGlance macOS 12"
       ;;
     full)
       os_tag="macOS14"
-      readme_source="$SOURCE_DIR/Distribution/README-macOS14.txt"
+      readme_source="$SOURCE_DIR/Platforms/macOS/Distribution/README-macOS14.txt"
       volume_name="QuotaGlance macOS 14"
       ;;
   esac

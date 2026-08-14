@@ -10,7 +10,7 @@
 #   4. Every provider contract case is registered in ArkTS CONTRACT_CASES.
 #   5. Registered ArkTS step URLs match the requests fixtures.
 #   6. Each spec.json is byte-identical to its copies under
-#      Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json,
+#      Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json,
 #      HarmonyOS/entry/src/main/resources/rawfile/providerspecs/<id>.json, and
 #      Windows/src-tauri/assets/providerspecs/<id>.json.
 #   7. HarmonyOS ohosTest contract copies match Contracts/Providers,
@@ -24,12 +24,12 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTRACTS_DIR="$REPO_ROOT/Contracts/Providers"
-SWIFT_PROVIDER_FILE="$REPO_ROOT/Sources/QuotaGlanceCore/Domain/Provider.swift"
+SWIFT_PROVIDER_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Domain/Provider.swift"
 ARKTS_PROVIDER_FILE="$REPO_ROOT/HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets"
-SWIFT_USAGE_FILE="$REPO_ROOT/Sources/QuotaGlanceCore/Providers/UsageProvider.swift"
-SWIFT_SPEC_FILE="$REPO_ROOT/Sources/QuotaGlanceCore/Providers/ProviderSpec.swift"
+SWIFT_USAGE_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Providers/UsageProvider.swift"
+SWIFT_SPEC_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Providers/ProviderSpec.swift"
 ARKTS_SPEC_FILE="$REPO_ROOT/HarmonyOS/entry/src/main/ets/providers/SpecDrivenProvider.ets"
-CORE_SPEC_DIR="$REPO_ROOT/Sources/QuotaGlanceCore/Resources/ProviderSpecs"
+CORE_SPEC_DIR="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs"
 HARMONYOS_SPEC_DIR="$REPO_ROOT/HarmonyOS/entry/src/main/resources/rawfile/providerspecs"
 OHOSTEST_CONTRACTS_DIR="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts"
 CONTRACT_TEST_FILE="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"

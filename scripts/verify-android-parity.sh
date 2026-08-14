@@ -8,7 +8,7 @@ SPEC_TARGET="$ANDROID_DIR/app/src/main/assets/providerspecs"
 FIXTURE_TARGET="$ANDROID_DIR/app/src/test/resources/contracts"
 PROVIDER_SOURCE="$ANDROID_DIR/app/src/main/java/com/liangrui/quotaglance/core/ProviderId.kt"
 PROVIDER_TEST_SOURCE="$ANDROID_DIR/app/src/test/java/com/liangrui/quotaglance/core/ProviderContractTest.kt"
-SWIFT_PROVIDER_SOURCE="$REPO_ROOT/Sources/QuotaGlanceCore/Domain/Provider.swift"
+SWIFT_PROVIDER_SOURCE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Domain/Provider.swift"
 
 errors=0
 

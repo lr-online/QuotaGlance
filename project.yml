@@ -6,7 +6,7 @@ options:
     macOS: "12.0"
 packages:
   QuotaGlanceCore:
-    path: .
+    path: Shared/SwiftCore
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -19,12 +19,12 @@ targets:
     type: application
     platform: macOS
     sources:
-      - path: App
+      - path: Platforms/macOS/App
         excludes:
           - Info.plist
           - QuotaGlance.entitlements
           - Assets.xcassets
-      - path: App/Assets.xcassets
+      - path: Platforms/macOS/App/Assets.xcassets
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore
@@ -39,20 +39,20 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance
         PRODUCT_NAME: QuotaGlance
-        INFOPLIST_FILE: App/Info.plist
-        CODE_SIGN_ENTITLEMENTS: App/QuotaGlance.entitlements
+        INFOPLIST_FILE: Platforms/macOS/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Platforms/macOS/App/QuotaGlance.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
   QuotaGlanceLegacy:
     type: application
     platform: macOS
     sources:
-      - path: App
+      - path: Platforms/macOS/App
         excludes:
           - Info.plist
           - QuotaGlance.entitlements
           - Assets.xcassets
-      - path: App/Assets.xcassets
+      - path: Platforms/macOS/App/Assets.xcassets
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore
@@ -65,15 +65,15 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "12.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance
         PRODUCT_NAME: QuotaGlance
-        INFOPLIST_FILE: App/Info.plist
-        CODE_SIGN_ENTITLEMENTS: App/QuotaGlance.entitlements
+        INFOPLIST_FILE: Platforms/macOS/App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Platforms/macOS/App/QuotaGlance.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_HARDENED_RUNTIME: YES
   QuotaGlanceWidget:
     type: app-extension
     platform: macOS
     sources:
-      - path: Widget
+      - path: Platforms/macOS/Widget
         excludes:
           - Info.plist
           - QuotaGlanceWidget.entitlements
@@ -85,22 +85,22 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.Widget
         PRODUCT_NAME: QuotaGlanceWidget
-        INFOPLIST_FILE: Widget/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Widget/QuotaGlanceWidget.entitlements
+        INFOPLIST_FILE: Platforms/macOS/Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Platforms/macOS/Widget/QuotaGlanceWidget.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
   QuotaGlanceNCWidget:
     type: app-extension
     platform: macOS
     sources:
-      - path: NCWidget
+      - path: Platforms/macOS/NCWidget
         excludes:
           - Info.plist
           - QuotaGlanceNCWidget.entitlements
           - NCWidgetAccountIntent.intentdefinition
       # Keep the definition as metadata while the hand-written Intent class
       # remains the single source of truth for both widget and Intents targets.
-      - path: NCWidget/NCWidgetAccountIntent.intentdefinition
+      - path: Platforms/macOS/NCWidget/NCWidgetAccountIntent.intentdefinition
         buildPhase: resources
     dependencies:
       - package: QuotaGlanceCore
@@ -110,24 +110,24 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "12.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.NCWidget
         PRODUCT_NAME: QuotaGlanceNCWidget
-        INFOPLIST_FILE: NCWidget/Info.plist
-        CODE_SIGN_ENTITLEMENTS: NCWidget/QuotaGlanceNCWidget.entitlements
+        INFOPLIST_FILE: Platforms/macOS/NCWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Platforms/macOS/NCWidget/QuotaGlanceNCWidget.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
   QuotaGlanceNCIntents:
     type: app-extension
     platform: macOS
     sources:
-      - path: NCIntents
+      - path: Platforms/macOS/NCIntents
         excludes:
           - Info.plist
           - QuotaGlanceNCIntents.entitlements
       # Shared with QuotaGlanceNCWidget so both extensions agree on the
       # intent's shape without Xcode generating conflicting classes twice.
-      - path: NCWidget/NCWidgetAccountIntent.intentdefinition
+      - path: Platforms/macOS/NCWidget/NCWidgetAccountIntent.intentdefinition
         buildPhase: resources
-      - path: NCWidget/NCWidgetAccountIntent+Generated.swift
-      - path: NCWidget/NCWidgetAccountIntentChoice.swift
+      - path: Platforms/macOS/NCWidget/NCWidgetAccountIntent+Generated.swift
+      - path: Platforms/macOS/NCWidget/NCWidgetAccountIntentChoice.swift
     dependencies:
       - package: QuotaGlanceCore
         product: QuotaGlanceCore
@@ -136,8 +136,8 @@ targets:
         MACOSX_DEPLOYMENT_TARGET: "12.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.liangrui.QuotaGlance.NCIntents
         PRODUCT_NAME: QuotaGlanceNCIntents
-        INFOPLIST_FILE: NCIntents/Info.plist
-        CODE_SIGN_ENTITLEMENTS: NCIntents/QuotaGlanceNCIntents.entitlements
+        INFOPLIST_FILE: Platforms/macOS/NCIntents/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Platforms/macOS/NCIntents/QuotaGlanceNCIntents.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
 schemes:

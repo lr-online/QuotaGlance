@@ -22,7 +22,7 @@ HarmonyOS（ArkTS）端是同一套领域逻辑的镜像实现，双端通过 `C
 [`docs/repository-topology.md`](docs/repository-topology.md)。`Contracts/` 始终保留在
 仓库顶层，是跨平台行为的权威源。
 
-Swift 包：`Package.swift`，核心库 `QuotaGlanceCore`（`Sources/QuotaGlanceCore/`），按层分目录：
+Swift 包：`Shared/SwiftCore/Package.swift`，核心库 `QuotaGlanceCore`（`Shared/SwiftCore/Sources/QuotaGlanceCore/`），按层分目录：
 
 - `Domain/` — 纯领域模型：`Account`、`UsageSnapshot`、`Provider.swift`（`ProviderID`
   / `ProviderRegion` / `ProviderCredentialKind` / `ProviderProfile`）。无 I/O。
@@ -44,10 +44,10 @@ Swift 包：`Package.swift`，核心库 `QuotaGlanceCore`（`Sources/QuotaGlance
 
 应用目标（xcodeproj，由 `project.yml` 生成）：
 
-- `App/` — macOS 菜单栏主应用（SwiftUI）。
-- `Widget/` — 桌面 Widget（WidgetKit，小/中/大）。
-- `NCWidget/` — 通知中心 Widget（macOS 12 兼容路径）。
-- `NCIntents/` — Widget 账户选择的 App Intent 共享代码。
+- `Platforms/macOS/App/` — macOS 菜单栏主应用（SwiftUI）。
+- `Platforms/macOS/Widget/` — 桌面 Widget（WidgetKit，小/中/大）。
+- `Platforms/macOS/NCWidget/` — 通知中心 Widget（macOS 12 兼容路径）。
+- `Platforms/macOS/NCIntents/` — Widget 账户选择的 App Intent 共享代码。
 
 HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swift
 `Providers/` 一一对应，映射表和平台差异白名单见 `HarmonyOS/AGENTS.md`。
@@ -65,7 +65,7 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
 
 1. **`ProviderID` raw value append-only。** raw value 进入持久化（账户记录、Widget
    配置），已发布的值禁止改名、复用或删除；新增只能追加。双端声明点：Swift
-   `Sources/QuotaGlanceCore/Domain/Provider.swift`（enum + 显式覆盖的 `allCases`
+   `Shared/SwiftCore/Sources/QuotaGlanceCore/Domain/Provider.swift`（enum + 显式覆盖的 `allCases`
    数组）与 ArkTS `HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets`
    （union type + `ALL_PROVIDER_IDS`）。
 2. **Contract-first。** 任何 provider 行为改动必须先改 spec/fixture，再改引擎；
@@ -77,7 +77,7 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
    provider 扩 schema 是 anti-pattern；确需扩 schema 时，schema + README +
    双端引擎必须同改。
 3. **四处副本的同步纪律。** `Contracts/` 是唯一权威源，改动后必须重跑：
-   `bash scripts/sync-specs-to-core.sh`（→ `Sources/QuotaGlanceCore/Resources/ProviderSpecs/`）、
+   `bash scripts/sync-specs-to-core.sh`（→ `Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/`）、
    `bash scripts/sync-specs-to-harmonyos.sh`（→ `HarmonyOS/entry/src/main/resources/rawfile/providerspecs/`）、
    `bash scripts/sync-specs-to-android.sh`（→ Android 对应资源目录）、
    `bash scripts/sync-specs-to-windows.sh`（→ `Windows/src-tauri/assets/providerspecs/`）、
@@ -196,7 +196,7 @@ agent 添加平台支持时，按本清单逐项检查功能缺失，除非明�
    fatalError，fail-fast）；ArkTS `createProviderRegistry` 对 `ALL_PROVIDER_IDS`
    读 rawfile `providerspecs/<id>.json`。
 6. **登记测试用例（harness 不自动发现 fixture）**：
-   - Swift：新建 `Tests/QuotaGlanceCoreTests/<Name>ProviderTests.swift`，参照
+   - Swift：新建 `Shared/SwiftCore/Tests/QuotaGlanceCoreTests/<Name>ProviderTests.swift`，参照
      `DeepSeekProviderTests.swift`，复用 `ContractTests.swift` 里的
      `contractProvider` / `expectRequests` helper。
    - ArkTS：在 `HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets` 的
