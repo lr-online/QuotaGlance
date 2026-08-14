@@ -68,7 +68,7 @@ Alerts contract parity remains a hard constraint; the following experience gaps 
   is the sole publisher of versioned Android GitHub Release assets.
 - Android device/emulator verification for notification permission, WorkManager,
   Glance, encrypted storage, and external links remains a manual gate until
-  device CI is available. See `Android/AGENTS.md` and the platform matrix.
+  device CI is available. See `Platforms/Android/AGENTS.md` and the platform matrix.
 
 ### macOS internationalization foundation (2026-08)
 

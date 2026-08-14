@@ -83,7 +83,7 @@ jobs:
           /bin/bash scripts/sync-contracts-to-windows.sh
 
       - name: Run Swift tests
-        run: swift test
+        run: swift test --package-path Shared/SwiftCore
 
       - name: Verify provider parity
         run: /bin/bash scripts/verify-provider-parity.sh
@@ -157,7 +157,7 @@ jobs:
           bash scripts/verify-android-parity.sh
 
       - name: Test, lint, and build release APK
-        working-directory: Android
+        working-directory: Platforms/Android
         env:
           QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.version }}
           QUOTAGLANCE_VERSION_CODE: ${{ needs.prepare.outputs.android_version_code }}
@@ -173,7 +173,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           asset="dist/QuotaGlance-${QUOTAGLANCE_VERSION}-android-universal.apk"
-          cp Android/app/build/outputs/apk/release/app-release.apk "$asset"
+          cp Platforms/Android/app/build/outputs/apk/release/app-release.apk "$asset"
           sha256sum "$asset" > "$asset.sha256"
 
       - name: Upload Android release asset

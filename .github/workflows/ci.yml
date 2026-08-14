@@ -48,7 +48,7 @@ jobs:
           /bin/bash scripts/sync-contracts-to-windows.sh
 
       - name: Run Swift tests
-        run: swift test
+        run: swift test --package-path Shared/SwiftCore
 
       - name: Verify provider parity
         run: /bin/bash scripts/verify-provider-parity.sh

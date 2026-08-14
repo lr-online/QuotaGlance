@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sync provider specs into the QuotaGlanceCore resource bundle.
 # One-way: Contracts/Providers/<dir>/spec.json ->
-# Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json, where <id> is the
+# Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json, where <id> is the
 # camelCase provider id declared inside the spec (the spec stays the
 # authoritative source). SwiftPM ships them via .process("Resources") and
 # ProviderSpecLoader reads them through Bundle.module.
@@ -9,7 +9,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$REPO_ROOT/Contracts/Providers"
-DST="$REPO_ROOT/Sources/QuotaGlanceCore/Resources/ProviderSpecs"
+DST="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs"
 
 if [[ ! -d "$SRC" ]]; then
   echo "error: $SRC not found" >&2

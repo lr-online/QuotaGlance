@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Verify provider + contract + allow-list parity between the Swift engine
-# (Sources/QuotaGlanceCore/) and the Rust engine (Windows/src-tauri/src/):
+# (Shared/SwiftCore/Sources/QuotaGlanceCore/) and the Rust engine (Windows/src-tauri/src/):
 #
 #   1. Swift `ProviderID.allCases` raw values == Rust `ProviderID` enum raw
 #      values (in declaration order).
@@ -25,8 +25,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTRACTS_DIR="$REPO_ROOT/Contracts/Providers"
 
-SWIFT_PROVIDER_FILE="$REPO_ROOT/Sources/QuotaGlanceCore/Domain/Provider.swift"
-SWIFT_SPEC_FILE="$REPO_ROOT/Sources/QuotaGlanceCore/Providers/ProviderSpec.swift"
+SWIFT_PROVIDER_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Domain/Provider.swift"
+SWIFT_SPEC_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Providers/ProviderSpec.swift"
 RUST_DOMAIN_FILE="$REPO_ROOT/Windows/src-tauri/src/domain.rs"
 RUST_SPEC_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_spec.rs"
 RUST_ERROR_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_error.rs"

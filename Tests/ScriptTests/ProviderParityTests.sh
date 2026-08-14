@@ -44,7 +44,7 @@ backup_spec_copies() {
   local spec id core_copy harmonyos_copy
   for spec in "$ROOT_DIR"/Contracts/Providers/*/spec.json; do
     id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$spec")"
-    core_copy="$ROOT_DIR/Sources/QuotaGlanceCore/Resources/ProviderSpecs/$id.json"
+    core_copy="$ROOT_DIR/Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/$id.json"
     harmonyos_copy="$ROOT_DIR/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/$id.json"
     /bin/mkdir -p "$TEST_ROOT/$(/usr/bin/dirname "$core_copy")"
     /bin/mkdir -p "$TEST_ROOT/$(/usr/bin/dirname "$harmonyos_copy")"
@@ -64,7 +64,7 @@ test_current_tree_is_green() {
 }
 
 test_tampered_core_spec_copy_is_red() {
-  local core_copy="$ROOT_DIR/Sources/QuotaGlanceCore/Resources/ProviderSpecs/kimi.json"
+  local core_copy="$ROOT_DIR/Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/kimi.json"
   printf '\n' >> "$core_copy"
   assert_fails /bin/bash "$PARITY_SCRIPT"
   restore_backup "$TEST_ROOT/$core_copy.src" "$core_copy"

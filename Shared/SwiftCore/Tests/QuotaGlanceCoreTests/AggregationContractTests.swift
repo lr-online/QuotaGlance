@@ -197,6 +197,8 @@ func behaviorContractsDirectory(_ name: String) -> URL {
     URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent() // QuotaGlanceCoreTests
         .deletingLastPathComponent() // Tests
+        .deletingLastPathComponent() // Shared/SwiftCore
+        .deletingLastPathComponent() // Shared
         .deletingLastPathComponent() // repository root
         .appendingPathComponent("Contracts/\(name)", isDirectory: true)
 }

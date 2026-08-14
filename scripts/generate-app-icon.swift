@@ -277,7 +277,7 @@ struct IconRenderer {
 let scriptURL = URL(fileURLWithPath: #filePath)
 let repositoryRoot = scriptURL.deletingLastPathComponent().deletingLastPathComponent()
 let iconSetDirectory = repositoryRoot
-  .appendingPathComponent("App/Assets.xcassets", isDirectory: true)
+  .appendingPathComponent("Platforms/macOS/App/Assets.xcassets", isDirectory: true)
   .appendingPathComponent("AppIcon.appiconset", isDirectory: true)
 
 try IconRenderer(outputDirectory: iconSetDirectory).render()

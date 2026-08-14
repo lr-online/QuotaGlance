@@ -12,15 +12,15 @@
 
 ### Task 1: Bootstrap the reproducible Android build
 
-**Files:** create `Android/settings.gradle.kts`, `Android/build.gradle.kts`, `Android/gradle.properties`, `Android/gradlew`, `Android/app/build.gradle.kts`, `Android/app/src/main/AndroidManifest.xml`.
+**Files:** create `Platforms/Android/settings.gradle.kts`, `Platforms/Android/build.gradle.kts`, `Platforms/Android/gradle.properties`, `Platforms/Android/gradlew`, `Platforms/Android/app/build.gradle.kts`, `Platforms/Android/app/src/main/AndroidManifest.xml`.
 
 - [ ] Add a JDK-17/compileSdk-35 Kotlin Android application with Compose, unit-test and release APK variants.
-- [ ] Run `Android/gradlew :app:assembleDebug` and confirm Gradle resolves all build inputs.
+- [ ] Run `Platforms/Android/gradlew :app:assembleDebug` and confirm Gradle resolves all build inputs.
 - [ ] Commit the bootstrapped build and wrapper with the first Android source slice.
 
 ### Task 2: Establish contract resources and parity guard
 
-**Files:** create `scripts/sync-specs-to-android.sh`, `scripts/sync-contracts-to-android.sh`, `scripts/verify-android-parity.sh`, `Android/app/src/main/assets/providerspecs/`, `Android/app/src/test/resources/contracts/`.
+**Files:** create `scripts/sync-specs-to-android.sh`, `scripts/sync-contracts-to-android.sh`, `scripts/verify-android-parity.sh`, `Platforms/Android/app/src/main/assets/providerspecs/`, `Platforms/Android/app/src/test/resources/contracts/`.
 
 - [ ] Write failing shell assertions for a missing Kotlin provider id and stale synced spec.
 - [ ] Implement the three scripts so every provider spec and all fixture sets are copied and checked byte-for-byte.
@@ -28,7 +28,7 @@
 
 ### Task 3: Implement and test the pure Kotlin contract core
 
-**Files:** create `Android/app/src/main/java/com/liangrui/quotaglance/core/**`, `Android/app/src/test/java/com/liangrui/quotaglance/core/**`.
+**Files:** create `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/core/**`, `Platforms/Android/app/src/test/java/com/liangrui/quotaglance/core/**`.
 
 - [ ] Write failing fixture tests for every provider response/request triple plus aggregation and alerts.
 - [ ] Port provider ids, profiles, error tokens, exact decimal handling, spec validation/evaluation, snapshot assembly, MiniMax strategy, aggregation and alert episode semantics.
@@ -36,7 +36,7 @@
 
 ### Task 4: Add encrypted storage and refresh orchestration
 
-**Files:** create `Android/app/src/main/java/com/liangrui/quotaglance/data/**`, `Android/app/src/main/java/com/liangrui/quotaglance/refresh/**`, corresponding unit tests.
+**Files:** create `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/data/**`, `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/refresh/**`, corresponding unit tests.
 
 - [ ] Write failing tests for account-name/key validation, delete cascade, stale snapshot retention, per-account refresh isolation and episode persistence.
 - [ ] Implement DataStore metadata/snapshot stores, Keystore-backed credentials, account repository and coroutine refresh coordinator.
@@ -44,7 +44,7 @@
 
 ### Task 5: Deliver Compose, widget and deep-link product surfaces
 
-**Files:** create `Android/app/src/main/java/com/liangrui/quotaglance/ui/**`, `Android/app/src/main/java/com/liangrui/quotaglance/widget/**`, `Android/app/src/main/res/**`.
+**Files:** create `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/**`, `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/widget/**`, `Platforms/Android/app/src/main/res/**`.
 
 - [ ] Write JVM tests for route parsing, widget selection fallback and presentation states.
 - [ ] Implement dashboard, account detail/editor, settings, empty/partial/stale/unavailable states, bilingual strings, notification permission state and Glance selection.

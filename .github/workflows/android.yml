@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "Android/**"
+      - "Platforms/Android/**"
       - "Contracts/**"
       - "scripts/sync-specs-to-android.sh"
       - "scripts/sync-contracts-to-android.sh"
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - "Android/**"
+      - "Platforms/Android/**"
       - "Contracts/**"
       - "scripts/sync-specs-to-android.sh"
       - "scripts/sync-contracts-to-android.sh"
@@ -64,12 +64,12 @@ jobs:
           bash scripts/verify-android-parity.sh
 
       - name: Test, lint, and build Android APKs
-        working-directory: Android
+        working-directory: Platforms/Android
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleDebug :app:assembleRelease
 
       - name: Name Android artifacts
         id: metadata
-        working-directory: Android
+        working-directory: Platforms/Android
         run: |
           set -euo pipefail
           version="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts)"
@@ -81,10 +81,10 @@ jobs:
             exit 1
           }
           short_sha="$(git rev-parse --short=12 HEAD)"
-          mkdir -p ../dist
+          mkdir -p ../../dist
           for build_type in debug release; do
             source="app/build/outputs/apk/$build_type/app-$build_type.apk"
-            target="../dist/QuotaGlance-${version}-android-${build_type}-${short_sha}.apk"
+            target="../../dist/QuotaGlance-${version}-android-${build_type}-${short_sha}.apk"
             cp "$source" "$target"
             sha256sum "$target" > "$target.sha256"
           done

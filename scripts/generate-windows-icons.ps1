@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $windowsDir = Join-Path $repoRoot "Windows"
 $iconDir = Join-Path $windowsDir "src-tauri\icons"
-$sourceIcon = Join-Path $repoRoot "App\Assets.xcassets\AppIcon.appiconset\icon-1024.png"
+$sourceIcon = Join-Path $repoRoot "Platforms\macOS\App\Assets.xcassets\AppIcon.appiconset\icon-1024.png"
 Set-Location (Join-Path $windowsDir "src-tauri")
 $localTauri = Join-Path $windowsDir "node_modules\.bin\tauri.cmd"
 

@@ -135,7 +135,7 @@ fi
   --timestamp=none \
   --generate-entitlement-der \
   --requirements "=designated => identifier \"$NC_WIDGET_BUNDLE_ID\"" \
-  --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceNCWidget.entitlements" \
+  --entitlements "$ROOT_DIR/Platforms/macOS/Config/Local/QuotaGlanceNCWidget.entitlements" \
   "$NC_WIDGET_BUNDLE"
 
 /usr/bin/codesign \
@@ -144,7 +144,7 @@ fi
   --timestamp=none \
   --generate-entitlement-der \
   --requirements "=designated => identifier \"$NC_INTENTS_BUNDLE_ID\"" \
-  --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceNCIntents.entitlements" \
+  --entitlements "$ROOT_DIR/Platforms/macOS/Config/Local/QuotaGlanceNCIntents.entitlements" \
   "$NC_INTENTS_BUNDLE"
 
 if [[ "$EXPECTS_WIDGET" == true ]]; then
@@ -156,7 +156,7 @@ if [[ "$EXPECTS_WIDGET" == true ]]; then
     --timestamp=none \
     --generate-entitlement-der \
     --requirements "=designated => identifier \"$WIDGET_BUNDLE_ID\"" \
-    --entitlements "$ROOT_DIR/Config/Local/QuotaGlanceWidget.entitlements" \
+    --entitlements "$ROOT_DIR/Platforms/macOS/Config/Local/QuotaGlanceWidget.entitlements" \
     "$WIDGET_BUNDLE"
 fi
 
@@ -166,7 +166,7 @@ fi
   --timestamp=none \
   --generate-entitlement-der \
   --requirements "=designated => identifier \"$APP_BUNDLE_ID\"" \
-  --entitlements "$ROOT_DIR/Config/Local/QuotaGlance.entitlements" \
+  --entitlements "$ROOT_DIR/Platforms/macOS/Config/Local/QuotaGlance.entitlements" \
   "$APP_BUNDLE"
 
 /usr/bin/codesign --verify --deep --strict "$APP_BUNDLE"

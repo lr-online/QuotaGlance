@@ -130,6 +130,8 @@ func contractsDirectory(provider: String) -> URL {
     URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent() // QuotaGlanceCoreTests
         .deletingLastPathComponent() // Tests
+        .deletingLastPathComponent() // Shared/SwiftCore
+        .deletingLastPathComponent() // Shared
         .deletingLastPathComponent() // repository root
         .appendingPathComponent("Contracts/Providers/\(provider)", isDirectory: true)
 }

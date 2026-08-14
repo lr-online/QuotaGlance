@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT_DIR/scripts/release-version.sh"
-GRADLE_FILE="$ROOT_DIR/Android/app/build.gradle.kts"
+GRADLE_FILE="$ROOT_DIR/Platforms/Android/app/build.gradle.kts"
 
 fail() {
   echo "FAIL: $*" >&2
