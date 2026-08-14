@@ -76,10 +76,13 @@ check_swift_core_layout() {
 
   if [[ -d "$legacy_path" ]]; then
     require_file "$REPO_ROOT/Package.swift"
+    require_directory "$REPO_ROOT/Tests/QuotaGlanceCoreTests"
   else
     require_file "$canonical_path/Package.swift"
     require_directory "$canonical_path/Sources/QuotaGlanceCore"
     require_directory "$canonical_path/Tests/QuotaGlanceCoreTests"
+    [[ ! -e "$REPO_ROOT/Tests/QuotaGlanceCoreTests" ]] \
+      || fail "Tests/QuotaGlanceCoreTests must move with Shared/SwiftCore"
   fi
 }
 
@@ -147,6 +150,26 @@ check_legacy_script_alias() {
     || fail "script/build_and_run.sh must be a pure exec adapter to scripts/run-local.sh"
 }
 
+check_migrated_path_consumers() {
+  local module="$1"
+  local legacy_path="$2"
+  local canonical_path="$3"
+  [[ -d "$canonical_path" ]] || return 0
+
+  local search_roots=()
+  local path
+  for path in "$REPO_ROOT/scripts" "$REPO_ROOT/.github/workflows" "$REPO_ROOT/project.yml" "$REPO_ROOT/Package.swift"; do
+    [[ -e "$path" ]] && search_roots+=("$path")
+  done
+
+  [[ "${#search_roots[@]}" -gt 0 ]] || return 0
+  if rg -l -F "$legacy_path" "${search_roots[@]}" \
+    --glob '!verify-repository-topology.sh' \
+    --glob '!RepositoryTopologyTests.sh' >/dev/null; then
+    fail "$module has moved, but an active build or workflow consumer still references $legacy_path"
+  fi
+}
+
 require_directory "$REPO_ROOT"
 require_directory "$REPO_ROOT/Contracts"
 require_directory "$REPO_ROOT/scripts"
@@ -158,5 +181,15 @@ check_harmonyos_layout
 check_windows_layout
 check_platforms_directory
 check_legacy_script_alias
+check_migrated_path_consumers "SwiftCore" "Sources/QuotaGlanceCore" "$REPO_ROOT/Shared/SwiftCore"
+check_migrated_path_consumers "macOS host" "App/" "$REPO_ROOT/Platforms/macOS"
+check_migrated_path_consumers "macOS host" "Widget/" "$REPO_ROOT/Platforms/macOS"
+check_migrated_path_consumers "macOS host" "NCWidget/" "$REPO_ROOT/Platforms/macOS"
+check_migrated_path_consumers "macOS host" "NCIntents/" "$REPO_ROOT/Platforms/macOS"
+check_migrated_path_consumers "macOS host" "Config/" "$REPO_ROOT/Platforms/macOS"
+check_migrated_path_consumers "macOS host" "Distribution/" "$REPO_ROOT/Platforms/macOS"
+check_migrated_path_consumers "Android" "Android/" "$REPO_ROOT/Platforms/Android"
+check_migrated_path_consumers "HarmonyOS" "HarmonyOS/" "$REPO_ROOT/Platforms/HarmonyOS"
+check_migrated_path_consumers "Windows" "Windows/" "$REPO_ROOT/Platforms/Windows"
 
 echo "Repository topology is valid."

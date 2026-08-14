@@ -30,6 +30,7 @@ expect_failure() {
 mkdir -p \
   "$TEMP_ROOT/Contracts" \
   "$TEMP_ROOT/Sources/QuotaGlanceCore" \
+  "$TEMP_ROOT/Tests/QuotaGlanceCoreTests" \
   "$TEMP_ROOT/App" \
   "$TEMP_ROOT/Widget" \
   "$TEMP_ROOT/NCWidget" \
@@ -104,6 +105,15 @@ touch \
   "$CANONICAL_ROOT/Platforms/Windows/src-tauri/tauri.conf.json"
 
 "$VERIFY_SCRIPT" "$CANONICAL_ROOT"
+
+cp "$ROOT_DIR/scripts/verify-repository-topology.sh" "$CANONICAL_ROOT/scripts/stale-path.sh"
+expect_failure "$VERIFY_SCRIPT" "$CANONICAL_ROOT"
+rm "$CANONICAL_ROOT/scripts/stale-path.sh"
+
+mkdir -p "$CANONICAL_ROOT/Tests/QuotaGlanceCoreTests"
+expect_failure "$VERIFY_SCRIPT" "$CANONICAL_ROOT"
+rmdir "$CANONICAL_ROOT/Tests/QuotaGlanceCoreTests"
+rmdir "$CANONICAL_ROOT/Tests"
 
 mkdir "$CANONICAL_ROOT/Platforms/Windows/Contracts"
 expect_failure "$VERIFY_SCRIPT" "$CANONICAL_ROOT"
