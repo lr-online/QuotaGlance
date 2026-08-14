@@ -80,11 +80,11 @@ HarmonyOS 镜像：`Platforms/HarmonyOS/entry/src/main/ets/`，`providers/` 目�
    `bash scripts/sync-specs-to-core.sh`（→ `Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/`）、
    `bash scripts/sync-specs-to-harmonyos.sh`（→ `Platforms/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/`）、
    `bash scripts/sync-specs-to-android.sh`（→ Android 对应资源目录）、
-   `bash scripts/sync-specs-to-windows.sh`（→ `Platforms/Platforms/Windows/src-tauri/assets/providerspecs/`）、
+   `bash scripts/sync-specs-to-windows.sh`（→ `Platforms/Windows/src-tauri/assets/providerspecs/`）、
    `bash scripts/sync-contracts-to-harmonyos.sh`（→ `Platforms/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/`，
    同步 `Contracts/Providers/`、`Contracts/Aggregation/`、`Contracts/Alerts/`）、
    `bash scripts/sync-contracts-to-android.sh`（→ Android 对应测试资源目录）、
-   `bash scripts/sync-contracts-to-windows.sh`（→ `Platforms/Platforms/Windows/src-tauri/assets/contracts/`）。随后
+   `bash scripts/sync-contracts-to-windows.sh`（→ `Platforms/Windows/src-tauri/assets/contracts/`）。随后
    `bash scripts/verify-provider-parity.sh` 必须全绿；该脚本还要求每个 provider fixture
    case 都在 ArkTS `CONTRACT_CASES` 中登记，且各 step URL 与 `*-requests.json`
    一致，并包含跨四端（Swift/ArkTS/Kotlin/Rust）的 ProviderID 与错误 token 同步校验。
