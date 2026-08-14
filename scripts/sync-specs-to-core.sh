@@ -19,7 +19,7 @@ fi
 rm -rf "$DST"
 mkdir -p "$DST"
 for spec in "$SRC"/*/spec.json; do
-  id="$(plutil -extract id raw "$spec")"
+  id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$spec")"
   cp "$spec" "$DST/$id.json"
 done
 echo "Synced provider specs -> $DST"
