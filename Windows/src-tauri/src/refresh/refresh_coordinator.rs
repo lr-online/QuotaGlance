@@ -60,7 +60,7 @@ impl RefreshCoordinator {
             },
             previous.and_then(|snapshot| snapshot.last_success_at),
         );
-        self.snapshots.save(&snapshot)
+        Ok(self.snapshots.save(&snapshot)?)
     }
 
     fn snapshot_failure(error: &RefreshError) -> SnapshotFailure {
@@ -164,7 +164,7 @@ impl RefreshCoordinator {
         resolve_key: &F,
     ) -> Vec<(Uuid, Result<AccountSnapshot, RefreshError>)>
     where
-        F: Fn(Uuid) -> Option<String> + Sync,
+        F: Fn(Uuid) -> Option<String> + Sync + ?Sized,
     {
         let providers = self.providers.clone();
         let snapshots = self.snapshots.clone();

@@ -97,7 +97,7 @@ impl RefreshRun {
         let last_failure_reason = results
             .iter()
             .find_map(|(_, result)| result.as_ref().err().map(|error| format!("{error}")));
-        let fresh = results
+        let fresh: Vec<AccountSnapshot> = results
             .iter()
             .filter_map(|(_, result)| result.as_ref().ok().cloned())
             .collect();
