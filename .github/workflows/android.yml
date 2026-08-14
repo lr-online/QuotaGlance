@@ -81,10 +81,10 @@ jobs:
             exit 1
           }
           short_sha="$(git rev-parse --short=12 HEAD)"
-          mkdir -p ../dist
+          mkdir -p ../../dist
           for build_type in debug release; do
             source="app/build/outputs/apk/$build_type/app-$build_type.apk"
-            target="../dist/QuotaGlance-${version}-android-${build_type}-${short_sha}.apk"
+            target="../../dist/QuotaGlance-${version}-android-${build_type}-${short_sha}.apk"
             cp "$source" "$target"
             sha256sum "$target" > "$target.sha256"
           done
