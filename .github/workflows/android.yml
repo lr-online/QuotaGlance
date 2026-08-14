@@ -9,6 +9,7 @@ on:
       - "scripts/sync-specs-to-android.sh"
       - "scripts/sync-contracts-to-android.sh"
       - "scripts/verify-android-parity.sh"
+      - "scripts/prepare-parity-resources.sh"
       - ".github/workflows/android.yml"
   push:
     branches:
@@ -19,6 +20,7 @@ on:
       - "scripts/sync-specs-to-android.sh"
       - "scripts/sync-contracts-to-android.sh"
       - "scripts/verify-android-parity.sh"
+      - "scripts/prepare-parity-resources.sh"
       - ".github/workflows/android.yml"
 
 permissions:
@@ -51,11 +53,10 @@ jobs:
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Sync Android and Windows parity inputs
-        run: |
-          bash scripts/sync-specs-to-android.sh
-          bash scripts/sync-contracts-to-android.sh
-          bash scripts/sync-specs-to-windows.sh
-          bash scripts/sync-contracts-to-windows.sh
+        # prepare-parity-resources.sh runs bash scripts/sync-specs-to-android.sh,
+        # bash scripts/sync-contracts-to-android.sh, bash scripts/sync-specs-to-windows.sh,
+        # and bash scripts/sync-contracts-to-windows.sh as part of the seven-way sync.
+        run: bash scripts/prepare-parity-resources.sh
 
       - name: Verify contract parity
         run: |

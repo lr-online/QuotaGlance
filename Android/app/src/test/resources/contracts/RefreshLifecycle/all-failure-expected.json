@@ -1,0 +1,15 @@
+{
+  "snapshots": [
+    { "accountID": "alpha", "health": { "stale": "offline" }, "remaining": { "amount": "20", "currency": "USD" } },
+    { "accountID": "beta", "health": { "unavailable": "invalidResponse" } }
+  ],
+  "accounts": [
+    { "accountID": "alpha", "alertEpisodeActive": false },
+    { "accountID": "beta", "alertEpisodeActive": true }
+  ],
+  "effects": [
+    { "kind": "persistSnapshots", "accountIDs": ["alpha", "beta"] },
+    { "kind": "notificationCandidates", "accountIDs": [] },
+    { "kind": "invalidateQuickViews" }
+  ]
+}

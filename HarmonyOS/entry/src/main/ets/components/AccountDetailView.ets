@@ -2,7 +2,7 @@ import { promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AccountService } from '../services/AccountService';
-import { getLaunchRefresh, notifyOverviewRefresh } from '../services/LaunchRefresh';
+import { getLaunchRefresh } from '../services/LaunchRefresh';
 import { Account, AccountStore } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import {
@@ -505,7 +505,6 @@ export struct AccountDetailView {
     try {
       const service = await AccountService.create(context);
       await service.refreshAccount(account);
-      notifyOverviewRefresh();
     } catch (error) {
       promptAction.showToast({ message: friendlyErrorText(context, (error as Error).message) });
     }

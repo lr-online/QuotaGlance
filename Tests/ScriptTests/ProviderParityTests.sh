@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PARITY_SCRIPT="$ROOT_DIR/scripts/verify-provider-parity.sh"
 CONTRACT_TEST="$ROOT_DIR/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"
+LIFECYCLE_INPUT="$ROOT_DIR/Contracts/RefreshLifecycle/all-success-input.json"
 
 TEST_ROOT="$(mktemp -d /tmp/QuotaGlance-provider-parity-tests.XXXXXX)"
 
@@ -103,11 +104,30 @@ PY
     || fail "verify-provider-parity.sh still failing after restoring CONTRACT_CASES"
 }
 
+test_invalid_refresh_lifecycle_fixture_is_red() {
+  /bin/cp "$LIFECYCLE_INPUT" "$TEST_ROOT/all-success-input.json.bak"
+  /usr/bin/python3 - "$LIFECYCLE_INPUT" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+data.pop("notificationPermission", None)
+path.write_text(json.dumps(data))
+PY
+  assert_fails /bin/bash "$PARITY_SCRIPT"
+  /bin/cp "$TEST_ROOT/all-success-input.json.bak" "$LIFECYCLE_INPUT"
+  /bin/bash "$PARITY_SCRIPT" >/dev/null \
+    || fail "verify-provider-parity.sh still failing after restoring lifecycle fixture"
+}
+
 backup_spec_copies
 test_parity_script_exists
 test_current_tree_is_green
 test_tampered_core_spec_copy_is_red
 test_tampered_harmonyos_spec_copy_is_red
 test_missing_contract_case_registration_is_red
+test_invalid_refresh_lifecycle_fixture_is_red
 
 echo "Provider parity tests passed"

@@ -32,7 +32,7 @@ class AndroidAppContainer(application: Application) {
     val providers = AssetProviderRegistry(application)
     val accountSaveLogger = AndroidAccountSaveLogger()
     val notificationDispatcher = AndroidNotificationDispatcher(application, preferences)
-    val refreshCoordinator = RefreshCoordinator(
+    private val refreshEngine = RefreshCoordinator(
         providers = providers,
         accounts = accounts,
         credentials = credentials,
@@ -40,4 +40,5 @@ class AndroidAppContainer(application: Application) {
         notifications = notificationDispatcher,
         widgetRefresh = AndroidWidgetRefresh(application),
     )
+    val refreshRun: RefreshEntryPoints = RefreshRun(refreshEngine)
 }

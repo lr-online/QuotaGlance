@@ -218,6 +218,74 @@ Current cases:
 - `no-alert-without-threshold`: disabled accounts and accounts without a
   threshold never alert.
 
+## Refresh-lifecycle contract fixtures
+
+The host-level refresh-run module is the common seam between a platform
+trigger and its observable post-refresh effects. These fixtures pin that seam;
+they do not replace the provider, aggregation, or alert fixture suites that
+define the algorithms used inside a run. Each case is a pair:
+
+```
+Contracts/RefreshLifecycle/<case>-input.json     # state and per-account results before completion
+Contracts/RefreshLifecycle/<case>-expected.json  # persisted state and ordered completion effects
+```
+
+### Input schema
+
+- `invocation` (required): `{scope: "allEnabled"}` or `{scope: "account",
+  accountID: string}`. An account-scoped run only considers the named enabled
+  account; an all-enabled run considers every enabled account.
+- `accounts` (required): array of `{id, isEnabled?, state?,
+  lowBalanceThreshold?, alertEpisodeActive?}`. `isEnabled` defaults to true;
+  `state` is `"active"` or `"deleted"` and defaults to `"active"`.
+  `lowBalanceThreshold` is a decimal string and `alertEpisodeActive` defaults
+  to false.
+- `snapshotsBefore` (required): array of `{accountID, health, remaining?}`.
+  `health` uses the aggregation fixture encoding. It is the persisted snapshot
+  before the run; an omitted row means no cached snapshot.
+- `results` (required): one result per account considered by the invocation:
+  - success: `{accountID, outcome: "success", health, remaining?}` supplies a
+    fresh provider snapshot;
+  - failure: `{accountID, outcome: "failure", failure}` preserves any cached
+    snapshot while marking it stale, or makes an uncached account unavailable;
+  - superseded: `{accountID, outcome: "superseded"}` is discarded because an
+    edit or deletion made the result obsolete.
+- `notificationPermission` (required): `"granted"` or `"denied"`.
+- `notificationDelivery` (required): `"succeeds"` or `"fails"`. It affects
+  delivery only; it must not roll back an alert episode transition.
+
+### Expected schema
+
+Expected files pin all resulting persisted snapshots and account alert-episode
+states, plus the ordered effects exposed by a completed run:
+
+- `snapshots`: array of `{accountID, health, remaining?}` describing persisted
+  state after the run. A failure is represented by `{"stale": "<failure>"}`
+  when cached data existed and `{"unavailable": "<failure>"}` otherwise.
+- `accounts`: array of `{accountID, alertEpisodeActive}`. Deleted accounts are
+  omitted because their account, credential, snapshot, and episode state are
+  removed.
+- `effects`: ordered array. Each effect is one of
+  `{kind: "persistSnapshots", accountIDs: [...]}`,
+  `{kind: "evaluateAlerts", accountIDs: [...]}`,
+  `{kind: "persistAlertEpisodes", accountIDs: [...]}`,
+  `{kind: "notificationCandidates", accountIDs: [...]}`,
+  `{kind: "deliverNotifications", accountIDs: [...]}`, or
+  `{kind: "removeDeletedAccounts", accountIDs: [...]}`, or
+  `{kind: "invalidateQuickViews"}`.
+
+The effect order is part of the protocol: snapshot persistence happens first,
+then at most one batch alert evaluation when the fresh-success set is
+non-empty, then any alert episode persistence, then notification candidate and delivery handling,
+followed by one quick-view invalidation when the run changed persisted state.
+An alert episode transition is persisted before a notification is delivered.
+Failed, stale, unavailable, disabled, deleted, and superseded results cannot
+start or reset an episode.
+
+Current cases cover all-success, partial and total failure, one-account runs,
+low-balance transitions, denied or failed notification delivery, disabled and
+deleted accounts, and superseded results.
+
 ## Provider spec schema (draft v1)
 
 Each provider directory additionally contains a `spec.json`: a **data-driven

@@ -1,0 +1,16 @@
+{
+  "invocation": { "scope": "allEnabled" },
+  "accounts": [
+    { "id": "alpha", "lowBalanceThreshold": "10", "alertEpisodeActive": false },
+    { "id": "beta", "lowBalanceThreshold": "10", "alertEpisodeActive": true }
+  ],
+  "snapshotsBefore": [
+    { "accountID": "alpha", "health": "healthy", "remaining": { "amount": "20", "currency": "USD" } }
+  ],
+  "results": [
+    { "accountID": "alpha", "outcome": "failure", "failure": "offline" },
+    { "accountID": "beta", "outcome": "failure", "failure": "invalidResponse" }
+  ],
+  "notificationPermission": "granted",
+  "notificationDelivery": "succeeds"
+}

@@ -43,7 +43,7 @@ class QuotaGlanceViewModel(
         accounts = container.accounts,
         credentials = container.credentials,
         mutationService = mutationService,
-        refreshCoordinator = container.refreshCoordinator,
+        refreshCoordinator = container.refreshRun,
         logger = container.accountSaveLogger,
     )
     private val mutableState = MutableStateFlow(QuotaGlanceUiState(route = initialRoute))
@@ -140,7 +140,7 @@ class QuotaGlanceViewModel(
 
     fun setEnabled(account: QuotaAccount, enabled: Boolean) = viewModelScope.launch {
         mutationService.save(account.copy(isEnabled = enabled))
-        if (enabled) container.refreshCoordinator.refreshAccount(account.id)
+        if (enabled) container.refreshRun.refreshAccount(account.id)
         reloadSnapshotsInternal()
     }
 
@@ -169,7 +169,7 @@ class QuotaGlanceViewModel(
 
     private suspend fun refreshAllInternal() = refreshMutex.withLock {
         mutableState.value = mutableState.value.copy(refreshing = true, message = null)
-        runCatching { container.refreshCoordinator.refreshAll() }
+        runCatching { container.refreshRun.refreshAll() }
             .onFailure { mutableState.value = mutableState.value.copy(message = it.message ?: "Refresh failed") }
         reloadSnapshotsInternal()
         mutableState.value = mutableState.value.copy(refreshing = false)

@@ -19,7 +19,7 @@ class AccountSaveCoordinator(
     private val accounts: AccountRepository,
     private val credentials: CredentialVault,
     private val mutationService: AccountMutationService,
-    private val refreshCoordinator: RefreshCoordinator,
+    private val refreshCoordinator: RefreshEntryPoints,
     private val logger: AccountSaveLogger = NoopAccountSaveLogger,
 ) {
     suspend fun save(account: QuotaAccount, apiKeyText: String): AccountSaveResult {

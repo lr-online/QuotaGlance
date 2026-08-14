@@ -1,0 +1,12 @@
+{
+  "invocation": { "scope": "allEnabled" },
+  "accounts": [
+    { "id": "alpha", "isEnabled": false, "lowBalanceThreshold": "10", "alertEpisodeActive": true }
+  ],
+  "snapshotsBefore": [
+    { "accountID": "alpha", "health": "belowThreshold", "remaining": { "amount": "5", "currency": "USD" } }
+  ],
+  "results": [],
+  "notificationPermission": "granted",
+  "notificationDelivery": "succeeds"
+}

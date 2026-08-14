@@ -120,12 +120,10 @@ async function publishLowBalance(context: common.Context, account: AlertAccount,
 // snapshots were just persisted as fresh; everything else (failed/stale) is
 // inert in the engine, mirroring Swift AppModel.evaluateAlerts.
 //
-// Invocations are serialized on a module-level queue: a batch fans this out
-// once per refreshed account (refreshAccount) plus once at batch completion
-// (RefreshCoordinator.afterBatch), and concurrent runs could otherwise read
-// the same pre-mutation episode flags and publish duplicate notifications.
-// Queued runs re-read the persisted flags, so the episode debounce makes
-// repeated evaluation idempotent.
+// Invocations are serialized on a module-level queue because overlapping
+// completed runs can otherwise read the same pre-mutation episode flags and
+// publish duplicate notifications. Queued runs re-read the persisted flags,
+// so the episode debounce remains correct across concurrent runs.
 let evaluationQueue: Promise<void> = Promise.resolve();
 
 export async function evaluateAndNotifyAlerts(context: common.Context,

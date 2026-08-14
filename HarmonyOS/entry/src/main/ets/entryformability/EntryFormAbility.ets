@@ -60,8 +60,6 @@ async function refreshCard(context: common.Context, formId: string): Promise<voi
     } else {
       await service.refreshAllEnabled();
     }
-  } finally {
-    await updateFormCard(context, formId);
   }
 }
 

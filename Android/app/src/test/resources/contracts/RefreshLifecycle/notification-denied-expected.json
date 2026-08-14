@@ -1,0 +1,15 @@
+{
+  "snapshots": [
+    { "accountID": "alpha", "health": "belowThreshold", "remaining": { "amount": "8", "currency": "USD" } }
+  ],
+  "accounts": [
+    { "accountID": "alpha", "alertEpisodeActive": true }
+  ],
+  "effects": [
+    { "kind": "persistSnapshots", "accountIDs": ["alpha"] },
+    { "kind": "evaluateAlerts", "accountIDs": ["alpha"] },
+    { "kind": "persistAlertEpisodes", "accountIDs": ["alpha"] },
+    { "kind": "notificationCandidates", "accountIDs": ["alpha"] },
+    { "kind": "invalidateQuickViews" }
+  ]
+}

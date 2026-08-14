@@ -56,8 +56,8 @@ class RefreshCoordinator(
     private val notifications: NotificationDispatcher,
     private val widgetRefresh: WidgetRefresh,
     private val nowMillis: () -> Long = { System.currentTimeMillis() },
-) {
-    suspend fun refreshAll(): RefreshBatchResult = supervisorScope {
+) : RefreshEntryPoints {
+    override suspend fun refreshAll(): RefreshBatchResult = supervisorScope {
         val attempts = accounts.list().filter { it.isEnabled }.map { account ->
             async { refresh(account) }
         }.awaitAll()
@@ -69,7 +69,7 @@ class RefreshCoordinator(
         )
     }
 
-    suspend fun refreshAccount(accountId: String): RefreshBatchResult {
+    override suspend fun refreshAccount(accountId: String): RefreshBatchResult {
         val account = accounts.list().firstOrNull { it.id == accountId } ?: return RefreshBatchResult(0, 1)
         if (!account.isEnabled) return RefreshBatchResult(0, 0)
         val attempt = refresh(account)
@@ -79,7 +79,7 @@ class RefreshCoordinator(
     }
 
     /** Publishes the snapshot returned by account-editor detection without issuing a second request. */
-    suspend fun recordSuccessfulSnapshot(accountId: String, usage: ProviderUsageSnapshot) {
+    override suspend fun recordSuccessfulSnapshot(accountId: String, usage: ProviderUsageSnapshot) {
         val account = accounts.list().firstOrNull { it.id == accountId } ?: return
         val attempt = success(account, usage)
         evaluateAlerts(listOf(checkNotNull(attempt.snapshot)))

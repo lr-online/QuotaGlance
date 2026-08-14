@@ -95,10 +95,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Sync Windows parity inputs
-        run: |
-          bash scripts/sync-specs-to-windows.sh
-          bash scripts/sync-contracts-to-windows.sh
+      - name: Prepare parity resources
+        # The preparation command includes bash scripts/sync-specs-to-windows.sh
+        # and bash scripts/sync-contracts-to-windows.sh before global parity.
+        run: bash scripts/prepare-parity-resources.sh
 
       - name: Verify provider protocol parity
         run: bash scripts/verify-provider-parity.sh

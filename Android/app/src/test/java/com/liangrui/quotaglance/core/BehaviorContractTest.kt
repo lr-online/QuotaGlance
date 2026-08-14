@@ -86,6 +86,26 @@ class BehaviorContractTest {
         }
     }
 
+    @Test
+    fun `every refresh lifecycle fixture exposes a consumable run outcome`() {
+        REFRESH_LIFECYCLE_CASES.forEach { name ->
+            val input = fixture("RefreshLifecycle/$name-input.json").jsonObject
+            val expected = fixture("RefreshLifecycle/$name-expected.json").jsonObject
+            assertTrue("$name invocation", input["invocation"] is JsonObject)
+            assertTrue("$name accounts", input["accounts"] is JsonArray)
+            assertTrue("$name results", input["results"] is JsonArray)
+            assertTrue("$name snapshots", expected["snapshots"] is JsonArray)
+            assertTrue("$name account state", expected["accounts"] is JsonArray)
+            expected.array("effects").forEachIndexed { index, effect ->
+                val kind = effect.jsonObject.string("kind")
+                assertTrue("$name effect $index kind", kind in REFRESH_EFFECT_KINDS)
+                if (kind != "invalidateQuickViews") {
+                    assertTrue("$name effect $index account ids", effect.jsonObject["accountIDs"] is JsonArray)
+                }
+            }
+        }
+    }
+
     private fun fixture(path: String): JsonElement = json.parseToJsonElement(
         checkNotNull(javaClass.classLoader?.getResourceAsStream("contracts/$path")) { "missing fixture $path" }
             .bufferedReader()
@@ -189,6 +209,15 @@ class BehaviorContractTest {
         )
         val ALERT_CASES = listOf(
             "notify-on-low", "episode-debounce", "episode-reset", "stale-no-change", "batch-notify-and-reset", "no-alert-without-threshold",
+        )
+        val REFRESH_LIFECYCLE_CASES = listOf(
+            "all-success", "partial-failure", "all-failure", "single-account-success",
+            "low-balance-notify", "notification-denied", "notification-delivery-fails",
+            "disabled-account", "deleted-account", "superseded-result",
+        )
+        val REFRESH_EFFECT_KINDS = setOf(
+            "persistSnapshots", "evaluateAlerts", "persistAlertEpisodes", "notificationCandidates",
+            "deliverNotifications", "removeDeletedAccounts", "invalidateQuickViews",
         )
     }
 }

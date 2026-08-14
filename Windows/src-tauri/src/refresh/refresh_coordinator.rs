@@ -2,25 +2,21 @@
 // Sources/QuotaGlanceCore/Refresh/RefreshCoordinator.swift.
 
 use std::sync::Arc;
-use std::time::Duration;
-
 use futures::future;
-use tokio::task::JoinHandle;
-use tokio::time::interval;
-use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::aggregation::SnapshotAggregator;
 use crate::alerts::{AlertBatchEvaluation, AlertEvaluator};
-use crate::domain::{Account, AccountHealth, AccountSnapshot};
+use crate::domain::{Account, AccountHealth, AccountSnapshot, SnapshotFailure};
 use crate::providers::provider_error::ProviderError;
 use crate::providers::usage_provider::UsageProvider;
 use crate::storage::account_store::AccountStore;
-use crate::storage::preferences::Preferences;
 use crate::storage::snapshot_store::SnapshotStore;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RefreshError {
+    #[error("missingCredential")]
+    MissingCredential,
     #[error("provider: {0}")]
     Provider(#[from] ProviderError),
     #[error("snapshot: {0}")]
@@ -34,6 +30,51 @@ pub struct RefreshCoordinator {
 }
 
 impl RefreshCoordinator {
+    fn persist_failure(
+        &self,
+        account: &Account,
+        failure: SnapshotFailure,
+    ) -> Result<(), RefreshError> {
+        let previous = self.snapshots.load(account.id)?;
+        let snapshot = AccountSnapshot::new(
+            account.id,
+            account.display_name.clone(),
+            account.provider,
+            account.detected_profile,
+            account.low_balance_threshold,
+            previous.as_ref().and_then(|snapshot| snapshot.usage.clone()),
+            if previous.as_ref().and_then(|snapshot| snapshot.usage.as_ref()).is_some() {
+                AccountHealth::Stale(failure)
+            } else {
+                AccountHealth::Unavailable(failure)
+            },
+            previous.and_then(|snapshot| snapshot.last_success_at),
+        );
+        self.snapshots.save(&snapshot)
+    }
+
+    fn snapshot_failure(error: &RefreshError) -> SnapshotFailure {
+        match error {
+            RefreshError::MissingCredential => SnapshotFailure::MissingCredential,
+            RefreshError::Provider(error) => match error {
+                ProviderError::InvalidCredential => SnapshotFailure::InvalidCredential,
+                ProviderError::RateLimited => SnapshotFailure::RateLimited,
+                ProviderError::HttpStatus(_) => SnapshotFailure::ProviderError,
+                ProviderError::InvalidResponse => SnapshotFailure::InvalidResponse,
+                _ => SnapshotFailure::ProviderError,
+            },
+            RefreshError::Snapshot(_) => SnapshotFailure::ProviderError,
+        }
+    }
+
+    fn record_failure(&self, account: &Account, error: RefreshError) -> (Uuid, Result<AccountSnapshot, RefreshError>) {
+        let failure = Self::snapshot_failure(&error);
+        match self.persist_failure(account, failure) {
+            Ok(()) => (account.id, Err(error)),
+            Err(persist_error) => (account.id, Err(persist_error)),
+        }
+    }
+
     pub fn new(
         providers: Arc<
             std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>,
@@ -56,13 +97,24 @@ impl RefreshCoordinator {
     where
         F: FnMut(Uuid) -> Option<String>,
     {
-        let provider = self
-            .providers
-            .get(&account.provider)
-            .cloned()
-            .ok_or(ProviderError::ProviderUnavailable(account.provider))?;
-        let key = resolve_key(account.id).ok_or(ProviderError::InvalidCredential)?;
-        let detection = provider.detect(&key).await?;
+        let result = async {
+            let key = resolve_key(account.id).ok_or(RefreshError::MissingCredential)?;
+            let provider = self
+                .providers
+                .get(&account.provider)
+                .cloned()
+                .ok_or(ProviderError::ProviderUnavailable(account.provider))?;
+            let detection = provider.detect(&key).await?;
+            Ok::<_, RefreshError>(detection)
+        }
+        .await;
+        let detection = match result {
+            Ok(detection) => detection,
+            Err(error) => {
+                let (_, failed) = self.record_failure(&account, error);
+                return failed;
+            }
+        };
         let now: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
         let stored = AccountSnapshot {
             account_id: account.id,
@@ -115,16 +167,20 @@ impl RefreshCoordinator {
             async move {
                 let id = account.id;
                 let api_key = resolve_key(id).unwrap_or_default();
+                if api_key.is_empty() {
+                    return self.record_failure(&account, RefreshError::MissingCredential);
+                }
                 let provider = match provider {
                     Some(p) => p,
                     None => {
                         let err = RefreshError::Provider(ProviderError::ProviderUnavailable(
                             account.provider,
                         ));
-                        return (id, Err(err));
+                        return self.record_failure(&account, err);
                     }
                 };
-                match provider.detect(&api_key).await {
+                let result = provider.detect(&api_key).await.map_err(RefreshError::from);
+                match result {
                     Ok(detection) => {
                         let now = chrono::Utc::now();
                         let stored = AccountSnapshot {
@@ -143,34 +199,12 @@ impl RefreshCoordinator {
                             (id, Ok(stored))
                         }
                     }
-                    Err(e) => (id, Err(RefreshError::Provider(e))),
+                    Err(e) => self.record_failure(&account, e),
                 }
             }
         });
 
         future::join_all(futures).await
-    }
-
-    pub fn start_interval(
-        self: Arc<Self>,
-        prefs: Preferences,
-        resolve_key: impl Fn(Uuid) -> Option<String> + Sync + Send + 'static,
-    ) -> JoinHandle<()> {
-        tokio::spawn(async move {
-            let mut timer = interval(Duration::from_secs(
-                prefs.refresh_interval_minutes.saturating_mul(60) as u64,
-            ));
-            timer.tick().await;
-            loop {
-                timer.tick().await;
-                info!("refresh interval fired");
-                let res = self.refresh_all(&resolve_key).await;
-                let failures = res.iter().filter(|(_, r)| r.is_err()).count();
-                if failures > 0 {
-                    warn!(failures, "one or more accounts failed to refresh");
-                }
-            }
-        })
     }
 
     pub fn aggregate_now(
@@ -227,5 +261,43 @@ mod tests {
             std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>,
         > = Arc::new(std::collections::HashMap::new());
         let _coord = RefreshCoordinator::new(providers, accounts, snapshots);
+    }
+
+    #[tokio::test]
+    async fn missing_credential_persists_an_unavailable_snapshot() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let layout = crate::storage::path_layout::PathLayout {
+            root: dir.path().to_path_buf(),
+            accounts: dir.path().join("accounts.json"),
+            snapshots: dir.path().join("snapshots"),
+            preferences: dir.path().join("preferences.json"),
+            credentials: dir.path().join("credentials.bin"),
+        };
+        std::fs::create_dir_all(&layout.snapshots).unwrap();
+        let id = Uuid::new_v4();
+        let account = Account::new(
+            id,
+            "missing key".into(),
+            crate::domain::ProviderID::ApiInfo,
+            None,
+            0,
+        );
+        let accounts = Arc::new(std::sync::Mutex::new(
+            AccountStore::load_or_create(&layout.accounts).unwrap(),
+        ));
+        let snapshots = Arc::new(SnapshotStore::new(&layout));
+        let providers: Arc<
+            std::collections::HashMap<crate::domain::ProviderID, Arc<dyn UsageProvider>>,
+        > = Arc::new(std::collections::HashMap::new());
+        let coordinator = RefreshCoordinator::new(providers, accounts, snapshots.clone());
+
+        assert!(matches!(
+            coordinator.refresh_one(account, |_| None).await,
+            Err(RefreshError::MissingCredential)
+        ));
+        assert!(matches!(
+            snapshots.load(id).unwrap().unwrap().health,
+            AccountHealth::Unavailable(SnapshotFailure::MissingCredential)
+        ));
     }
 }

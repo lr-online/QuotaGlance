@@ -1,0 +1,17 @@
+{
+  "invocation": { "scope": "allEnabled" },
+  "accounts": [
+    { "id": "alpha", "lowBalanceThreshold": "10", "alertEpisodeActive": false },
+    { "id": "beta", "lowBalanceThreshold": "10", "alertEpisodeActive": true }
+  ],
+  "snapshotsBefore": [
+    { "accountID": "alpha", "health": "healthy", "remaining": { "amount": "20", "currency": "USD" } },
+    { "accountID": "beta", "health": "belowThreshold", "remaining": { "amount": "5", "currency": "USD" } }
+  ],
+  "results": [
+    { "accountID": "alpha", "outcome": "success", "health": "healthy", "remaining": { "amount": "22", "currency": "USD" } },
+    { "accountID": "beta", "outcome": "failure", "failure": "offline" }
+  ],
+  "notificationPermission": "granted",
+  "notificationDelivery": "succeeds"
+}

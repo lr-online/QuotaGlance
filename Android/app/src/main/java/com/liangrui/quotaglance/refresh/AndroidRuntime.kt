@@ -190,7 +190,7 @@ class RefreshWorker(
     parameters: WorkerParameters,
 ) : CoroutineWorker(appContext, parameters) {
     override suspend fun doWork(): Result = try {
-        (applicationContext as QuotaGlanceApplication).container.refreshCoordinator.refreshAll()
+        (applicationContext as QuotaGlanceApplication).container.refreshRun.refreshAll()
         Result.success()
     } catch (_: Exception) {
         Result.retry()

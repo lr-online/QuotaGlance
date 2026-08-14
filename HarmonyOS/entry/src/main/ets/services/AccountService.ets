@@ -13,6 +13,7 @@ import { notifyOverviewRefresh } from './LaunchRefresh';
 import { evaluateAndNotifyAlerts } from './NotificationService';
 import { RefreshCoordinator, RefreshResult } from './RefreshCoordinator';
 import { updateAllCards } from './CardUpdater';
+import { RefreshEffects } from './RefreshEffects';
 
 const DOMAIN = 0x0000;
 const TAG = 'QuotaGlance';
@@ -36,6 +37,7 @@ export class AccountService {
   private readonly registry: ProviderRegistry;
   private readonly accountStore: AccountStore;
   private readonly snapshotStore: SnapshotStore;
+  private readonly refreshEffects: RefreshEffects;
   private refreshCoordinator?: RefreshCoordinator;
 
   private constructor(
@@ -48,6 +50,11 @@ export class AccountService {
     this.registry = registry;
     this.accountStore = accountStore;
     this.snapshotStore = snapshotStore;
+    this.refreshEffects = new RefreshEffects({
+      invalidateOverview: notifyOverviewRefresh,
+      publishCards: () => updateAllCards(this.context),
+      evaluateAlerts: (refreshedIds: string[]) => evaluateAndNotifyAlerts(this.context, refreshedIds)
+    });
   }
 
   static async create(context: common.Context): Promise<AccountService> {
@@ -162,7 +169,10 @@ export class AccountService {
     return updated;
   }
 
-  async refreshAccount(account: Account): Promise<void> {
+  // The provider/persistence portion of the refresh seam. It deliberately
+  // performs no host effects so a batch can collect all account outcomes
+  // before RefreshCoordinator invokes RefreshEffects once.
+  private async fetchAndPersistAccount(account: Account): Promise<void> {
     if (!account.isEnabled) {
       return;
     }
@@ -180,57 +190,51 @@ export class AccountService {
       }
       await this.snapshotStore.save(account.id, await provider.fetch(apiKey, profile));
       hilog.info(DOMAIN, TAG, 'refreshAccount ok: %{public}s', account.id);
-      this.afterSuccessfulRefresh([account.id]);
     } catch (error) {
       hilog.warn(DOMAIN, TAG, 'refreshAccount failed: %{public}s %{public}s', account.id, (error as Error).message);
       await this.snapshotStore.markStale(account.id, (error as Error).message);
-      this.afterFailedRefresh();
       throw error as Error;
     }
   }
 
-  // Post-refresh fan-out: snapshot-linked card updates (push fresh data to
-  // every registered form) + low-balance alert evaluation/notification. Both
-  // are fire-and-forget — a card push or notification failure must never fail
-  // the refresh itself. Wired here at the service seam so EVERY refresh path
-  // is covered: foreground batches, the WorkScheduler background batch (via
-  // getRefreshCoordinator's afterBatch dep) and single-account refreshes
-  // (refreshAccount above). The alert engine stays I/O-free; all
-  // persistence/notification happens in NotificationService.
-  private afterSuccessfulRefresh(refreshedIds: string[]): void {
-    updateAllCards(this.context).catch((error: Object) => {
-      hilog.warn(DOMAIN, TAG, 'card update failed: %{public}s', (error as Error).message);
-    });
-    evaluateAndNotifyAlerts(this.context, refreshedIds).catch((error: Object) => {
-      hilog.warn(DOMAIN, TAG, 'alert evaluation failed: %{public}s', (error as Error).message);
-    });
+  // Single-account callers are a completed one-account run. Preserve the
+  // original error surface for detail pages while applying the same effects
+  // policy as a completed batch.
+  async refreshAccount(account: Account): Promise<void> {
+    if (!account.isEnabled) {
+      return;
+    }
+    try {
+      await this.fetchAndPersistAccount(account);
+      this.applyRefreshEffects({ outcome: 'fresh', succeeded: [account.id], failed: [] });
+    } catch (error) {
+      this.applyRefreshEffects({ outcome: 'allFailed', succeeded: [], failed: [account.id] });
+      throw error as Error;
+    }
   }
 
-  private afterFailedRefresh(): void {
-    notifyOverviewRefresh();
-    updateAllCards(this.context).catch((error: Object) => {
-      hilog.warn(DOMAIN, TAG, 'failed-refresh card update failed: %{public}s', (error as Error).message);
+  private applyRefreshEffects(result: RefreshResult): void {
+    this.refreshEffects.apply(result).catch((error: Object) => {
+      hilog.warn(DOMAIN, TAG, 'refresh effects failed: %{public}s', (error as Error).message);
     });
   }
 
   // THE batch-refresh path. Lazily built so the coordinator's per-account
   // dedup window is shared by every batch caller (cold launch, manual
   // refresh-all, background scheduler) on this service instance. The
-  // coordinator delegates each account's fetch+persist back to
-  // refreshAccount above; it owns batching, isolation and outcome.
+  // coordinator delegates each account's fetch+persist to the effect-free
+  // seam above; it owns batching, isolation and outcome.
   getRefreshCoordinator(): RefreshCoordinator {
     if (this.refreshCoordinator === undefined) {
       this.refreshCoordinator = new RefreshCoordinator({
         loadAccounts: () => this.loadAccounts(),
-        refreshAccount: (account: Account) => this.refreshAccount(account),
-        notifyRefreshed: notifyOverviewRefresh,
-        // Batch post-refresh hook (foreground + background alike). Note the
-        // per-account path already fans out via refreshAccount's own
-        // afterSuccessfulRefresh; this hook adds nothing extra for the batch
-        // members — it exists so the coordinator's completion seam triggers
-        // the same fan-out even if a future caller bypasses refreshAccount.
-        afterBatch: (result: RefreshResult) => {
-          this.afterSuccessfulRefresh(result.succeeded);
+        refreshAccount: (account: Account) => this.fetchAndPersistAccount(account),
+        // The coordinator's single completed-run hook replaces the former
+        // per-account fan-out. This prevents a successful batch from updating
+        // cards and evaluating the same alert episode once per account and
+        // again after the batch.
+        onCompleted: (result: RefreshResult) => {
+          this.applyRefreshEffects(result);
         }
       });
     }

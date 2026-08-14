@@ -16,7 +16,6 @@
 //! `crate::refresh::RefreshCoordinator`; this file is the bridge.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, Runtime, State};
@@ -27,7 +26,9 @@ use crate::domain::{
     Account, AccountSnapshot, AggregateSnapshot, ProviderCredentialKind, ProviderID,
     ProviderProfile, ProviderRegion,
 };
-use crate::refresh::refresh_coordinator::{RefreshCoordinator, RefreshError};
+use crate::refresh::refresh_coordinator::RefreshCoordinator;
+pub use crate::refresh::refresh_run::RefreshReport;
+use crate::refresh::refresh_run::{RefreshRun, RefreshRunEffects};
 use crate::storage::account_store::AccountStore;
 use crate::storage::credential_vault::CredentialVault;
 use crate::storage::preferences::{Preferences, PreferencesStore};
@@ -51,16 +52,10 @@ pub struct UpdateAccountRequest {
     pub is_enabled: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct RefreshReport {
-    pub total: usize,
-    pub failures: usize,
-    pub last_failure_reason: Option<String>,
-}
-
 #[derive(Clone)]
 pub struct AppState {
     pub coordinator: Arc<RefreshCoordinator>,
+    pub refresh_run: Arc<RefreshRun>,
     pub accounts: Arc<std::sync::Mutex<AccountStore>>,
     pub snapshots: Arc<SnapshotStore>,
     pub vault: Arc<std::sync::Mutex<CredentialVault>>,
@@ -202,31 +197,12 @@ pub async fn refresh_all(
     state: State<'_, AppState>,
 ) -> Result<RefreshReport, String> {
     let prefs = state.preferences.lock().unwrap().current().clone();
-    let vault = state.vault.clone();
-    let coord = state.coordinator.clone();
-    let report = coord
-        .refresh_all_async(&prefs, move |id| vault.lock().unwrap().get(id).ok())
-        .await;
-    let total = report.len();
-    let failures = report.iter().filter(|(_, r)| r.is_err()).count();
-    let last_failure_reason = report
-        .iter()
-        .find_map(|(_, r)| r.as_ref().err().map(|e| format!("{e}")))
-        .or_else(|| None);
-    let fresh: Vec<AccountSnapshot> = report
-        .iter()
-        .filter_map(|(_, result)| result.as_ref().ok().cloned())
-        .collect();
-    let alerts = state.coordinator.evaluate_alerts(fresh);
-    if prefs.notifications_enabled {
-        send_alert_notifications(&app, &alerts);
-    }
-    let _ = app.emit("snapshots-updated", ());
-    Ok(RefreshReport {
-        total,
-        failures,
-        last_failure_reason,
-    })
+    let effects = TauriRefreshRunEffects { app };
+    Ok(state
+        .refresh_run
+        .refresh_all(prefs.notifications_enabled, &effects)
+        .await
+        .report)
 }
 
 #[tauri::command]
@@ -251,24 +227,16 @@ pub fn replace_account_credential(
 
 #[tauri::command]
 pub async fn refresh_account(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     id: Uuid,
 ) -> Result<AccountSnapshot, String> {
-    let account = state
-        .accounts
-        .lock()
-        .unwrap()
-        .find(id)
-        .cloned()
-        .ok_or_else(|| format!("account {id} not found"))?;
-    let vault = state.vault.clone();
+    let notifications_enabled = state.preferences.lock().unwrap().current().notifications_enabled;
+    let effects = TauriRefreshRunEffects { app };
     state
-        .coordinator
-        .refresh_one(account, move |account_id| {
-            vault.lock().unwrap().get(account_id).ok()
-        })
+        .refresh_run
+        .refresh_account(id, notifications_enabled, &effects)
         .await
-        .map_err(|error| format!("refresh: {error}"))
 }
 
 #[tauri::command]
@@ -289,12 +257,6 @@ pub fn update_preferences(
         .map_err(|e| format!("preferences: {e}"))
 }
 
-#[tauri::command]
-pub fn evaluate_alerts(state: State<'_, AppState>) -> AlertBatchEvaluation {
-    let fresh = state.snapshots.load_all().unwrap_or_default();
-    state.coordinator.evaluate_alerts(fresh)
-}
-
 /// Deliver only newly-started low-balance episodes. The evaluator already
 /// suppresses duplicate notifications and ignores stale/unavailable data.
 pub fn send_alert_notifications<R: Runtime>(
@@ -312,6 +274,27 @@ pub fn send_alert_notifications<R: Runtime>(
         if let Err(error) = app.notification().builder().title(title).body(body).show() {
             tracing::warn!(%error, "could not show low-balance notification");
         }
+    }
+}
+
+/// Tauri is an adapter for the refresh-run seam. It does not own lifecycle
+/// policy: notifications and the one post-run presentation event are driven
+/// exclusively by `RefreshRun`.
+pub(crate) struct TauriRefreshRunEffects<R: Runtime> {
+    pub(crate) app: tauri::AppHandle<R>,
+}
+
+impl<R: Runtime> RefreshRunEffects for TauriRefreshRunEffects<R> {
+    fn deliver_notifications(&self, notifications: &[crate::alerts::PendingLowBalanceNotification]) {
+        let evaluation = crate::alerts::AlertBatchEvaluation {
+            did_change: !notifications.is_empty(),
+            notifications: notifications.to_vec(),
+        };
+        send_alert_notifications(&self.app, &evaluation);
+    }
+
+    fn invalidate_presentation(&self) {
+        let _ = self.app.emit("snapshots-updated", ());
     }
 }
 
@@ -355,22 +338,6 @@ pub fn emit_intent<R: Runtime>(app: &tauri::AppHandle<R>, payload: String) {
     let _ = app.emit("deep-link", payload.clone());
     if let Some(state) = app.try_state::<crate::tray::IntentPayload>() {
         *state.0.lock().unwrap() = Some(payload);
-    }
-}
-
-// Extension trait for RefreshCoordinator so commands can call a
-// one-shot async batch with a stable signature, even though the
-// underlying `refresh_all` returns Vec<(Uuid, Result<...)>`. The
-// returned tuple is mapped to RefreshReport by callers.
-impl RefreshCoordinator {
-    pub async fn refresh_all_async(
-        self: Arc<Self>,
-        _prefs: &Preferences,
-        resolve_key: impl Fn(Uuid) -> Option<String> + Send + Sync + 'static,
-    ) -> Vec<(Uuid, Result<crate::domain::AccountSnapshot, RefreshError>)> {
-        // single ticker delay to keep the event loop alive
-        tokio::time::sleep(Duration::from_millis(0)).await;
-        self.refresh_all(&resolve_key).await
     }
 }
 

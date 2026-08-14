@@ -4,7 +4,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use tauri::{Emitter, Manager, WindowEvent};
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 pub mod aggregation;
@@ -20,6 +20,7 @@ use crate::commands::AppState;
 use crate::providers::contract_provider::provider_catalog;
 use crate::providers::http_client::ReqwestHttpClient;
 use crate::refresh::refresh_coordinator::RefreshCoordinator;
+use crate::refresh::refresh_run::{CredentialResolver, RefreshRun};
 use crate::storage::account_store::AccountStore;
 use crate::storage::credential_vault::CredentialVault;
 use crate::storage::path_layout::PathLayout;
@@ -72,10 +73,18 @@ pub fn run() {
             ));
             let vault = Arc::new(Mutex::new(vault));
             let preferences = Arc::new(Mutex::new(preferences));
+            let resolver_vault = vault.clone();
+            let refresh_run = Arc::new(RefreshRun::new(
+                coordinator.clone(),
+                accounts.clone(),
+                Arc::new(move |id| resolver_vault.lock().ok().and_then(|vault| vault.get(id).ok()))
+                    as CredentialResolver,
+            ));
 
             app.manage(tray::IntentPayload(Mutex::new(None)));
             app.manage(AppState {
                 coordinator: coordinator.clone(),
+                refresh_run: refresh_run.clone(),
                 accounts,
                 snapshots,
                 vault: vault.clone(),
@@ -99,7 +108,7 @@ pub fn run() {
                 }
             }
 
-            start_background_refresh(app.handle().clone(), coordinator, vault, preferences);
+            start_background_refresh(app.handle().clone(), refresh_run, preferences);
 
             if let Some(main) = app.get_webview_window("main") {
                 let _ = main.show();
@@ -120,7 +129,6 @@ pub fn run() {
             crate::commands::refresh_account,
             crate::commands::get_preferences,
             crate::commands::update_preferences,
-            crate::commands::evaluate_alerts,
             crate::commands::open_window_by_label,
             crate::commands::show_notification,
             crate::commands::quit_app,
@@ -135,28 +143,17 @@ pub fn run() {
 /// settings change takes effect without restarting the process.
 fn start_background_refresh(
     app: tauri::AppHandle,
-    coordinator: Arc<RefreshCoordinator>,
-    vault: Arc<Mutex<CredentialVault>>,
+    refresh_run: Arc<RefreshRun>,
     preferences: Arc<Mutex<PreferencesStore>>,
 ) {
     tauri::async_runtime::spawn(async move {
         loop {
-            let results = coordinator
-                .refresh_all(&|id| vault.lock().ok().and_then(|vault| vault.get(id).ok()))
-                .await;
-            let fresh = results
-                .iter()
-                .filter_map(|(_, result)| result.as_ref().ok().cloned())
-                .collect();
-            let alerts = coordinator.evaluate_alerts(fresh);
             let notifications_enabled = preferences
                 .lock()
                 .map(|store| store.current().notifications_enabled)
                 .unwrap_or(false);
-            if notifications_enabled {
-                crate::commands::send_alert_notifications(&app, &alerts);
-            }
-            let _ = app.emit("snapshots-updated", ());
+            let effects = crate::commands::TauriRefreshRunEffects { app: app.clone() };
+            let _ = refresh_run.refresh_all(notifications_enabled, &effects).await;
 
             let interval_minutes = preferences
                 .lock()

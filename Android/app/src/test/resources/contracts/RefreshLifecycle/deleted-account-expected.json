@@ -1,0 +1,9 @@
+{
+  "snapshots": [],
+  "accounts": [],
+  "effects": [
+    { "kind": "removeDeletedAccounts", "accountIDs": ["alpha"] },
+    { "kind": "notificationCandidates", "accountIDs": [] },
+    { "kind": "invalidateQuickViews" }
+  ]
+}

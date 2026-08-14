@@ -82,11 +82,6 @@ export interface RefreshReport {
   last_failure_reason: string | null;
 }
 
-export interface AlertBatchEvaluation {
-  did_change: boolean;
-  notifications: Array<{ account_id: string; remaining_amount?: string; remaining_currency?: string }>;
-}
-
 export interface PreferencesDTO {
   refresh_interval_minutes: number;
   locale: Locale;
@@ -138,7 +133,6 @@ export const commands = {
   getPreferences: () => invokeOrPreview<PreferencesDTO>("get_preferences", {}, PREVIEW_PREFERENCES),
   updatePreferences: (preferences: PreferencesDTO) =>
     invokeOrPreview<void>("update_preferences", { preferences }, undefined),
-  evaluateAlerts: () => invokeOrPreview<AlertBatchEvaluation>("evaluate_alerts", {}, { did_change: false, notifications: [] }),
   openWindow: (label: string) => invokeOrPreview<void>("open_window_by_label", { label }, undefined),
   showNotification: (title: string, body: string) =>
     invokeOrPreview<void>("show_notification", { title, body }, undefined),

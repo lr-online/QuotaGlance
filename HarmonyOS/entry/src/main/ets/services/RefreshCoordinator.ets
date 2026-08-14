@@ -1,6 +1,5 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { Account } from '../storage/AccountStore';
-import { notifyOverviewRefresh } from './LaunchRefresh';
 
 const DOMAIN = 0x0000;
 const TAG = 'QuotaGlance';
@@ -21,10 +20,8 @@ const TAG = 'QuotaGlance';
 // - Outcome mirrors Swift RefreshOutcome: fresh when every enabled account
 //   succeeded (vacuously true for an empty set), allFailed when none did,
 //   partial otherwise.
-// - On at least one success the overview listeners are notified through
-//   LaunchRefresh's notifyOverviewRefresh so the UI recomputes from the
-//   snapshot cache (Swift writes a WidgetSnapshotEnvelope; the ArkTS UI reads
-//   the SnapshotStore cache directly).
+// - Each completed run is reported once to the injected completion seam. The
+//   host maps that outcome to overview, card and alert effects.
 //
 // Seams are injected as plain functions so tests can drive the coordinator
 // without stores or providers (the Swift suite injects registry/credential
@@ -45,14 +42,10 @@ export interface RefreshCoordinatorDeps {
   // Fetches one account through its provider and persists the outcome
   // (fresh snapshot save, or stale marking on failure). Throws on failure.
   refreshAccount: (account: Account) => Promise<void>;
-  // Overview-refresh fan-out after a batch with at least one success.
-  notifyRefreshed: () => void;
-  // Optional post-batch hook (same "at least one success" gating as
-  // notifyRefreshed). AccountService uses it to push snapshot-linked card
-  // updates and to run low-balance alert evaluation, so both foreground and
-  // background (WorkScheduler) batches trigger them. Fire-and-forget: the
-  // implementation must swallow its own errors.
-  afterBatch?: (result: RefreshResult) => void;
+  // Completed-run hook. AccountService maps it to host effects exactly once
+  // for every outcome, including allFailed where stale state is observable.
+  // The implementation must swallow its own asynchronous effect errors.
+  onCompleted: (result: RefreshResult) => void;
 }
 
 export class RefreshCoordinator {
@@ -94,12 +87,7 @@ export class RefreshCoordinator {
     hilog.info(DOMAIN, TAG, 'refresh batch %{public}s: %{public}d/%{public}d ok',
       outcome, succeeded.length, enabled.length);
     const result: RefreshResult = { outcome: outcome, succeeded: succeeded, failed: failed };
-    if (succeeded.length > 0) {
-      this.deps.notifyRefreshed();
-      if (this.deps.afterBatch !== undefined) {
-        this.deps.afterBatch(result);
-      }
-    }
+    this.deps.onCompleted(result);
     return result;
   }
 

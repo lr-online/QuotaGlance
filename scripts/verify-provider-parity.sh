@@ -5,8 +5,8 @@
 #      verify-android-parity.sh).
 #   2. Contracts/Providers/<dir>/ has spec.json plus complete
 #      <case>-response/-expected/-requests triples.
-#   3. Contracts/Aggregation and Contracts/Alerts have complete
-#      <case>-input/-expected pairs.
+#   3. Contracts/Aggregation, Contracts/Alerts, and Contracts/RefreshLifecycle
+#      have complete <case>-input/-expected pairs.
 #   4. Every provider contract case is registered in ArkTS CONTRACT_CASES.
 #   5. Registered ArkTS step URLs match the requests fixtures.
 #   6. Each spec.json is byte-identical to its copies under
@@ -14,10 +14,10 @@
 #      HarmonyOS/entry/src/main/resources/rawfile/providerspecs/<id>.json, and
 #      Windows/src-tauri/assets/providerspecs/<id>.json.
 #   7. HarmonyOS ohosTest contract copies match Contracts/Providers,
-#      Contracts/Aggregation, and Contracts/Alerts
+#      Contracts/Aggregation, Contracts/Alerts, and Contracts/RefreshLifecycle
 #      (same scope as scripts/sync-contracts-to-harmonyos.sh).
 #   8. Windows portable-client contract copies match Contracts/{Providers,
-#      Aggregation, Alerts} (same scope as
+#      Aggregation, Alerts, RefreshLifecycle} (same scope as
 #      scripts/sync-contracts-to-windows.sh).
 # Exits 1 on the first failing section after printing every error it found.
 set -euo pipefail
@@ -362,13 +362,13 @@ check_contract_fixtures() {
   done
 }
 
-# --- Check 5: aggregation and alert fixture pairs are complete --------------
+# --- Check 5: paired behavior-contract fixtures are complete ----------------
 
 check_paired_contract_fixtures() {
   local contract_name contract_dir fixture fixture_name cases case_name
   local -a case_names
 
-  for contract_name in Aggregation Alerts; do
+  for contract_name in Aggregation Alerts RefreshLifecycle; do
     contract_dir="$REPO_ROOT/Contracts/$contract_name"
     if [[ ! -d "$contract_dir" ]]; then
       fail "missing $contract_dir"
@@ -401,7 +401,114 @@ check_paired_contract_fixtures() {
   done
 }
 
-# --- Check 6: ArkTS CONTRACT_CASES covers provider contract fixtures --------
+# --- Check 6: refresh-lifecycle fixtures have the public seam shape --------
+
+check_refresh_lifecycle_fixture_schema() {
+  local contract_dir="$REPO_ROOT/Contracts/RefreshLifecycle"
+  [[ -d "$contract_dir" ]] || { fail "missing $contract_dir"; return; }
+
+  local status=0
+  python3 - "$contract_dir" <<'PY' || status=$?
+import json
+import sys
+from pathlib import Path
+
+directory = Path(sys.argv[1])
+errors = []
+valid_outcomes = {"success", "failure", "superseded"}
+valid_effects = {
+    "persistSnapshots",
+    "evaluateAlerts",
+    "persistAlertEpisodes",
+    "notificationCandidates",
+    "deliverNotifications",
+    "removeDeletedAccounts",
+    "invalidateQuickViews",
+}
+
+def error(case, message):
+    errors.append(f"error: Contracts/RefreshLifecycle/{case}: {message}")
+
+for input_path in sorted(directory.glob("*-input.json")):
+    case = input_path.name.removesuffix("-input.json")
+    expected_path = directory / f"{case}-expected.json"
+    try:
+        input_data = json.loads(input_path.read_text())
+        expected_data = json.loads(expected_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        error(case, f"invalid JSON: {exc}")
+        continue
+
+    missing_input = [
+        key for key in ("invocation", "accounts", "snapshotsBefore", "results", "notificationPermission", "notificationDelivery")
+        if key not in input_data
+    ]
+    missing_expected = [key for key in ("snapshots", "accounts", "effects") if key not in expected_data]
+    for key in missing_input:
+        error(case, f"input missing required key '{key}'")
+    for key in missing_expected:
+        error(case, f"expected missing required key '{key}'")
+    if missing_input or missing_expected:
+        continue
+
+    invocation = input_data["invocation"]
+    scope = invocation.get("scope") if isinstance(invocation, dict) else None
+    if scope not in {"allEnabled", "account"}:
+        error(case, "invocation.scope must be 'allEnabled' or 'account'")
+    if scope == "account" and not isinstance(invocation.get("accountID"), str):
+        error(case, "account-scoped invocation needs string accountID")
+    if scope == "allEnabled" and "accountID" in invocation:
+        error(case, "allEnabled invocation must not include accountID")
+
+    accounts = input_data["accounts"]
+    if not isinstance(accounts, list):
+        error(case, "accounts must be an array")
+        continue
+    account_ids = [row.get("id") for row in accounts if isinstance(row, dict)]
+    if len(account_ids) != len(accounts) or any(not isinstance(value, str) for value in account_ids):
+        error(case, "each account needs string id")
+    elif len(set(account_ids)) != len(account_ids):
+        error(case, "account ids must be unique")
+    elif scope == "account" and invocation["accountID"] not in account_ids:
+        error(case, "account-scoped invocation references an unknown account")
+
+    if input_data["notificationPermission"] not in {"granted", "denied"}:
+        error(case, "notificationPermission must be 'granted' or 'denied'")
+    if input_data["notificationDelivery"] not in {"succeeds", "fails"}:
+        error(case, "notificationDelivery must be 'succeeds' or 'fails'")
+
+    for result in input_data["results"]:
+        if not isinstance(result, dict):
+            error(case, "each result must be an object")
+            continue
+        if result.get("accountID") not in account_ids:
+            error(case, "result references an unknown account")
+        outcome = result.get("outcome")
+        if outcome not in valid_outcomes:
+            error(case, "result outcome must be success, failure, or superseded")
+        elif outcome == "success" and "health" not in result:
+            error(case, "successful result needs health")
+        elif outcome == "failure" and not isinstance(result.get("failure"), str):
+            error(case, "failed result needs string failure")
+
+    for effect in expected_data["effects"]:
+        if not isinstance(effect, dict) or effect.get("kind") not in valid_effects:
+            error(case, "expected effect has an unknown kind")
+            continue
+        if effect["kind"] == "invalidateQuickViews":
+            if set(effect) != {"kind"}:
+                error(case, "invalidateQuickViews has no payload")
+        elif not isinstance(effect.get("accountIDs"), list):
+            error(case, f"{effect['kind']} needs accountIDs array")
+
+for message in errors:
+    print(message, file=sys.stderr)
+sys.exit(1 if errors else 0)
+PY
+  (( status == 0 )) || fail "refresh-lifecycle fixture schema is invalid (see errors above)"
+}
+
+# --- Check 7: ArkTS CONTRACT_CASES covers provider contract fixtures --------
 
 check_contract_case_registration() {
   [[ -f "$CONTRACT_TEST_FILE" ]] || { fail "missing $CONTRACT_TEST_FILE"; return; }
@@ -425,7 +532,7 @@ check_contract_case_registration() {
   done
 }
 
-# --- Check 7: ArkTS CONTRACT_CASES step URLs match requests fixtures --------
+# --- Check 8: ArkTS CONTRACT_CASES step URLs match requests fixtures --------
 
 check_contract_case_step_urls() {
   [[ -f "$CONTRACT_TEST_FILE" ]] || { fail "missing $CONTRACT_TEST_FILE"; return; }
@@ -513,7 +620,7 @@ PY
   fi
 }
 
-# --- Check 8: spec.json copies are byte-identical ---------------------------
+# --- Check 9: spec.json copies are byte-identical ---------------------------
 
 check_spec_copies() {
   [[ -d "$CONTRACTS_DIR" ]] || { fail "missing $CONTRACTS_DIR"; return; }
@@ -562,7 +669,7 @@ check_spec_copies() {
   done
 }
 
-# --- Check 9: ohosTest contract copies match Contracts/ ---------------------
+# --- Check 10: ohosTest contract copies match Contracts/ --------------------
 
 check_ohostest_contracts() {
   [[ -d "$CONTRACTS_DIR" ]] || { fail "missing $CONTRACTS_DIR"; return; }
@@ -582,10 +689,9 @@ check_ohostest_contracts() {
     fi
   done
 
-  # Aggregation and alerts trees: contracts/aggregation|alerts/ match
-  # Contracts/Aggregation|Alerts/.
+  # Behavior-contract trees map to lowercase rawfile directories.
   local src_dir dst_name
-  for pair in "Aggregation aggregation" "Alerts alerts"; do
+  for pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle"; do
     src_dir="${pair%% *}"
     dst_name="${pair##* }"
     if ! diff_output="$(diff -r "$REPO_ROOT/Contracts/$src_dir" "$OHOSTEST_CONTRACTS_DIR/$dst_name" 2>&1)"; then
@@ -593,18 +699,18 @@ check_ohostest_contracts() {
     fi
   done
 
-  # No unexpected top-level entries beyond providers and aggregation/alerts.
+  # No unexpected top-level entries beyond providers and behavior-contract trees.
   local entry
   for entry in "$OHOSTEST_CONTRACTS_DIR"/*; do
     [[ -e "$entry" ]] || continue
     name="$(basename "$entry")"
-    [[ "$name" == "aggregation" || "$name" == "alerts" ]] && continue
+    [[ "$name" == "aggregation" || "$name" == "alerts" || "$name" == "refreshlifecycle" ]] && continue
     [[ -d "$CONTRACTS_DIR/$name" ]] \
       || fail "ohosTest contract copies have unexpected entry '$name' ($hint)"
   done
 }
 
-# --- Check 10: Windows contract copies match Contracts/ ---------------------
+# --- Check 11: Windows contract copies match Contracts/ ---------------------
 
 check_windows_contracts() {
   [[ -d "$CONTRACTS_DIR" ]] || { fail "missing $CONTRACTS_DIR"; return; }
@@ -624,10 +730,9 @@ check_windows_contracts() {
     fi
   done
 
-  # Aggregation and alerts trees: contracts/aggregation|alerts/ match
-  # Contracts/Aggregation|Alerts/.
+  # Behavior-contract trees map to lowercase asset directories.
   local src_dir dst_name
-  for pair in "Aggregation aggregation" "Alerts alerts"; do
+  for pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle"; do
     src_dir="${pair%% *}"
     dst_name="${pair##* }"
     if ! diff_output="$(diff -r "$REPO_ROOT/Contracts/$src_dir" "$WINDOWS_CONTRACTS_DIR/$dst_name" 2>&1)"; then
@@ -635,18 +740,18 @@ check_windows_contracts() {
     fi
   done
 
-  # No unexpected top-level entries beyond Providers/aggregation/alerts.
+  # No unexpected top-level entries beyond Providers and behavior-contract trees.
   local entry
   for entry in "$WINDOWS_CONTRACTS_DIR"/*; do
     [[ -e "$entry" ]] || continue
     name="$(basename "$entry")"
-    [[ "$name" == "Providers" || "$name" == "aggregation" || "$name" == "alerts" ]] && continue
+    [[ "$name" == "Providers" || "$name" == "aggregation" || "$name" == "alerts" || "$name" == "refreshlifecycle" ]] && continue
     [[ -d "$WINDOWS_CONTRACTS_DIR/Providers/$name" ]] \
       || fail "Windows contract copies have unexpected entry '$name' ($hint)"
   done
 }
 
-# --- Check 11: per-platform parity scripts exist ----------------------------
+# --- Check 12: per-platform parity scripts exist ----------------------------
 
 check_android_windows_parity_scripts_exist() {
   [[ -f "$ANDROID_PARITY_SCRIPT" ]] \
@@ -664,6 +769,7 @@ check_protocol_allow_lists
 check_usage_provider_interface
 check_contract_fixtures
 check_paired_contract_fixtures
+check_refresh_lifecycle_fixture_schema
 check_contract_case_registration
 check_contract_case_step_urls
 check_spec_copies
@@ -680,9 +786,10 @@ echo "OK: ProviderID sets match (Swift <-> ArkTS <-> Rust)"
 echo "OK: protocol enums, error tokens, snapshot fields, and spec versions match"
 echo "OK: UsageProvider shared interface members are present on both platforms"
 echo "OK: contract fixture triples complete under Contracts/Providers/"
-echo "OK: aggregation and alert contract fixture pairs are complete"
+echo "OK: aggregation, alert, and refresh-lifecycle fixture pairs are complete"
+echo "OK: refresh-lifecycle fixtures conform to the shared seam schema"
 echo "OK: every provider contract fixture case is registered in ArkTS CONTRACT_CASES"
 echo "OK: ArkTS CONTRACT_CASES step URLs match requests fixtures"
 echo "OK: spec.json copies byte-identical (Contracts <-> Swift core <-> HarmonyOS <-> Windows)"
-echo "OK: ohosTest contract copies in sync with Contracts/ (Providers + Aggregation + Alerts)"
-echo "OK: Windows contract copies in sync with Contracts/ (Providers + Aggregation + Alerts)"
+echo "OK: ohosTest contract copies in sync with Contracts/ (Providers + Aggregation + Alerts + RefreshLifecycle)"
+echo "OK: Windows contract copies in sync with Contracts/ (Providers + Aggregation + Alerts + RefreshLifecycle)"

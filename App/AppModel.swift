@@ -122,12 +122,11 @@ final class AppModel: ObservableObject {
                 credentialAccessMode: credentialAccessMode
             )
             guard accountStateRevision == expectedAccountStateRevision else { return }
-            if result.outcome != .allFailed {
-                try writeSharedSnapshot(result.envelope)
-            }
             latestEnvelope = result.envelope
             await evaluateAlerts(snapshots: result.accountSnapshots)
             guard accountStateRevision == expectedAccountStateRevision else { return }
+            try writeSharedSnapshot(result.envelope)
+            WidgetCenter.shared.reloadAllTimelines()
             let lockedCredentialCount = result.accountSnapshots.values.filter {
                 switch $0.health {
                 case .stale(.keychainAccessRequired),
@@ -512,16 +511,18 @@ private extension AppModel {
 
     func evaluateAlerts(snapshots: [UUID: AccountSnapshot]) async {
         let expectedAccountStateRevision = accountStateRevision
-        let evaluation = AlertEvaluator.evaluate(
-            accounts: &accounts,
-            freshSnapshots: snapshots
+        let plan = RefreshEffectPlanner.plan(
+            accounts: accounts,
+            freshSnapshots: snapshots,
+            presentationChanged: false
         )
-        if evaluation.didChange {
+        accounts = plan.accounts
+        if plan.alertEvaluation.didChange {
             persistReportingErrors()
         }
         guard notificationPermission == .authorized else { return }
 
-        for notification in evaluation.notifications {
+        for notification in plan.alertEvaluation.notifications {
             guard accountStateRevision == expectedAccountStateRevision,
                   accounts.contains(where: { $0.id == notification.account.id }) else {
                 return

@@ -1,0 +1,11 @@
+{
+  "snapshots": [
+    { "accountID": "alpha", "health": "healthy", "remaining": { "amount": "20", "currency": "USD" } }
+  ],
+  "accounts": [
+    { "accountID": "alpha", "alertEpisodeActive": false }
+  ],
+  "effects": [
+    { "kind": "notificationCandidates", "accountIDs": [] }
+  ]
+}

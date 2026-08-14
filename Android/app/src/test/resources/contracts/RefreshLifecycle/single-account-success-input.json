@@ -1,0 +1,16 @@
+{
+  "invocation": { "scope": "account", "accountID": "alpha" },
+  "accounts": [
+    { "id": "alpha", "lowBalanceThreshold": "10", "alertEpisodeActive": false },
+    { "id": "beta", "lowBalanceThreshold": "10", "alertEpisodeActive": false }
+  ],
+  "snapshotsBefore": [
+    { "accountID": "alpha", "health": "healthy", "remaining": { "amount": "20", "currency": "USD" } },
+    { "accountID": "beta", "health": "healthy", "remaining": { "amount": "30", "currency": "USD" } }
+  ],
+  "results": [
+    { "accountID": "alpha", "outcome": "success", "health": "healthy", "remaining": { "amount": "24", "currency": "USD" } }
+  ],
+  "notificationPermission": "granted",
+  "notificationDelivery": "succeeds"
+}

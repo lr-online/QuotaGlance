@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sync the full contract tree (Providers + Aggregation + Alerts) into the
+# Sync the full contract tree (Providers + Aggregation + Alerts + RefreshLifecycle) into the
 # Windows portable client's test resource tree
 # (Windows/src-tauri/assets/contracts/). The Rust integration test harness
 # replays the shared fixtures through the spec engine, snapshot aggregator,
@@ -19,8 +19,9 @@ mkdir -p "$TARGET_DIR"
 find "$TARGET_DIR" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
 
 cp -R "$SOURCE_DIR/Providers" "$TARGET_DIR/Providers"
-mkdir -p "$TARGET_DIR/aggregation" "$TARGET_DIR/alerts"
+mkdir -p "$TARGET_DIR/aggregation" "$TARGET_DIR/alerts" "$TARGET_DIR/refreshlifecycle"
 cp -R "$SOURCE_DIR/Aggregation/." "$TARGET_DIR/aggregation/"
 cp -R "$SOURCE_DIR/Alerts/." "$TARGET_DIR/alerts/"
+cp -R "$SOURCE_DIR/RefreshLifecycle/." "$TARGET_DIR/refreshlifecycle/"
 
-echo "Synced provider, aggregation, and alert contracts to Windows test resources."
+echo "Synced provider, aggregation, alert, and refresh-lifecycle contracts to Windows test resources."
