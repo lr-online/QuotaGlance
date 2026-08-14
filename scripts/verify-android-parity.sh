@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTRACTS_DIR="$REPO_ROOT/Contracts"
-ANDROID_DIR="$REPO_ROOT/Android"
+ANDROID_DIR="$REPO_ROOT/Platforms/Android"
 SPEC_TARGET="$ANDROID_DIR/app/src/main/assets/providerspecs"
 FIXTURE_TARGET="$ANDROID_DIR/app/src/test/resources/contracts"
 PROVIDER_SOURCE="$ANDROID_DIR/app/src/main/java/com/liangrui/quotaglance/core/ProviderId.kt"

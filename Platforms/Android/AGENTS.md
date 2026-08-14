@@ -48,11 +48,11 @@ Swift, ArkTS, and Kotlin declarations plus Android fixture registration.
 ## Build and validation
 
 The Android app uses JDK 17, AGP 8.8.2, Kotlin 2.0.21, compile/target SDK 36,
-and min SDK 26. Set `sdk.dir` in ignored `Android/local.properties`, or export
+and min SDK 26. Set `sdk.dir` in ignored `Platforms/Android/local.properties`, or export
 `ANDROID_HOME` / `ANDROID_SDK_ROOT`.
 
 ```bash
-cd Android
+cd Platforms/Android
 ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleDebug :app:assembleRelease
 ```
 

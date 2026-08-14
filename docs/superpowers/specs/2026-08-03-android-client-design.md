@@ -21,7 +21,7 @@ all persisted/fixture money keeps the contract canonical decimal string.
 
 ## Modules
 
-`Android/app` contains four deep modules:
+`Platforms/Android/app` contains four deep modules:
 
 1. `core` owns domain models, exact decimal helpers, the spec engine,
    `ProviderRegistry`, aggregation and alert evaluation. Its seams are a

@@ -88,16 +88,16 @@ flowchart LR
 
 ## Android 版本
 
-`Android/` 是 Android 8.0+（API 26）版本。它以 Kotlin/Jetpack Compose 实现账户、概览、明细、刷新设置、本地通知和 Glance 小组件；API key 存放在 Android Keystore-backed encrypted preferences，不会写入 DataStore、快照、日志或 Git。Provider、Aggregation 和 Alerts 的契约与 Swift/ArkTS 使用同一份 `Contracts/` fixture，Android 专项约束和能力基线见 [`Android/AGENTS.md`](Android/AGENTS.md)。
+`Platforms/Android/` 是 Android 8.0+（API 26）版本。它以 Kotlin/Jetpack Compose 实现账户、概览、明细、刷新设置、本地通知和 Glance 小组件；API key 存放在 Android Keystore-backed encrypted preferences，不会写入 DataStore、快照、日志或 Git。Provider、Aggregation 和 Alerts 的契约与 Swift/ArkTS 使用同一份 `Contracts/` fixture，Android 专项约束和能力基线见 [`Platforms/Android/AGENTS.md`](Platforms/Android/AGENTS.md)。
 
-本地编译需要 JDK 17 和 Android SDK API 35 / Build Tools 35。配置 `Android/local.properties` 的 `sdk.dir` 后运行：
+本地编译需要 JDK 17 和 Android SDK API 35 / Build Tools 35。配置 `Platforms/Android/local.properties` 的 `sdk.dir` 后运行：
 
 ```bash
-cd Android
+cd Platforms/Android
 ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleRelease
 ```
 
-release APK 位于 `Android/app/build/outputs/apk/release/app-release.apk`。GitHub Actions 在每个 PR 上传带应用版本与短 commit SHA 的 debug/release APK artifact。正式 `Release` 仅能手动选择一个已有的 `vX.Y.Z` tag；它会将该版本写入 Android APK，并把 `QuotaGlance-<version>-android-universal.apk` 和 SHA-256 发布到 GitHub Release。开源下载版使用 Android debug 证书以避免在仓库保存私钥，适合测试和侧载安装，不适用于 Play Store 或长期生产签名。
+release APK 位于 `Platforms/Android/app/build/outputs/apk/release/app-release.apk`。GitHub Actions 在每个 PR 上传带应用版本与短 commit SHA 的 debug/release APK artifact。正式 `Release` 仅能手动选择一个已有的 `vX.Y.Z` tag；它会将该版本写入 Android APK，并把 `QuotaGlance-<version>-android-universal.apk` 和 SHA-256 发布到 GitHub Release。开源下载版使用 Android debug 证书以避免在仓库保存私钥，适合测试和侧载安装，不适用于 Play Store 或长期生产签名。
 
 
 ## 功能
@@ -190,7 +190,7 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 - `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test --package-path Shared/SwiftCore`、版本构建约束、DMG 打包约束和本地安装安全检查。
 - `Package macOS` 会在 pull request、`main` 和手动触发时构建 macOS DMG，并上传带 macOS 应用版本与短 commit SHA 的 artifact。
 - `Release` 只可手动触发，输入一个已存在的 `vX.Y.Z` tag。它从该 tag 构建 macOS 12/macOS 14 DMG 和 Android universal APK，所有下载包都附 SHA-256；发布说明取自上一个版本 tag 之后的非 merge 提交。
-- `Android` 会在 Android/Contracts 相关 PR 或 `main` 推送时同步契约、执行 JVM 测试和 lint，并上传带版本的 debug/release APK artifact。它不再独立创建 GitHub Release。
+- `Android` 会在 `Platforms/Android/` 或 `Contracts/` 相关 PR、以及 `main` 推送时同步契约、执行 JVM 测试和 lint，并上传带版本的 debug/release APK artifact。它不再独立创建 GitHub Release。
 - `HarmonyOS` 会上传带版本的未签名 HAP CI artifact，但不会附到 GitHub Release；公开可安装发布需要单独配置 HarmonyOS 签名。
 
 开发者要求发布时应遵循 [`releasing-quotaglance` Skill](skills/releasing-quotaglance/SKILL.md)：先查看最新 tag 和其后的提交，选择下一个版本，完成验证并再次确认，再创建 tag 并手动 dispatch `Release`。

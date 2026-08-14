@@ -158,26 +158,21 @@ check_migrated_path_consumers() {
 
   local search_roots=()
   local path
-  for path in "$REPO_ROOT/scripts" "$REPO_ROOT/.github/workflows" "$REPO_ROOT/project.yml" "$REPO_ROOT/Package.swift"; do
+  for path in "$REPO_ROOT/scripts" "$REPO_ROOT/.github/workflows" "$REPO_ROOT/project.yml" "$REPO_ROOT/Shared/SwiftCore/Package.swift"; do
     [[ -e "$path" ]] && search_roots+=("$path")
   done
 
   [[ "${#search_roots[@]}" -gt 0 ]] || return 0
-  local legacy_name="${legacy_path%/}"
-  local needle
-  for needle in \
-    "$REPO_ROOT/$legacy_path" \
-    '$REPO_ROOT/'"$legacy_path" \
-    '$ROOT_DIR/'"$legacy_path" \
-    '$SOURCE_DIR/'"$legacy_path" \
-    'path: '"$legacy_name"; do
-    if rg -l -F "$needle" "${search_roots[@]}" \
+  local legacy_root_reference="\$REPO_ROOT/$legacy_path"
+  local standalone_legacy_pattern="(^|[[:space:]\"'])$legacy_path"
+  if rg -l -F "$legacy_root_reference" "${search_roots[@]}" \
+    --glob '!verify-repository-topology.sh' \
+    --glob '!RepositoryTopologyTests.sh' >/dev/null \
+    || rg -l -e "$standalone_legacy_pattern" "${search_roots[@]}" \
       --glob '!verify-repository-topology.sh' \
       --glob '!RepositoryTopologyTests.sh' >/dev/null; then
-      fail "$module has moved, but an active build or workflow consumer still references $legacy_path"
-      return
-    fi
-  done
+    fail "$module has moved, but an active build or workflow consumer still references $legacy_path"
+  fi
 }
 
 require_directory "$REPO_ROOT"

@@ -134,7 +134,7 @@ floor is 2 hours even for active apps.
 ## Architecture decisions (2026-07-27)
 
 Settled in a design review; these close roadmap item 8's open questions for
-HarmonyOS only (Android/Windows remain unevaluated):
+HarmonyOS only (Android and Windows remain unevaluated):
 
 1. **UI: per-platform, no shared UI layer.** SwiftUI/AppKit/WidgetKit on
    macOS, ArkUI/ArkTS on HarmonyOS. Cross-platform UI frameworks (Flutter
