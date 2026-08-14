@@ -31,10 +31,8 @@ package-local resources.
 
 ## Migration policy
 
-The migration is expand-contract at the module boundary. A module must exist in
-exactly one of its legacy and canonical locations; copying a live module to both
-locations is prohibited. A platform migration may land independently after the
-topology contract, while the final contraction removes every legacy location.
+The migration is complete. Every module must exist only at its canonical
+location; copying a live module to a former root location is prohibited.
 
 | Module | Legacy location | Canonical location |
 | --- | --- | --- |
@@ -44,11 +42,9 @@ topology contract, while the final contraction removes every legacy location.
 | HarmonyOS | `HarmonyOS/` | `Platforms/HarmonyOS/` |
 | Windows | `Windows/` | `Platforms/Windows/` |
 
-The six macOS host directories form one buildable unit and must move together.
-`script/build_and_run.sh` is the sole temporary legacy alias; it is a pure exec
-adapter to the canonical `scripts/run-local.sh`. No new executable belongs in
-`script/`. The final contraction removes this alias after all documented callers
-use the canonical command; it must not survive completion of this migration.
+The six macOS host directories form one buildable unit. `scripts/run-local.sh`
+is the canonical local-run entrypoint; the former singular `script/` directory
+is not part of the repository topology.
 
 Run `bash scripts/verify-repository-topology.sh` after changing root-level
 ownership. The check is deliberately path-focused: it does not replace the

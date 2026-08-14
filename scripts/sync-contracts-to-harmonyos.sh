@@ -5,7 +5,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTRACTS="$REPO_ROOT/Contracts"
-DST="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts"
+DST="$REPO_ROOT/Platforms/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts"
 
 for dir in Providers Aggregation Alerts RefreshLifecycle; do
   if [[ ! -d "$CONTRACTS/$dir" ]]; then

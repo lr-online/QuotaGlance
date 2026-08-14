@@ -1,6 +1,6 @@
 # AGENTS.md — HarmonyOS 端（ArkTS）
 
-本目录是 macOS Swift 核心（`Sources/QuotaGlanceCore/`）的 ArkTS 镜像。总则、
+本目录是 macOS Swift 核心（`Shared/SwiftCore/Sources/QuotaGlanceCore/`）的 ArkTS 镜像。总则、
 硬约束、新增 provider 清单见仓库根 `AGENTS.md`；本文件只写镜像对应关系、
 已登记的平台差异和 HarmonyOS 特有的构建/同步事实。
 
@@ -9,7 +9,7 @@
 `entry/src/main/ets/` 下的文件与 Swift 侧的对应（各 ArkTS 文件头注释也自述了
 镜像来源，改动一侧时另一侧必须同步）：
 
-| ArkTS（`entry/src/main/ets/`） | Swift（`Sources/QuotaGlanceCore/`） | 说明 |
+| ArkTS（`entry/src/main/ets/`） | Swift（`Shared/SwiftCore/Sources/QuotaGlanceCore/`） | 说明 |
 | --- | --- | --- |
 | `providers/UsageProvider.ets` | `Providers/UsageProvider.swift` + `Providers/ProviderDescriptor.swift` + `Domain/Provider.swift` | 接口、错误 token 表（头注释）、`ProviderID` union type + `ALL_PROVIDER_IDS`、region/credentialKind/profile |
 | `providers/SpecDrivenProvider.ets` | `Providers/SpecDrivenProvider.swift` + `Providers/ProviderSpec.swift` | spec 加载、load-time 校验（`KNOWN_*` 白名单）、detect/fetch 执行语义 |

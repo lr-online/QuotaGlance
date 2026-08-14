@@ -2,8 +2,8 @@
 
 This directory is the native Android client. Read the repository-root `AGENTS.md`
 first: it defines provider IDs, `Contracts/` ownership, and the cross-platform
-invariants. Do not modify `App/`, `Widget/`, `NCWidget/`, `NCIntents/`, or
-`HarmonyOS/` while working on Android-only behavior.
+invariants. Do not modify `Platforms/macOS/` or `Platforms/HarmonyOS/` while
+working on Android-only behavior.
 
 ## Architecture
 

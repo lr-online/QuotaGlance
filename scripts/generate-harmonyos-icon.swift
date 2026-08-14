@@ -218,9 +218,9 @@ struct HarmonyOSIconRenderer {
 let scriptURL = URL(fileURLWithPath: #filePath)
 let repositoryRoot = scriptURL.deletingLastPathComponent().deletingLastPathComponent()
 let appScopeMediaDirectory = repositoryRoot
-  .appendingPathComponent("HarmonyOS/AppScope/resources/base/media", isDirectory: true)
+  .appendingPathComponent("Platforms/HarmonyOS/AppScope/resources/base/media", isDirectory: true)
 let entryMediaDirectory = repositoryRoot
-  .appendingPathComponent("HarmonyOS/entry/src/main/resources/base/media", isDirectory: true)
+  .appendingPathComponent("Platforms/HarmonyOS/entry/src/main/resources/base/media", isDirectory: true)
 
 try HarmonyOSIconRenderer().render(
   appScopeMediaDirectory: appScopeMediaDirectory,

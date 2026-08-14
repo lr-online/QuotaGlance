@@ -80,10 +80,10 @@ flowchart LR
 
 ## HarmonyOS 版本
 
-`HarmonyOS/` 目录是鸿蒙（HarmonyOS NEXT，手机/平板）版本。双端对齐的是 Provider、Aggregation 和 Alerts 的共享契约语义，不代表窗口、卡片、账户编辑、后台调度等产品能力完全一致；当前状态与补齐计划见[平台能力矩阵](docs/platform-capability-matrix.md)。账户 key 保存在系统 Asset Store（按账户独立 alias，首次解锁后可读），不会以明文落盘，也不会进入快照或日志。
+`Platforms/HarmonyOS/` 目录是鸿蒙（HarmonyOS NEXT，手机/平板）版本。双端对齐的是 Provider、Aggregation 和 Alerts 的共享契约语义，不代表窗口、卡片、账户编辑、后台调度等产品能力完全一致；当前状态与补齐计划见[平台能力矩阵](docs/platform-capability-matrix.md)。账户 key 保存在系统 Asset Store（按账户独立 alias，首次解锁后可读），不会以明文落盘，也不会进入快照或日志。
 
 - 双端解析逻辑通过共享契约 fixtures 防止漂移：`Contracts/Providers/` 是唯一事实来源，Swift 与 ArkTS 的契约测试各自跑同一份文件（鸿蒙侧由 `scripts/sync-contracts-to-harmonyos.sh` 同步进 ohosTest rawfile）。新增或修改 provider 时必须同时更新 fixtures 与两端测试，详见 [`Contracts/README.md`](Contracts/README.md)。
-- 构建：`scripts/build-harmonyos.sh`（本机需 DevEco Studio，CI 用 `ErBWs/setup-ohos`）；脚本会在首次构建时从受控的 `HarmonyOS/build-profile.template.json5` 初始化被忽略的本机 `build-profile.json5`。若先用 DevEco 打开新检出的工程，先执行 `cp HarmonyOS/build-profile.template.json5 HarmonyOS/build-profile.json5`，再由 DevEco 写入本机签名设置。图标由 `scripts/generate-harmonyos-icon.swift` 生成，与 macOS 图标同一设计。
+- 构建：`scripts/build-harmonyos.sh`（本机需 DevEco Studio，CI 用 `ErBWs/setup-ohos`）；脚本会在首次构建时从受控的 `Platforms/HarmonyOS/build-profile.template.json5` 初始化被忽略的本机 `build-profile.json5`。若先用 DevEco 打开新检出的工程，先执行 `cp Platforms/HarmonyOS/build-profile.template.json5 Platforms/HarmonyOS/build-profile.json5`，再由 DevEco 写入本机签名设置。图标由 `scripts/generate-harmonyos-icon.swift` 生成，与 macOS 图标同一设计。
 - 平台调研、密钥方案选型与实现状态：[`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md)。
 
 ## Android 版本

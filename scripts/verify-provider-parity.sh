@@ -11,8 +11,8 @@
 #   5. Registered ArkTS step URLs match the requests fixtures.
 #   6. Each spec.json is byte-identical to its copies under
 #      Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json,
-#      HarmonyOS/entry/src/main/resources/rawfile/providerspecs/<id>.json, and
-#      Windows/src-tauri/assets/providerspecs/<id>.json.
+#      Platforms/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/<id>.json, and
+#      Platforms/Windows/src-tauri/assets/providerspecs/<id>.json.
 #   7. HarmonyOS ohosTest contract copies match Contracts/Providers,
 #      Contracts/Aggregation, Contracts/Alerts, and Contracts/RefreshLifecycle
 #      (same scope as scripts/sync-contracts-to-harmonyos.sh).
@@ -25,19 +25,19 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTRACTS_DIR="$REPO_ROOT/Contracts/Providers"
 SWIFT_PROVIDER_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Domain/Provider.swift"
-ARKTS_PROVIDER_FILE="$REPO_ROOT/HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets"
+ARKTS_PROVIDER_FILE="$REPO_ROOT/Platforms/HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets"
 SWIFT_USAGE_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Providers/UsageProvider.swift"
 SWIFT_SPEC_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Providers/ProviderSpec.swift"
-ARKTS_SPEC_FILE="$REPO_ROOT/HarmonyOS/entry/src/main/ets/providers/SpecDrivenProvider.ets"
+ARKTS_SPEC_FILE="$REPO_ROOT/Platforms/HarmonyOS/entry/src/main/ets/providers/SpecDrivenProvider.ets"
 CORE_SPEC_DIR="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs"
-HARMONYOS_SPEC_DIR="$REPO_ROOT/HarmonyOS/entry/src/main/resources/rawfile/providerspecs"
-OHOSTEST_CONTRACTS_DIR="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts"
-CONTRACT_TEST_FILE="$REPO_ROOT/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"
-WINDOWS_SPEC_DIR="$REPO_ROOT/Windows/src-tauri/assets/providerspecs"
-WINDOWS_CONTRACTS_DIR="$REPO_ROOT/Windows/src-tauri/assets/contracts"
-RUST_DOMAIN_FILE="$REPO_ROOT/Windows/src-tauri/src/domain.rs"
-RUST_SPEC_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_spec.rs"
-RUST_ERROR_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_error.rs"
+HARMONYOS_SPEC_DIR="$REPO_ROOT/Platforms/HarmonyOS/entry/src/main/resources/rawfile/providerspecs"
+OHOSTEST_CONTRACTS_DIR="$REPO_ROOT/Platforms/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts"
+CONTRACT_TEST_FILE="$REPO_ROOT/Platforms/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"
+WINDOWS_SPEC_DIR="$REPO_ROOT/Platforms/Windows/src-tauri/assets/providerspecs"
+WINDOWS_CONTRACTS_DIR="$REPO_ROOT/Platforms/Windows/src-tauri/assets/contracts"
+RUST_DOMAIN_FILE="$REPO_ROOT/Platforms/Windows/src-tauri/src/domain.rs"
+RUST_SPEC_FILE="$REPO_ROOT/Platforms/Windows/src-tauri/src/providers/provider_spec.rs"
+RUST_ERROR_FILE="$REPO_ROOT/Platforms/Windows/src-tauri/src/providers/provider_error.rs"
 ANDROID_PARITY_SCRIPT="$REPO_ROOT/scripts/verify-android-parity.sh"
 WINDOWS_PARITY_SCRIPT="$REPO_ROOT/scripts/verify-windows-parity.sh"
 
@@ -546,7 +546,7 @@ import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
-test = (root / "HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets").read_text()
+test = (root / "Platforms/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets").read_text()
 m = re.search(r"const CONTRACT_CASES: ContractCase\[\] = \[([\s\S]*?)\n\];", test)
 if not m:
     print("error: could not find CONTRACT_CASES", file=sys.stderr)

@@ -2,7 +2,7 @@
 
 读者是接手本仓库的 AI agent。本文只写架构地图、不可违反的约束和可执行操作；
 实现细节一律以代码和 `Contracts/README.md` 为准。HarmonyOS 端的专项说明见
-`HarmonyOS/AGENTS.md`。
+`Platforms/HarmonyOS/AGENTS.md`。
 
 ## 发布
 
@@ -49,8 +49,8 @@ Swift 包：`Shared/SwiftCore/Package.swift`，核心库 `QuotaGlanceCore`（`Sh
 - `Platforms/macOS/NCWidget/` — 通知中心 Widget（macOS 12 兼容路径）。
 - `Platforms/macOS/NCIntents/` — Widget 账户选择的 App Intent 共享代码。
 
-HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swift
-`Providers/` 一一对应，映射表和平台差异白名单见 `HarmonyOS/AGENTS.md`。
+HarmonyOS 镜像：`Platforms/HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swift
+`Providers/` 一一对应，映射表和平台差异白名单见 `Platforms/HarmonyOS/AGENTS.md`。
 
 `Contracts/` — 双端共享契约的**权威源**：
 
@@ -66,7 +66,7 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
 1. **`ProviderID` raw value append-only。** raw value 进入持久化（账户记录、Widget
    配置），已发布的值禁止改名、复用或删除；新增只能追加。双端声明点：Swift
    `Shared/SwiftCore/Sources/QuotaGlanceCore/Domain/Provider.swift`（enum + 显式覆盖的 `allCases`
-   数组）与 ArkTS `HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets`
+   数组）与 ArkTS `Platforms/HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets`
    （union type + `ALL_PROVIDER_IDS`）。
 2. **Contract-first。** 任何 provider 行为改动必须先改 spec/fixture，再改引擎；
    禁止绕过 spec 手写 provider 逻辑。spec 表达不了时的升级路径（按优先级，判定
@@ -78,24 +78,24 @@ HarmonyOS 镜像：`HarmonyOS/entry/src/main/ets/`，`providers/` 目录与 Swif
    双端引擎必须同改。
 3. **四处副本的同步纪律。** `Contracts/` 是唯一权威源，改动后必须重跑：
    `bash scripts/sync-specs-to-core.sh`（→ `Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/`）、
-   `bash scripts/sync-specs-to-harmonyos.sh`（→ `HarmonyOS/entry/src/main/resources/rawfile/providerspecs/`）、
+   `bash scripts/sync-specs-to-harmonyos.sh`（→ `Platforms/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/`）、
    `bash scripts/sync-specs-to-android.sh`（→ Android 对应资源目录）、
-   `bash scripts/sync-specs-to-windows.sh`（→ `Windows/src-tauri/assets/providerspecs/`）、
-   `bash scripts/sync-contracts-to-harmonyos.sh`（→ `HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/`，
+   `bash scripts/sync-specs-to-windows.sh`（→ `Platforms/Windows/src-tauri/assets/providerspecs/`）、
+   `bash scripts/sync-contracts-to-harmonyos.sh`（→ `Platforms/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/`，
    同步 `Contracts/Providers/`、`Contracts/Aggregation/`、`Contracts/Alerts/`）、
    `bash scripts/sync-contracts-to-android.sh`（→ Android 对应测试资源目录）、
-   `bash scripts/sync-contracts-to-windows.sh`（→ `Windows/src-tauri/assets/contracts/`）。随后
+   `bash scripts/sync-contracts-to-windows.sh`（→ `Platforms/Windows/src-tauri/assets/contracts/`）。随后
    `bash scripts/verify-provider-parity.sh` 必须全绿；该脚本还要求每个 provider fixture
    case 都在 ArkTS `CONTRACT_CASES` 中登记，且各 step URL 与 `*-requests.json`
    一致，并包含跨四端（Swift/ArkTS/Kotlin/Rust）的 ProviderID 与错误 token 同步校验。
    各平台单独的 parity 脚本：`bash scripts/verify-android-parity.sh`、
    `bash scripts/verify-windows-parity.sh`。同步产物禁止手改。
 4. **双端语义镜像。** provider / 聚合 / 告警的行为改动必须双端对应提交；确实
-   无法一致的，显式登记进 `HarmonyOS/AGENTS.md` 的平台差异白名单，不允许静默
+   无法一致的，显式登记进 `Platforms/HarmonyOS/AGENTS.md` 的平台差异白名单，不允许静默
    漂移。现状是 ArkTS 已镜像 provider / aggregation / alerts 引擎，并消费对应契约
    fixture；任何后续共享行为改动都必须双端一起改并附测试。Windows 端的 Rust
    镜像增加了 provider / aggregation / alerts 三引擎 + DPAPI 凭据存储 + 同名
-   平台差异白名单（见 `Windows/AGENTS.md`），同样不允许在不更新合同与四端
+   平台差异白名单（见 `Platforms/Windows/AGENTS.md`），同样不允许在不更新合同与四端
    实现的情况下静默改动行为。
 5. **错误 token 表是双端契约。** spec 只允许引用 `Contracts/README.md`
    "Error tokens" 一节列出的稳定 token；同一张表镜像在 ArkTS
@@ -199,17 +199,17 @@ agent 添加平台支持时，按本清单逐项检查功能缺失，除非明�
    - Swift：新建 `Shared/SwiftCore/Tests/QuotaGlanceCoreTests/<Name>ProviderTests.swift`，参照
      `DeepSeekProviderTests.swift`，复用 `ContractTests.swift` 里的
      `contractProvider` / `expectRequests` helper。
-   - ArkTS：在 `HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets` 的
+   - ArkTS：在 `Platforms/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets` 的
      `CONTRACT_CASES` 数组手工加条目（provider、case 名、profile、每步
      URL/file/HTTP status）。
-7. **验证**：`swift test` 全绿；`bash scripts/verify-provider-parity.sh` 全绿；
+7. **验证**：`swift test --package-path Shared/SwiftCore` 全绿；`bash scripts/verify-provider-parity.sh` 全绿；
    `bash scripts/build-harmonyos.sh` 构建通过；有条件时在模拟器/真机跑 ohosTest。
 
 ## 常用命令
 
 | 目的 | 命令 |
 | --- | --- |
-| Swift 全部测试（含契约/引擎/聚合/告警） | `swift test` |
+| Swift 全部测试（含契约/引擎/聚合/告警） | `swift test --package-path Shared/SwiftCore` |
 | 脚本测试（单个） | `bash Tests/ScriptTests/<X>.sh`（AppIconTests / BuildEditionTests / DMGPackagingTests / GitHubActionsTests / LocalInstallSafetyTests） |
 | 同步 spec → Swift 资源 | `bash scripts/sync-specs-to-core.sh` |
 | 同步 spec → HarmonyOS rawfile | `bash scripts/sync-specs-to-harmonyos.sh` |
@@ -223,12 +223,12 @@ agent 添加平台支持时，按本清单逐项检查功能缺失，除非明�
 | Windows 端单平台 parity | `bash scripts/verify-windows-parity.sh` |
 | HarmonyOS 构建 HAP | `bash scripts/build-harmonyos.sh`（需 `DEVECO_SDK_HOME` 或 `HOS_SDK_HOME`，ohpm 与 hvigorw 在 PATH；DevEco 本地环境另需 `JAVA_HOME` 指向 DevEco JBR） |
 
-CI 现状：`.github/workflows/ci.yml`（macos-14 + Xcode 16.2）跑 `swift test` +
+CI 现状：`.github/workflows/ci.yml`（macos-14 + Xcode 16.2）跑 `swift test --package-path Shared/SwiftCore` +
 五个 ScriptTests；`.github/workflows/harmonyos.yml`（ubuntu +
 ErBWs/setup-ohos 6.1.1.280）只做契约同步 + 构建 HAP，**不跑 ohosTest**
 （需要模拟器/真机）。
 
-本地验证依赖宿主机工具链：macOS 侧若缺少 Xcode / XCTest，`swift test` 与打包脚本可能
+本地验证依赖宿主机工具链：macOS 侧若缺少 Xcode / XCTest，`swift test --package-path Shared/SwiftCore` 与打包脚本可能
 无法运行；HarmonyOS 侧若缺少 DevEco SDK、`ohpm`、`hvigorw` 或签名环境，
 `bash scripts/build-harmonyos.sh` / ohosTest 也可能无法运行。遇到这类环境缺口时，
 必须在任务或 PR 中明确说明，并以 GitHub Actions 作为构建/打包验证路径：至少查看

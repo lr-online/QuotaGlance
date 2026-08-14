@@ -22,9 +22,9 @@ echo ============================================
 echo BUILD SUCCEEDED
 echo ============================================
 echo.
-echo EXE:   Windows\target\release\quotaglance.exe
-echo NSIS:  Windows\target\x86_64-pc-windows-msvc\release\bundle\nsis\QuotaGlance_0.1.0_x64-setup.exe
-echo MSI:   Windows\target\x86_64-pc-windows-msvc\release\bundle\msi\QuotaGlance_0.1.0_x64_en-US.msi
-echo MSI:   Windows\target\x86_64-pc-windows-msvc\release\bundle\msi\QuotaGlance_0.1.0_x64_zh-CN.msi
+echo EXE:   Platforms\Windows\target\release\quotaglance.exe
+echo NSIS:  Platforms\Windows\target\x86_64-pc-windows-msvc\release\bundle\nsis\QuotaGlance_0.1.0_x64-setup.exe
+echo MSI:   Platforms\Windows\target\x86_64-pc-windows-msvc\release\bundle\msi\QuotaGlance_0.1.0_x64_en-US.msi
+echo MSI:   Platforms\Windows\target\x86_64-pc-windows-msvc\release\bundle\msi\QuotaGlance_0.1.0_x64_zh-CN.msi
 echo.
 pause

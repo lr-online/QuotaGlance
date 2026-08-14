@@ -1,7 +1,7 @@
 # Assets (sync targets)
 
 Two subdirectories here are produced by sync scripts. They are intentionally
-not committed (see `Windows/.gitignore`):
+not committed (see `Platforms/Windows/.gitignore`):
 
 - `providerspecs/` - per-provider `spec.json` copies for the runtime spec
   engine. Source of truth: `Contracts/Providers/<id>/spec.json`. Producer:

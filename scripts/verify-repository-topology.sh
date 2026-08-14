@@ -16,107 +16,41 @@ require_file() {
   [[ -f "$1" ]] || fail "missing required file: ${1#"$REPO_ROOT"/}"
 }
 
-require_exactly_one_layout() {
-  local name="$1"
-  local legacy_path="$2"
-  local canonical_path="$3"
-  local legacy_exists=0
-  local canonical_exists=0
-
-  [[ -d "$legacy_path" ]] && legacy_exists=1
-  [[ -d "$canonical_path" ]] && canonical_exists=1
-
-  case "$legacy_exists:$canonical_exists" in
-    1:0 | 0:1) ;;
-    0:0) fail "$name is missing from both ${legacy_path#"$REPO_ROOT"/} and ${canonical_path#"$REPO_ROOT"/}" ;;
-    1:1) fail "$name exists at both legacy and canonical paths; migrate with git mv instead of duplicating it" ;;
-  esac
-}
-
 check_macos_layout() {
-  local legacy_paths=(App Widget NCWidget NCIntents Config Distribution)
-  local legacy_count=0
-  local path
-  for path in "${legacy_paths[@]}"; do
-    [[ -d "$REPO_ROOT/$path" ]] && ((legacy_count += 1))
-  done
-
-  local canonical_exists=0
-  [[ -d "$REPO_ROOT/Platforms/macOS" ]] && canonical_exists=1
-  case "$legacy_count:$canonical_exists" in
-    6:0 | 0:1) ;;
-    0:0) fail "macOS host is missing from both the legacy root layout and Platforms/macOS" ;;
-    6:1) fail "macOS host exists at both legacy and canonical paths; migrate it as one unit" ;;
-    *) fail "macOS legacy host is partial; App, Widget, NCWidget, NCIntents, Config, and Distribution move together" ;;
-  esac
-
-  if [[ "$legacy_count" -eq 6 ]]; then
-    require_file "$REPO_ROOT/App/Info.plist"
-    require_file "$REPO_ROOT/Widget/Info.plist"
-    require_file "$REPO_ROOT/NCWidget/Info.plist"
-    require_file "$REPO_ROOT/NCIntents/Info.plist"
-  else
-    require_directory "$REPO_ROOT/Platforms/macOS/App"
-    require_directory "$REPO_ROOT/Platforms/macOS/Widget"
-    require_directory "$REPO_ROOT/Platforms/macOS/NCWidget"
-    require_directory "$REPO_ROOT/Platforms/macOS/NCIntents"
-    require_directory "$REPO_ROOT/Platforms/macOS/Config"
-    require_directory "$REPO_ROOT/Platforms/macOS/Distribution"
-    require_file "$REPO_ROOT/Platforms/macOS/App/Info.plist"
-    require_file "$REPO_ROOT/Platforms/macOS/Widget/Info.plist"
-    require_file "$REPO_ROOT/Platforms/macOS/NCWidget/Info.plist"
-    require_file "$REPO_ROOT/Platforms/macOS/NCIntents/Info.plist"
-  fi
+  require_directory "$REPO_ROOT/Platforms/macOS/App"
+  require_directory "$REPO_ROOT/Platforms/macOS/Widget"
+  require_directory "$REPO_ROOT/Platforms/macOS/NCWidget"
+  require_directory "$REPO_ROOT/Platforms/macOS/NCIntents"
+  require_directory "$REPO_ROOT/Platforms/macOS/Config"
+  require_directory "$REPO_ROOT/Platforms/macOS/Distribution"
+  require_file "$REPO_ROOT/Platforms/macOS/App/Info.plist"
+  require_file "$REPO_ROOT/Platforms/macOS/Widget/Info.plist"
+  require_file "$REPO_ROOT/Platforms/macOS/NCWidget/Info.plist"
+  require_file "$REPO_ROOT/Platforms/macOS/NCIntents/Info.plist"
 }
 
 check_swift_core_layout() {
-  local legacy_path="$REPO_ROOT/Sources/QuotaGlanceCore"
-  local canonical_path="$REPO_ROOT/Shared/SwiftCore"
-  require_exactly_one_layout "SwiftCore" "$legacy_path" "$canonical_path"
-
-  if [[ -d "$legacy_path" ]]; then
-    require_file "$REPO_ROOT/Package.swift"
-    require_directory "$REPO_ROOT/Tests/QuotaGlanceCoreTests"
-  else
-    require_file "$canonical_path/Package.swift"
-    require_directory "$canonical_path/Sources/QuotaGlanceCore"
-    require_directory "$canonical_path/Tests/QuotaGlanceCoreTests"
-    [[ ! -e "$REPO_ROOT/Tests/QuotaGlanceCoreTests" ]] \
-      || fail "Tests/QuotaGlanceCoreTests must move with Shared/SwiftCore"
-  fi
+  require_file "$REPO_ROOT/Shared/SwiftCore/Package.swift"
+  require_directory "$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore"
+  require_directory "$REPO_ROOT/Shared/SwiftCore/Tests/QuotaGlanceCoreTests"
 }
 
 check_android_layout() {
-  local legacy_path="$REPO_ROOT/Android"
-  local canonical_path="$REPO_ROOT/Platforms/Android"
-  require_exactly_one_layout "Android" "$legacy_path" "$canonical_path"
-  local root="$legacy_path"
-  [[ -d "$canonical_path" ]] && root="$canonical_path"
-  require_file "$root/settings.gradle.kts"
-  require_file "$root/app/build.gradle.kts"
+  require_file "$REPO_ROOT/Platforms/Android/settings.gradle.kts"
+  require_file "$REPO_ROOT/Platforms/Android/app/build.gradle.kts"
 }
 
 check_harmonyos_layout() {
-  local legacy_path="$REPO_ROOT/HarmonyOS"
-  local canonical_path="$REPO_ROOT/Platforms/HarmonyOS"
-  require_exactly_one_layout "HarmonyOS" "$legacy_path" "$canonical_path"
-  local root="$legacy_path"
-  [[ -d "$canonical_path" ]] && root="$canonical_path"
-  require_file "$root/build-profile.template.json5"
-  require_file "$root/hvigorfile.ts"
-  require_file "$root/entry/hvigorfile.ts"
+  require_file "$REPO_ROOT/Platforms/HarmonyOS/build-profile.template.json5"
+  require_file "$REPO_ROOT/Platforms/HarmonyOS/hvigorfile.ts"
+  require_file "$REPO_ROOT/Platforms/HarmonyOS/entry/hvigorfile.ts"
 }
 
 check_windows_layout() {
-  local legacy_path="$REPO_ROOT/Windows"
-  local canonical_path="$REPO_ROOT/Platforms/Windows"
-  require_exactly_one_layout "Windows" "$legacy_path" "$canonical_path"
-  local root="$legacy_path"
-  [[ -d "$canonical_path" ]] && root="$canonical_path"
-  require_file "$root/package.json"
-  require_file "$root/Cargo.toml"
-  require_file "$root/src-tauri/Cargo.toml"
-  require_file "$root/src-tauri/tauri.conf.json"
+  require_file "$REPO_ROOT/Platforms/Windows/package.json"
+  require_file "$REPO_ROOT/Platforms/Windows/Cargo.toml"
+  require_file "$REPO_ROOT/Platforms/Windows/src-tauri/Cargo.toml"
+  require_file "$REPO_ROOT/Platforms/Windows/src-tauri/tauri.conf.json"
 }
 
 check_platforms_directory() {
@@ -133,21 +67,20 @@ check_platforms_directory() {
   done
 }
 
-check_legacy_script_alias() {
-  local legacy_dir="$REPO_ROOT/script"
-  [[ -d "$legacy_dir" ]] || return 0
-  local entries=()
-  local entry
-  while IFS= read -r entry; do
-    entries+=("${entry#"$legacy_dir"/}")
-  done < <(find "$legacy_dir" -mindepth 1 -maxdepth 1 -print | sort)
+check_final_contraction() {
+  local legacy_path
+  for legacy_path in \
+    Package.swift \
+    Sources \
+    Tests/QuotaGlanceCoreTests \
+    App Widget NCWidget NCIntents Config Distribution \
+    Android HarmonyOS Windows script; do
+    [[ ! -e "$REPO_ROOT/$legacy_path" ]] \
+      || fail "legacy topology residue must be removed: $legacy_path"
+  done
 
-  [[ "${#entries[@]}" -eq 1 && "${entries[0]}" == "build_and_run.sh" ]] \
-    || fail "script/ is a temporary compatibility alias and may contain only build_and_run.sh"
-  [[ -x "$legacy_dir/build_and_run.sh" ]] || fail "script/build_and_run.sh must remain executable while the compatibility alias exists"
-  [[ -x "$REPO_ROOT/scripts/run-local.sh" ]] || fail "scripts/run-local.sh must provide the canonical local-run entrypoint"
-  rg -Fq 'exec "$ROOT_DIR/scripts/run-local.sh" "$@"' "$legacy_dir/build_and_run.sh" \
-    || fail "script/build_and_run.sh must be a pure exec adapter to scripts/run-local.sh"
+  [[ -x "$REPO_ROOT/scripts/run-local.sh" ]] \
+    || fail "scripts/run-local.sh must provide the canonical local-run entrypoint"
 }
 
 check_migrated_path_consumers() {
@@ -158,7 +91,7 @@ check_migrated_path_consumers() {
 
   local search_roots=()
   local path
-  for path in "$REPO_ROOT/scripts" "$REPO_ROOT/.github/workflows" "$REPO_ROOT/project.yml" "$REPO_ROOT/Shared/SwiftCore/Package.swift"; do
+  for path in "$REPO_ROOT/scripts" "$REPO_ROOT/.github/workflows" "$REPO_ROOT/project.yml" "$REPO_ROOT/QuotaGlance.xcodeproj/project.pbxproj" "$REPO_ROOT/Shared/SwiftCore/Package.swift"; do
     [[ -e "$path" ]] && search_roots+=("$path")
   done
 
@@ -185,7 +118,7 @@ check_android_layout
 check_harmonyos_layout
 check_windows_layout
 check_platforms_directory
-check_legacy_script_alias
+check_final_contraction
 check_migrated_path_consumers "SwiftCore" "Sources/QuotaGlanceCore" "$REPO_ROOT/Shared/SwiftCore"
 check_migrated_path_consumers "macOS host" "App/" "$REPO_ROOT/Platforms/macOS"
 check_migrated_path_consumers "macOS host" "Widget/" "$REPO_ROOT/Platforms/macOS"

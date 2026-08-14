@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "HarmonyOS/**"
+      - "Platforms/HarmonyOS/**"
       - "Contracts/**"
       - "scripts/build-harmonyos.sh"
       - "scripts/sync-contracts-to-harmonyos.sh"
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - "HarmonyOS/**"
+      - "Platforms/HarmonyOS/**"
       - "Contracts/**"
       - "scripts/build-harmonyos.sh"
       - "scripts/sync-contracts-to-harmonyos.sh"
@@ -49,7 +49,7 @@ jobs:
         id: setup-ohos
         uses: ErBWs/setup-ohos@4dbb63025116eb6165ceac58a4bf47cbdc5ac721 # v2
         with:
-          # Matches HarmonyOS/build-profile.template.json5 targetSdkVersion 6.1.1(24)
+          # Matches Platforms/HarmonyOS/build-profile.template.json5 targetSdkVersion 6.1.1(24)
           # and ErBWs/ohos-sdk release tags (command-line-tools + SDK mirror).
           version: 6.1.1.280
           cache: true
@@ -86,7 +86,7 @@ jobs:
       - name: Verify phone + tablet deviceTypes
         run: |
           set -euo pipefail
-          MODULE=HarmonyOS/entry/src/main/module.json5
+          MODULE=Platforms/HarmonyOS/entry/src/main/module.json5
           grep -Fq '"phone"' "$MODULE"
           grep -Fq '"tablet"' "$MODULE"
           echo "deviceTypes include phone and tablet (Huawei Pad Mini)"
@@ -104,12 +104,12 @@ jobs:
         id: metadata
         run: |
           set -euo pipefail
-          version="$(sed -n 's/^[[:space:]]*"versionName":[[:space:]]*"\([^"]*\)".*/\1/p' HarmonyOS/AppScope/app.json5)"
+          version="$(sed -n 's/^[[:space:]]*"versionName":[[:space:]]*"\([^"]*\)".*/\1/p' Platforms/HarmonyOS/AppScope/app.json5)"
           [[ -n "$version" ]] || {
             echo "Unable to read HarmonyOS versionName" >&2
             exit 1
           }
-          source="$(find HarmonyOS -type f -name '*.hap' -print -quit)"
+          source="$(find Platforms/HarmonyOS -type f -name '*.hap' -print -quit)"
           [[ -n "$source" && -f "$source" ]] || {
             echo "HarmonyOS build did not produce a HAP" >&2
             exit 1

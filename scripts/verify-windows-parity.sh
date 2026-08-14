@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Verify provider + contract + allow-list parity between the Swift engine
-# (Shared/SwiftCore/Sources/QuotaGlanceCore/) and the Rust engine (Windows/src-tauri/src/):
+# (Shared/SwiftCore/Sources/QuotaGlanceCore/) and the Rust engine (Platforms/Windows/src-tauri/src/):
 #
 #   1. Swift `ProviderID.allCases` raw values == Rust `ProviderID` enum raw
 #      values (in declaration order).
@@ -12,10 +12,10 @@
 #      Contracts/Providers/<id>/spec.json `specVersion`.
 #   7. Contract fixture triples (response/expected/requests) are complete
 #      under Contracts/Providers/.
-#   8. Spec.json copies under Windows/src-tauri/assets/providerspecs/ are
+#   8. Spec.json copies under Platforms/Windows/src-tauri/assets/providerspecs/ are
 #      byte-identical to the Contracts sources (run
 #      scripts/sync-specs-to-windows.sh).
-#   9. Contract fixture trees under Windows/src-tauri/assets/contracts/
+#   9. Contract fixture trees under Platforms/Windows/src-tauri/assets/contracts/
 #      match the Contracts directories byte for byte (run
 #      scripts/sync-contracts-to-windows.sh).
 #
@@ -27,11 +27,11 @@ CONTRACTS_DIR="$REPO_ROOT/Contracts/Providers"
 
 SWIFT_PROVIDER_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Domain/Provider.swift"
 SWIFT_SPEC_FILE="$REPO_ROOT/Shared/SwiftCore/Sources/QuotaGlanceCore/Providers/ProviderSpec.swift"
-RUST_DOMAIN_FILE="$REPO_ROOT/Windows/src-tauri/src/domain.rs"
-RUST_SPEC_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_spec.rs"
-RUST_ERROR_FILE="$REPO_ROOT/Windows/src-tauri/src/providers/provider_error.rs"
-SPEC_TARGET="$REPO_ROOT/Windows/src-tauri/assets/providerspecs"
-FIXTURE_TARGET="$REPO_ROOT/Windows/src-tauri/assets/contracts"
+RUST_DOMAIN_FILE="$REPO_ROOT/Platforms/Windows/src-tauri/src/domain.rs"
+RUST_SPEC_FILE="$REPO_ROOT/Platforms/Windows/src-tauri/src/providers/provider_spec.rs"
+RUST_ERROR_FILE="$REPO_ROOT/Platforms/Windows/src-tauri/src/providers/provider_error.rs"
+SPEC_TARGET="$REPO_ROOT/Platforms/Windows/src-tauri/assets/providerspecs"
+FIXTURE_TARGET="$REPO_ROOT/Platforms/Windows/src-tauri/assets/contracts"
 
 errors=0
 

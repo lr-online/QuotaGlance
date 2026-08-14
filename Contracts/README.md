@@ -22,9 +22,9 @@ pair, plus a `<case>-requests.json` file pinning the HTTP requests the fetch
 issues.
 
 The Swift test suite reads these files directly
-(`Tests/QuotaGlanceCoreTests/ContractTests.swift`). The HarmonyOS ohosTest
+(`Shared/SwiftCore/Tests/QuotaGlanceCoreTests/ContractTests.swift`). The HarmonyOS ohosTest
 suite reads copies synced into
-`HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/` by
+`Platforms/HarmonyOS/entry/src/ohosTest/resources/rawfile/contracts/` by
 `scripts/sync-contracts-to-harmonyos.sh` — run it after adding or changing any
 fixture.
 
@@ -664,7 +664,7 @@ itself runs the fetch pipeline per candidate).
 ### Error tokens
 
 Specs reference only these stable tokens, identical on both platforms (see
-the table in `HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets` and
+the table in `Platforms/HarmonyOS/entry/src/main/ets/providers/UsageProvider.ets` and
 Swift `ProviderError`): `invalidCredential`, `rateLimited`, `httpStatus`
 (engine appends the code), `invalidResponse`, `providerInactive`,
 `unsupportedCredential`, `regionDetectionFailed`, `profileMismatch`.
