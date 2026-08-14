@@ -206,15 +206,15 @@ export class AccountService {
     }
     try {
       await this.fetchAndPersistAccount(account);
-      this.applyRefreshEffects({ outcome: 'fresh', succeeded: [account.id], failed: [] });
+      await this.applyRefreshEffects({ outcome: 'fresh', succeeded: [account.id], failed: [] });
     } catch (error) {
-      this.applyRefreshEffects({ outcome: 'allFailed', succeeded: [], failed: [account.id] });
+      await this.applyRefreshEffects({ outcome: 'allFailed', succeeded: [], failed: [account.id] });
       throw error as Error;
     }
   }
 
-  private applyRefreshEffects(result: RefreshResult): void {
-    this.refreshEffects.apply(result).catch((error: Object) => {
+  private async applyRefreshEffects(result: RefreshResult): Promise<void> {
+    await this.refreshEffects.apply(result).catch((error: Object) => {
       hilog.warn(DOMAIN, TAG, 'refresh effects failed: %{public}s', (error as Error).message);
     });
   }
@@ -233,9 +233,7 @@ export class AccountService {
         // per-account fan-out. This prevents a successful batch from updating
         // cards and evaluating the same alert episode once per account and
         // again after the batch.
-        onCompleted: (result: RefreshResult) => {
-          this.applyRefreshEffects(result);
-        }
+        onCompleted: (result: RefreshResult) => this.applyRefreshEffects(result)
       });
     }
     return this.refreshCoordinator;

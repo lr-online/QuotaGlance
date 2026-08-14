@@ -45,7 +45,7 @@ export interface RefreshCoordinatorDeps {
   // Completed-run hook. AccountService maps it to host effects exactly once
   // for every outcome, including allFailed where stale state is observable.
   // The implementation must swallow its own asynchronous effect errors.
-  onCompleted: (result: RefreshResult) => void;
+  onCompleted: (result: RefreshResult) => Promise<void>;
 }
 
 export class RefreshCoordinator {
@@ -87,7 +87,7 @@ export class RefreshCoordinator {
     hilog.info(DOMAIN, TAG, 'refresh batch %{public}s: %{public}d/%{public}d ok',
       outcome, succeeded.length, enabled.length);
     const result: RefreshResult = { outcome: outcome, succeeded: succeeded, failed: failed };
-    this.deps.onCompleted(result);
+    await this.deps.onCompleted(result);
     return result;
   }
 

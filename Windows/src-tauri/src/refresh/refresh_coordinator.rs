@@ -17,6 +17,8 @@ use crate::storage::snapshot_store::SnapshotStore;
 pub enum RefreshError {
     #[error("missingCredential")]
     MissingCredential,
+    #[error("superseded")]
+    Superseded,
     #[error("provider: {0}")]
     Provider(#[from] ProviderError),
     #[error("snapshot: {0}")]
@@ -30,6 +32,14 @@ pub struct RefreshCoordinator {
 }
 
 impl RefreshCoordinator {
+    fn is_current(&self, account: &Account) -> bool {
+        self.accounts
+            .lock()
+            .ok()
+            .and_then(|accounts| accounts.find(account.id).cloned())
+            .is_some_and(|current| current == *account)
+    }
+
     fn persist_failure(
         &self,
         account: &Account,
@@ -56,6 +66,7 @@ impl RefreshCoordinator {
     fn snapshot_failure(error: &RefreshError) -> SnapshotFailure {
         match error {
             RefreshError::MissingCredential => SnapshotFailure::MissingCredential,
+            RefreshError::Superseded => SnapshotFailure::ProviderError,
             RefreshError::Provider(error) => match error {
                 ProviderError::InvalidCredential => SnapshotFailure::InvalidCredential,
                 ProviderError::RateLimited => SnapshotFailure::RateLimited,
@@ -68,6 +79,9 @@ impl RefreshCoordinator {
     }
 
     fn record_failure(&self, account: &Account, error: RefreshError) -> (Uuid, Result<AccountSnapshot, RefreshError>) {
+        if !self.is_current(account) {
+            return (account.id, Err(RefreshError::Superseded));
+        }
         let failure = Self::snapshot_failure(&error);
         match self.persist_failure(account, failure) {
             Ok(()) => (account.id, Err(error)),
@@ -115,6 +129,9 @@ impl RefreshCoordinator {
                 return failed;
             }
         };
+        if !self.is_current(&account) {
+            return Err(RefreshError::Superseded);
+        }
         let now: chrono::DateTime<chrono::Utc> = chrono::Utc::now();
         let stored = AccountSnapshot {
             account_id: account.id,
@@ -151,6 +168,7 @@ impl RefreshCoordinator {
     {
         let providers = self.providers.clone();
         let snapshots = self.snapshots.clone();
+        let accounts = self.accounts.clone();
         let enabled: Vec<Account> = self
             .accounts
             .lock()
@@ -164,6 +182,7 @@ impl RefreshCoordinator {
         let futures = enabled.into_iter().map(|account| {
             let provider = providers.get(&account.provider).cloned();
             let snapshots = snapshots.clone();
+            let accounts = accounts.clone();
             async move {
                 let id = account.id;
                 let api_key = resolve_key(id).unwrap_or_default();
@@ -182,6 +201,14 @@ impl RefreshCoordinator {
                 let result = provider.detect(&api_key).await.map_err(RefreshError::from);
                 match result {
                     Ok(detection) => {
+                        let is_current = accounts
+                            .lock()
+                            .ok()
+                            .and_then(|accounts| accounts.find(id).cloned())
+                            .is_some_and(|current| current == account);
+                        if !is_current {
+                            return (id, Err(RefreshError::Superseded));
+                        }
                         let now = chrono::Utc::now();
                         let stored = AccountSnapshot {
                             account_id: id,

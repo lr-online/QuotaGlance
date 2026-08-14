@@ -101,7 +101,11 @@ impl RefreshRun {
             .iter()
             .filter_map(|(_, result)| result.as_ref().ok().cloned())
             .collect();
-        let alerts = self.coordinator.evaluate_alerts(fresh);
+        let alerts = if fresh.is_empty() {
+            AlertBatchEvaluation::default()
+        } else {
+            self.coordinator.evaluate_alerts(fresh)
+        };
         if notifications_enabled {
             effects.deliver_notifications(&alerts.notifications);
         }

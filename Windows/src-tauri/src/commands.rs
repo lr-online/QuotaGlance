@@ -187,6 +187,7 @@ pub fn delete_account(
         drop(vault);
         drop(accounts);
         let _ = crate::tray::refresh_menu(&app);
+        let _ = app.emit("snapshots-updated", ());
     }
     Ok(removed.is_some())
 }

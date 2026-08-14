@@ -20,7 +20,7 @@ export default function refreshEffectsTest() {
       const coordinator = new RefreshCoordinator({
         loadAccounts: async () => [account('one'), account('two')],
         refreshAccount: async (_account: Account) => {},
-        onCompleted: (result: RefreshResult) => {
+        onCompleted: async (result: RefreshResult) => {
           completed.push(result);
         }
       });
@@ -59,7 +59,7 @@ export default function refreshEffectsTest() {
         refreshAccount: async (_account: Account) => {
           throw new Error('network:1');
         },
-        onCompleted: (result: RefreshResult) => {
+        onCompleted: async (result: RefreshResult) => {
           completed.push(result);
         }
       });

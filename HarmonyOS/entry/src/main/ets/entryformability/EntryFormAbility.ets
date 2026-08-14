@@ -46,20 +46,18 @@ function parseSwipeDirection(message: string): SwipeDirection | null {
 // account card refreshes only its selected account; an overview card refreshes
 // all enabled accounts, matching the app's refresh-all action.
 async function refreshCard(context: common.Context, formId: string): Promise<void> {
-  try {
-    const bindingStore = await FormBindingStore.create(context);
-    const binding = await bindingStore.bindingFor(formId);
-    const service = await AccountService.create(context);
-    const accounts = await service.loadAccounts();
-    let target: Account | undefined;
-    if (binding?.accountId !== undefined) {
-      target = accounts.find((account: Account) => account.id === binding.accountId);
-    }
-    if (target !== undefined && target.isEnabled) {
-      await service.refreshAccount(target);
-    } else {
-      await service.refreshAllEnabled();
-    }
+  const bindingStore = await FormBindingStore.create(context);
+  const binding = await bindingStore.bindingFor(formId);
+  const service = await AccountService.create(context);
+  const accounts = await service.loadAccounts();
+  let target: Account | undefined;
+  if (binding?.accountId !== undefined) {
+    target = accounts.find((account: Account) => account.id === binding.accountId);
+  }
+  if (target !== undefined && target.isEnabled) {
+    await service.refreshAccount(target);
+  } else {
+    await service.refreshAllEnabled();
   }
 }
 

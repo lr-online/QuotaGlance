@@ -24,19 +24,19 @@ export class RefreshEffects {
   // runs whose stale snapshot state changed. Alert evaluation is limited to
   // newly fresh snapshots, so failed accounts cannot alter an alert episode.
   async apply(result: RefreshResult): Promise<void> {
+    if (result.succeeded.length > 0) {
+      try {
+        // This persists alert episode transitions before notification delivery.
+        await this.deps.evaluateAlerts(result.succeeded);
+      } catch (error) {
+        hilog.warn(DOMAIN, TAG, 'alert evaluation failed: %{public}s', (error as Error).message);
+      }
+    }
     this.deps.invalidateOverview();
     try {
       await this.deps.publishCards();
     } catch (error) {
       hilog.warn(DOMAIN, TAG, 'card update failed: %{public}s', (error as Error).message);
-    }
-    if (result.succeeded.length === 0) {
-      return;
-    }
-    try {
-      await this.deps.evaluateAlerts(result.succeeded);
-    } catch (error) {
-      hilog.warn(DOMAIN, TAG, 'alert evaluation failed: %{public}s', (error as Error).message);
     }
   }
 }
