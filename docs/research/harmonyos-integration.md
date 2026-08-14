@@ -19,7 +19,7 @@ installed on a Huawei Pad Mini. What shipped beyond the minimal loop:
 2. **Drift prevention via shared contract fixtures** (architecture decision
    3 below, now realized): `Contracts/Providers/<provider>/<case>-{response,expected}.json`
    is the single source of truth. Swift asserts against them in
-   `Tests/QuotaGlanceCoreTests/ContractTests.swift`; HarmonyOS asserts
+   `Shared/SwiftCore/Tests/QuotaGlanceCoreTests/ContractTests.swift`; HarmonyOS asserts
    against the same files synced into ohosTest rawfile by
    `scripts/sync-contracts-to-harmonyos.sh` (suite:
    `Platforms/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets`). Schema and

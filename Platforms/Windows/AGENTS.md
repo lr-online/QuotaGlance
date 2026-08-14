@@ -1,4 +1,4 @@
-# Platforms/Windows/AGENTS.md - mirror of HarmonyOS/AGENTS.md and Android/AGENTS.md.
+# Platforms/Windows/AGENTS.md - mirror of Platforms/HarmonyOS/AGENTS.md and Platforms/Android/AGENTS.md.
 
 # AGENTS.md - QuotaGlance Windows portable client
 
@@ -9,7 +9,7 @@ is intended to be a faithful fourth-platform peer of the existing Swift
 
 The repository-root `AGENTS.md` defines the cross-platform invariants. Read
 that file first. The HarmonyOS mirror is documented in
-`HarmonyOS/AGENTS.md`; the Android mirror in `Android/AGENTS.md`. This
+`Platforms/HarmonyOS/AGENTS.md`; the Android mirror in `Platforms/Android/AGENTS.md`. This
 file only describes what is specific to Windows.
 
 ## Layout
@@ -59,7 +59,7 @@ Platforms/Windows/
 
 ## Mirror relationship
 
-| Rust (Platforms/Windows/src-tauri/src)                            | Swift (Sources/QuotaGlanceCore/)          | ArkTS (HarmonyOS/entry/src/main/ets/) | Kotlin (Android/app/src/main/java)               |
+| Rust (Platforms/Windows/src-tauri/src)                            | Swift (Shared/SwiftCore/Sources/QuotaGlanceCore/) | ArkTS (Platforms/HarmonyOS/entry/src/main/ets/) | Kotlin (Platforms/Android/app/src/main/java)               |
 | ---                                                     | ---                                         | --- | --- |
 | `domain.rs`                                              | `Domain/Provider.swift` / `UsageSnapshot.swift` | `Domain/` | `core/ProviderId.kt` / `UsageSnapshot.kt` |
 | `providers/usage_provider.rs`                            | `Providers/UsageProvider.swift`              | `providers/UsageProvider.ets` | `core/UsageProvider.kt` |
@@ -90,7 +90,7 @@ chain, `tauri.conf.json`, the front-end React shell.
 
 ## Platform-differences allowlist
 
-This section mirrors `HarmonyOS/AGENTS.md #7` and `Android/AGENTS.md #1-#3`.
+This section mirrors `Platforms/HarmonyOS/AGENTS.md #7` and `Platforms/Android/AGENTS.md #1-#3`.
 Initial entries — extend as decisions land:
 
 1. **Login-item launch is opt-in, not automatic.** Portable-app ethos

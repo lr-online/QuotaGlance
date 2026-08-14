@@ -1070,7 +1070,7 @@ extension ProviderSpec {
 
 /// Loads spec resources bundled with the core target. `scripts/sync-specs-to-core.sh`
 /// copies `Contracts/Providers/<dir>/spec.json` into
-/// `Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json` (camelCase id),
+/// `Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/<id>.json` (camelCase id),
 /// which SwiftPM ships through `.process("Resources")`; tests can also load
 /// `Contracts/Providers/<id>/spec.json` directly through `ProviderSpec(data:)`.
 public enum ProviderSpecLoader {
