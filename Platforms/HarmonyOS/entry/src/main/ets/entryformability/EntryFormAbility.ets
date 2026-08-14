@@ -5,6 +5,8 @@ import { AccountService } from '../services/AccountService';
 import { switchFormAccount, updateFormCard } from '../services/CardUpdater';
 import { Account } from '../storage/AccountStore';
 import { FormBindingStore } from '../storage/FormBindingStore';
+import { LanguageStore } from '../storage/LanguageStore';
+import { applyLanguage } from '../utils/LanguageUtils';
 import { SwipeDirection } from '../widget/FormAccountNavigation';
 
 const TAG = 'EntryFormAbility';
@@ -77,6 +79,7 @@ export default class EntryFormAbility extends FormExtensionAbility {
   onAddForm(want: Want): formBindingData.FormBindingData {
     const formId = want.parameters?.[FORM_ID_PARAM] as string;
     const dimension = parseDimension(want.parameters?.['ohos.extra.param.key.form_dimension']);
+    this.restoreLanguage();
     if (formId) {
       FormBindingStore.create(this.context)
         .then((store: FormBindingStore) => store.registerForm(formId, dimension))
@@ -130,5 +133,14 @@ export default class EntryFormAbility extends FormExtensionAbility {
       .catch((error: Object) => {
         hilog.warn(DOMAIN_NUMBER, TAG, 'onRemoveForm failed: %{public}s', (error as Error).message);
       });
+  }
+
+  private async restoreLanguage(): Promise<void> {
+    try {
+      const languageStore = await LanguageStore.create(this.context);
+      applyLanguage(await languageStore.load());
+    } catch (error) {
+      hilog.warn(DOMAIN_NUMBER, TAG, 'language restore failed: %{public}s', (error as Error).message);
+    }
   }
 }

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-BASE="$ROOT_DIR/HarmonyOS/entry/src/main/resources/base/element/string.json"
-EN="$ROOT_DIR/HarmonyOS/entry/src/main/resources/en_US/element/string.json"
+BASE="$ROOT_DIR/Platforms/HarmonyOS/entry/src/main/resources/base/element/string.json"
+EN="$ROOT_DIR/Platforms/HarmonyOS/entry/src/main/resources/en_US/element/string.json"
 
 fail() {
   echo "FAIL: $*" >&2

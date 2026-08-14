@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PARITY_SCRIPT="$ROOT_DIR/scripts/verify-provider-parity.sh"
-CONTRACT_TEST="$ROOT_DIR/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"
+CONTRACT_TEST="$ROOT_DIR/Platforms/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets"
 LIFECYCLE_INPUT="$ROOT_DIR/Contracts/RefreshLifecycle/all-success-input.json"
 
 TEST_ROOT="$(mktemp -d /tmp/QuotaGlance-provider-parity-tests.XXXXXX)"
@@ -45,7 +45,7 @@ backup_spec_copies() {
   for spec in "$ROOT_DIR"/Contracts/Providers/*/spec.json; do
     id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$spec")"
     core_copy="$ROOT_DIR/Shared/SwiftCore/Sources/QuotaGlanceCore/Resources/ProviderSpecs/$id.json"
-    harmonyos_copy="$ROOT_DIR/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/$id.json"
+    harmonyos_copy="$ROOT_DIR/Platforms/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/$id.json"
     /bin/mkdir -p "$TEST_ROOT/$(/usr/bin/dirname "$core_copy")"
     /bin/mkdir -p "$TEST_ROOT/$(/usr/bin/dirname "$harmonyos_copy")"
     /bin/cp "$core_copy" "$TEST_ROOT/$core_copy.src"
@@ -73,7 +73,7 @@ test_tampered_core_spec_copy_is_red() {
 }
 
 test_tampered_harmonyos_spec_copy_is_red() {
-  local harmonyos_copy="$ROOT_DIR/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/deepSeek.json"
+  local harmonyos_copy="$ROOT_DIR/Platforms/HarmonyOS/entry/src/main/resources/rawfile/providerspecs/deepSeek.json"
   printf ' ' >> "$harmonyos_copy"
   assert_fails /bin/bash "$PARITY_SCRIPT"
   restore_backup "$TEST_ROOT/$harmonyos_copy.harmonyos" "$harmonyos_copy"

@@ -10,7 +10,7 @@ installed on a Huawei Pad Mini. What shipped beyond the minimal loop:
 
 1. **Provider parity with macOS.** All six providers (API Info, DeepSeek,
    Kimi, OpenRouter, MiniMax, BioMap Coding) are ported to ArkTS under
-   `HarmonyOS/entry/src/main/ets/providers/`, mirroring the Swift
+   `Platforms/HarmonyOS/entry/src/main/ets/providers/`, mirroring the Swift
    `UsageProvider` protocol (`fetch` / `detect` / `fetchWithProfile`),
    `ProviderProfile` (region + credentialKind), the `UsageSnapshot` model
    (decimal-string money), and the shared error taxonomy. Region detection
@@ -22,7 +22,7 @@ installed on a Huawei Pad Mini. What shipped beyond the minimal loop:
    `Tests/QuotaGlanceCoreTests/ContractTests.swift`; HarmonyOS asserts
    against the same files synced into ohosTest rawfile by
    `scripts/sync-contracts-to-harmonyos.sh` (suite:
-   `HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets`). Schema and
+   `Platforms/HarmonyOS/entry/src/ohosTest/ets/test/Contract.test.ets`). Schema and
    workflow: `Contracts/README.md`. Adding or changing a provider requires
    updating fixtures + both test suites, so parsing drift fails CI on both
    platforms.
