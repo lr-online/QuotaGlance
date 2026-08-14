@@ -7,8 +7,8 @@ trap '/bin/chmod -R u+rwX "$TEST_ROOT"; /bin/rm -rf "$TEST_ROOT"' EXIT
 PACKAGE_SCRIPT="$ROOT_DIR/scripts/package-dmg.sh"
 VERIFY_SCRIPT="$ROOT_DIR/scripts/verify-dmg.sh"
 VALIDATION_SCRIPT="$ROOT_DIR/scripts/distribution-validation.sh"
-LEGACY_README="$ROOT_DIR/Distribution/README-macOS12.txt"
-FULL_README="$ROOT_DIR/Distribution/README-macOS14.txt"
+LEGACY_README="$ROOT_DIR/Platforms/macOS/Distribution/README-macOS12.txt"
+FULL_README="$ROOT_DIR/Platforms/macOS/Distribution/README-macOS14.txt"
 VERSION="$(/usr/bin/sed -n \
   's/^[[:space:]]*MARKETING_VERSION: "\([^"]*\)"/\1/p' \
   "$ROOT_DIR/project.yml")"
@@ -121,8 +121,8 @@ test_distribution_contract() {
   local readme
 
   for readme in \
-    "$ROOT_DIR/Distribution/README-macOS12.txt" \
-    "$ROOT_DIR/Distribution/README-macOS14.txt"; do
+    "$ROOT_DIR/Platforms/macOS/Distribution/README-macOS12.txt" \
+    "$ROOT_DIR/Platforms/macOS/Distribution/README-macOS14.txt"; do
     [[ -f "$readme" ]] || fail "distribution README is missing: $readme"
     rg -q '未经过 Apple Developer ID 签名或 Apple 公证' "$readme" \
       || fail "distribution README does not disclose Gatekeeper limitations"
@@ -132,13 +132,13 @@ test_distribution_contract() {
       fail "distribution README still mentions bundled source artifacts"
     fi
   done
-  rg -q '不包含桌面小组件' "$ROOT_DIR/Distribution/README-macOS12.txt" \
+  rg -q '不包含桌面小组件' "$ROOT_DIR/Platforms/macOS/Distribution/README-macOS12.txt" \
     || fail "macOS 12 README does not explain the Widget limitation"
-  rg -q '通知中心' "$ROOT_DIR/Distribution/README-macOS12.txt" \
+  rg -q '通知中心' "$ROOT_DIR/Platforms/macOS/Distribution/README-macOS12.txt" \
     || fail "macOS 12 README does not describe Notification Center widgets"
-  rg -q '桌面小组件' "$ROOT_DIR/Distribution/README-macOS14.txt" \
+  rg -q '桌面小组件' "$ROOT_DIR/Platforms/macOS/Distribution/README-macOS14.txt" \
     || fail "macOS 14 README does not explain Widget setup"
-  rg -q '通知中心' "$ROOT_DIR/Distribution/README-macOS14.txt" \
+  rg -q '通知中心' "$ROOT_DIR/Platforms/macOS/Distribution/README-macOS14.txt" \
     || fail "macOS 14 README does not describe Notification Center widgets"
   rg -q '^dist/$' "$ROOT_DIR/.gitignore" \
     || fail "dist directory is not ignored"
