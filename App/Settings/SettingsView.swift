@@ -4,11 +4,17 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var model: AppModel
+    let isEmbedded: Bool
 
     @State private var editorContext: AccountEditorContext?
     @State private var accountToDelete: Account?
 
     private var language: AppLanguage { model.resolvedLanguage }
+
+    init(model: AppModel, isEmbedded: Bool = false) {
+        self.model = model
+        self.isEmbedded = isEmbedded
+    }
 
     var body: some View {
         ScrollView {
@@ -29,18 +35,23 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .frame(minWidth: 560, minHeight: 460)
+        .frame(
+            minWidth: isEmbedded ? 0 : 560,
+            minHeight: isEmbedded ? 0 : 460
+        )
         .environment(\.locale, language.locale)
         .id(language)
         .preferredColorScheme(model.preferences.preferredTheme.colorScheme)
-        .background(
-            WindowTitleUpdater(
-                title: L10n.string(
-                    model.accounts.isEmpty ? .setupWindowTitle : .settingsWindowTitle,
-                    language: language
+        .overlay {
+            if !isEmbedded {
+                WindowTitleUpdater(
+                    title: L10n.string(
+                        model.accounts.isEmpty ? .setupWindowTitle : .settingsWindowTitle,
+                        language: language
+                    )
                 )
-            )
-        )
+            }
+        }
         .sheet(item: $editorContext) { context in
             AccountEditorView(model: model, account: context.account)
         }

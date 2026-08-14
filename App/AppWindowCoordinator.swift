@@ -6,7 +6,6 @@ import SwiftUI
 final class AppWindowCoordinator {
     private let model: AppModel
     private var dashboardWindowController: NSWindowController?
-    private var settingsWindowController: NSWindowController?
 
     init(model: AppModel) {
         self.model = model
@@ -14,6 +13,17 @@ final class AppWindowCoordinator {
 
     func showDashboard(selection: DashboardSelection) {
         model.selectDashboard(selection)
+        model.isShowingSettings = false
+        presentDashboard()
+    }
+
+    func showSettings() {
+        model.selectDashboard(.allAccounts)
+        model.isShowingSettings = true
+        presentDashboard()
+    }
+
+    private func presentDashboard() {
         ApplicationMenuInstaller.installMainMenuIfNeeded()
 
         if let dashboardWindowController = dashboardWindowController {
@@ -24,10 +34,7 @@ final class AppWindowCoordinator {
 
         let hostingController = NSHostingController(
             rootView: DashboardView(
-                model: model,
-                openSettings: { [weak self] in
-                    self?.showSettings()
-                }
+                model: model
             )
         )
         let window = makeWindow(
@@ -41,38 +48,8 @@ final class AppWindowCoordinator {
         present(controller)
     }
 
-    func showSettings() {
-        ApplicationMenuInstaller.installMainMenuIfNeeded()
-
-        if let settingsWindowController = settingsWindowController {
-            settingsWindowController.window?.title = settingsTitle
-            present(settingsWindowController)
-            return
-        }
-
-        let hostingController = NSHostingController(
-            rootView: SettingsView(model: model)
-        )
-        let window = makeWindow(
-            contentViewController: hostingController,
-            title: settingsTitle,
-            size: NSSize(width: 620, height: 600),
-            minimumSize: NSSize(width: 560, height: 460)
-        )
-        let controller = NSWindowController(window: window)
-        settingsWindowController = controller
-        present(controller)
-    }
-
     private var dashboardTitle: String {
         L10n.string(.dashboardWindowTitle, language: model.resolvedLanguage)
-    }
-
-    private var settingsTitle: String {
-        L10n.string(
-            model.accounts.isEmpty ? .setupWindowTitle : .settingsWindowTitle,
-            language: model.resolvedLanguage
-        )
     }
 
     private func makeWindow(

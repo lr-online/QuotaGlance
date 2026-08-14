@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var notificationPermission: NotificationPermissionState = .notDetermined
     @Published var selectedAccountID: UUID?
+    @Published var isShowingSettings = false
 
     private let preferencesStore: AccountPreferencesStore
     private let credentialStore: any CredentialStore
@@ -368,6 +369,7 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func selectDashboard(_ selection: DashboardSelection) -> DashboardSelection {
+        isShowingSettings = false
         let resolved: DashboardSelection
         switch selection {
         case .allAccounts:
