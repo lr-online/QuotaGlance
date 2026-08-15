@@ -4,7 +4,6 @@ import SwiftUI
 
 struct DashboardView: View {
     @ObservedObject var model: AppModel
-    let openSettings: () -> Void
 
     private var language: AppLanguage { model.resolvedLanguage }
     private var selection: DashboardSelection {
@@ -43,7 +42,7 @@ struct DashboardView: View {
                 .frame(minWidth: 620, maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationViewStyle(DoubleColumnNavigationViewStyle())
-        .frame(minWidth: 900, minHeight: 580)
+        .frame(minWidth: 960, minHeight: 620)
         .environment(\.locale, language.locale)
         .preferredColorScheme(model.preferences.preferredTheme.colorScheme)
         .id(language)
@@ -92,8 +91,80 @@ struct DashboardView: View {
                 }
                 .padding(8)
             }
+            sidebarFooter
         }
         .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    private var sidebarFooter: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Divider()
+
+            Button {
+                model.isShowingSettings = true
+            } label: {
+                Label(
+                    L10n.string(.settings, language: language),
+                    systemImage: "gearshape"
+                )
+                .font(.body.weight(model.isShowingSettings ? .semibold : .regular))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(
+                            model.isShowingSettings
+                                ? Color.accentColor.opacity(0.16)
+                                : .clear
+                        )
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                ForEach(AppThemePreference.allCases) { theme in
+                    Button {
+                        model.setPreferredTheme(theme)
+                    } label: {
+                        if model.preferences.preferredTheme == theme {
+                            Label(
+                                L10n.themePreferenceTitle(theme, language: language),
+                                systemImage: "checkmark"
+                            )
+                        } else {
+                            Text(L10n.themePreferenceTitle(theme, language: language))
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "circle.lefthalf.filled")
+                        .frame(width: 18)
+                    Text(L10n.string(.appearance, language: language))
+                        .font(.body)
+                    Spacer(minLength: 8)
+                    Text(
+                        L10n.themePreferenceTitle(
+                            model.preferences.preferredTheme,
+                            language: language
+                        )
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .menuStyle(.borderlessButton)
+        }
+        .padding(8)
     }
 
     private func sidebarButton(
@@ -148,7 +219,9 @@ struct DashboardView: View {
         VStack(spacing: 0) {
             toolbar
             Divider()
-            if model.accounts.isEmpty {
+            if model.isShowingSettings {
+                SettingsView(model: model, isEmbedded: true)
+            } else if model.accounts.isEmpty {
                 emptyState
             } else {
                 ScrollView {
@@ -175,53 +248,33 @@ struct DashboardView: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(presentation.title)
+            if model.isShowingSettings {
+                Text(L10n.string(.settings, language: language))
                     .font(.title2.weight(.semibold))
-                    .lineLimit(1)
-                statusLabel(presentation.status)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(presentation.title)
+                        .font(.title2.weight(.semibold))
+                        .lineLimit(1)
+                    statusLabel(presentation.status)
+                }
             }
             Spacer()
-            if model.isRefreshing {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 28, height: 28)
-            } else {
-                toolbarButton(
-                    systemName: "arrow.clockwise",
-                    help: L10n.string(.refresh, language: language)
-                ) {
-                    Task { await model.refresh() }
-                }
-                .disabled(model.accounts.isEmpty)
-            }
-            Menu {
-                ForEach(AppThemePreference.allCases) { theme in
-                    Button {
-                        model.setPreferredTheme(theme)
-                    } label: {
-                        if model.preferences.preferredTheme == theme {
-                            Label(
-                                L10n.themePreferenceTitle(theme, language: language),
-                                systemImage: "checkmark"
-                            )
-                        } else {
-                            Text(L10n.themePreferenceTitle(theme, language: language))
-                        }
+            if !model.isShowingSettings {
+                if model.isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .frame(width: 28, height: 28)
+                } else {
+                    toolbarButton(
+                        systemName: "arrow.clockwise",
+                        help: L10n.string(.refresh, language: language)
+                    ) {
+                        Task { await model.refresh() }
                     }
+                    .disabled(model.accounts.isEmpty)
                 }
-            } label: {
-                Image(systemName: "circle.lefthalf.filled")
-                    .frame(width: 28, height: 28)
             }
-            .menuStyle(.borderlessButton)
-            .frame(width: 32)
-            .help(L10n.string(.appearance, language: language))
-            toolbarButton(
-                systemName: "gearshape",
-                help: L10n.string(.settings, language: language),
-                action: openSettings
-            )
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -250,7 +303,9 @@ struct DashboardView: View {
                 .font(.title3.weight(.semibold))
             Text(L10n.string(.addProviderAccountHint, language: language))
                 .foregroundStyle(.secondary)
-            Button(action: openSettings) {
+            Button {
+                model.isShowingSettings = true
+            } label: {
                 Label(L10n.string(.addAccount, language: language), systemImage: "plus")
             }
         }
@@ -399,10 +454,10 @@ struct DashboardView: View {
     private func overviewMetric(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.caption.weight(.medium))
+                .font(.body.weight(.medium))
                 .lineLimit(1)
         }
     }
@@ -411,6 +466,12 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 24) {
             if let usage = presentation.usage {
                 balanceDetails(usage.balances)
+                if !chartDays.isEmpty {
+                    dashboardSection(L10n.string(.last7Days, language: language)) {
+                        UsageChartView(days: chartDays, language: language)
+                            .frame(maxWidth: 620)
+                    }
+                }
                 if let limit = usage.spendingLimit { spendingLimitDetails(limit) }
                 if !usage.spend.isEmpty { spendDetails(usage.spend) }
                 quotaDetails(usage.quotaWindows)
@@ -427,12 +488,6 @@ struct DashboardView: View {
                     )
                 }
                 modelDetails(presentation.modelRows)
-                if !chartDays.isEmpty {
-                    dashboardSection(L10n.string(.last7Days, language: language)) {
-                        UsageChartView(days: chartDays, language: language)
-                            .frame(maxWidth: 620)
-                    }
-                }
                 providerDetails(usage)
             } else {
                 Text(L10n.string(.noData, language: language))
@@ -571,8 +626,8 @@ struct DashboardView: View {
                                 Text(tokens.formatted())
                             }
                         }
-                        .font(.callout)
-                        .padding(.vertical, 8)
+                        .font(.body)
+                        .padding(.vertical, 10)
                     }
                 }
             }
@@ -601,7 +656,7 @@ struct DashboardView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.headline)
+                .font(.title3.weight(.semibold))
             content()
             Divider()
         }
@@ -621,7 +676,7 @@ struct DashboardView: View {
                 .foregroundStyle(emphasized ? .primary : .secondary)
                 .multilineTextAlignment(.trailing)
         }
-        .font(.callout)
+        .font(.body)
     }
 
     private func moneyValues(_ values: [(String, Money?)]) -> some View {
