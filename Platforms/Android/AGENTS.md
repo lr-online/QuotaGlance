@@ -2,8 +2,8 @@
 
 This directory is the native Android client. Read the repository-root `AGENTS.md`
 first: it defines provider IDs, `Contracts/` ownership, and the cross-platform
-invariants. Do not modify `App/`, `Widget/`, `NCWidget/`, `NCIntents/`, or
-`HarmonyOS/` while working on Android-only behavior.
+invariants. Do not modify `Platforms/macOS/` or `Platforms/HarmonyOS/` while
+working on Android-only behavior.
 
 ## Architecture
 
@@ -48,11 +48,11 @@ Swift, ArkTS, and Kotlin declarations plus Android fixture registration.
 ## Build and validation
 
 The Android app uses JDK 17, AGP 8.8.2, Kotlin 2.0.21, compile/target SDK 36,
-and min SDK 26. Set `sdk.dir` in ignored `Android/local.properties`, or export
+and min SDK 26. Set `sdk.dir` in ignored `Platforms/Android/local.properties`, or export
 `ANDROID_HOME` / `ANDROID_SDK_ROOT`.
 
 ```bash
-cd Android
+cd Platforms/Android
 ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleDebug :app:assembleRelease
 ```
 

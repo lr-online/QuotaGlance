@@ -58,6 +58,8 @@ rg -Fq "command -v rg" "$CI_WORKFLOW" || fail "CI workflow does not ensure ripgr
 rg -Fq "brew install ripgrep" "$CI_WORKFLOW" || fail "CI workflow lacks the ripgrep install fallback"
 rg -Fq "swift test" "$CI_WORKFLOW" || fail "CI workflow does not run swift test"
 rg -Fq "scripts/verify-provider-parity.sh" "$CI_WORKFLOW" || fail "CI workflow does not run the provider parity check"
+rg -Fq "Tests/ScriptTests/RepositoryTopologyTests.sh" "$CI_WORKFLOW" \
+  || fail "CI workflow missing repository topology test"
 rg -Fq "scripts/sync-specs-to-windows.sh" "$CI_WORKFLOW" || fail "CI workflow does not sync Windows provider specs before global parity"
 rg -Fq "scripts/sync-contracts-to-windows.sh" "$CI_WORKFLOW" || fail "CI workflow does not sync Windows contracts before global parity"
 rg -Fq "Tests/ScriptTests/ProviderParityTests.sh" "$CI_WORKFLOW" || fail "CI workflow missing provider parity tests"
@@ -161,6 +163,11 @@ rg -Fq "scripts/sync-specs-to-harmonyos.sh" "$HARMONYOS_WORKFLOW" || fail "Harmo
 rg -Fq "scripts/sync-specs-to-windows.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync Windows provider specs before global parity"
 rg -Fq "scripts/sync-contracts-to-windows.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not sync Windows contracts before global parity"
 rg -Fq "scripts/verify-provider-parity.sh" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not verify provider parity"
+rg -Fq "find Platforms/HarmonyOS -type f -name '*.hap'" "$HARMONYOS_WORKFLOW" \
+  || fail "HarmonyOS artifact discovery does not use the canonical platform root"
+if rg -Fq "find HarmonyOS -type f -name '*.hap'" "$HARMONYOS_WORKFLOW"; then
+  fail "HarmonyOS artifact discovery still references the removed legacy root"
+fi
 rg -q "upload-artifact" "$HARMONYOS_WORKFLOW" || fail "HarmonyOS workflow does not upload HAP artifacts"
 rg -Fq 'QuotaGlance-HarmonyOS-${{ steps.metadata.outputs.version }}' "$HARMONYOS_WORKFLOW" \
   || fail "HarmonyOS artifact is not versioned"
@@ -169,8 +176,8 @@ rg -Fq "properties.ignoreSignHap=true" "$HARMONYOS_BUILD_SCRIPT" || fail "Harmon
 rg -Fq "ohpm install --all" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not install ohpm deps"
 rg -Fq "assembleHap" "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script does not assemble HAP"
 rg -Fq 'Huawei Pad Mini' "$HARMONYOS_BUILD_SCRIPT" || fail "HarmonyOS build script missing tablet/Pad Mini deviceTypes check"
-HARMONYOS_BUILD_PROFILE_TEMPLATE="$ROOT_DIR/HarmonyOS/build-profile.template.json5"
-HARMONYOS_GITIGNORE="$ROOT_DIR/HarmonyOS/.gitignore"
+HARMONYOS_BUILD_PROFILE_TEMPLATE="$ROOT_DIR/Platforms/HarmonyOS/build-profile.template.json5"
+HARMONYOS_GITIGNORE="$ROOT_DIR/Platforms/HarmonyOS/.gitignore"
 [[ -f "$HARMONYOS_BUILD_PROFILE_TEMPLATE" ]] || fail "missing HarmonyOS build profile template"
 rg -Fq '"signingConfigs": []' "$HARMONYOS_BUILD_PROFILE_TEMPLATE" \
   || fail "HarmonyOS build profile template must not contain signing material"
@@ -178,7 +185,7 @@ grep -Fxq '/build-profile.json5' "$HARMONYOS_GITIGNORE" \
   || fail "machine-local HarmonyOS build profile is not ignored"
 rg -Fq 'build-profile.template.json5' "$HARMONYOS_BUILD_SCRIPT" \
   || fail "HarmonyOS build script does not initialize the local build profile"
-HARMONYOS_MODULE_JSON5="$ROOT_DIR/HarmonyOS/entry/src/main/module.json5"
+HARMONYOS_MODULE_JSON5="$ROOT_DIR/Platforms/HarmonyOS/entry/src/main/module.json5"
 [[ -f "$HARMONYOS_MODULE_JSON5" ]] || fail "missing HarmonyOS entry module.json5"
 rg -Fq '"tablet"' "$HARMONYOS_MODULE_JSON5" || fail "HarmonyOS entry module missing tablet deviceType"
 rg -Fq '"phone"' "$HARMONYOS_MODULE_JSON5" || fail "HarmonyOS entry module missing phone deviceType"
@@ -244,7 +251,7 @@ rg -q 'pull_request:' "$WINDOWS_WORKFLOW" || fail "Windows workflow missing pull
 assert_pinned_action "actions/checkout" "$WINDOWS_WORKFLOW"
 assert_pinned_action "actions/setup-node" "$WINDOWS_WORKFLOW"
 assert_read_only_workflow "$WINDOWS_WORKFLOW"
-rg -Fq 'cache-dependency-path: Windows/package-lock.json' "$WINDOWS_WORKFLOW" \
+rg -Fq 'cache-dependency-path: Platforms/Windows/package-lock.json' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not cache the locked npm dependencies"
 rg -Fq 'run: npm ci' "$WINDOWS_WORKFLOW" \
   || fail "Windows workflow does not use the checked-in npm lockfile"

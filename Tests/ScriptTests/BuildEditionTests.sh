@@ -21,7 +21,7 @@ build_setting() {
       '$1 == setting && $2 == "=" { print $3; exit }'
 }
 
-rg -Fq '.macOS(.v12)' "$ROOT_DIR/Package.swift" \
+rg -Fq '.macOS(.v12)' "$ROOT_DIR/Shared/SwiftCore/Package.swift" \
   || fail "QuotaGlanceCore does not support macOS 12"
 rg -q '^  QuotaGlanceLegacy:$' "$ROOT_DIR/project.yml" \
   || fail "legacy host target is missing"
@@ -32,30 +32,30 @@ rg -q 'QuotaGlanceLegacy' "$ROOT_DIR/scripts/build-local.sh" \
 [[ -f "$ROOT_DIR/Tests/ScriptTests/GitHubActionsTests.sh" ]] \
   || fail "GitHub Actions contract test is missing"
 
-rg -q 'compatibleSystemSymbol' "$ROOT_DIR/App/MenuBar/StatusBarController.swift" \
+rg -q 'compatibleSystemSymbol' "$ROOT_DIR/Platforms/macOS/App/MenuBar/StatusBarController.swift" \
   || fail "status bar does not use compatible SF Symbol fallback"
 rg -q 'NSApp.activate\(ignoringOtherApps: true\)' \
-  "$ROOT_DIR/App/MenuBar/StatusBarController.swift" \
+  "$ROOT_DIR/Platforms/macOS/App/MenuBar/StatusBarController.swift" \
   || fail "popover show path does not activate the accessory app"
 rg -q 'ApplicationMenuInstaller.installMainMenuIfNeeded' \
-  "$ROOT_DIR/App/QuotaGlanceApp.swift" \
+  "$ROOT_DIR/Platforms/macOS/App/QuotaGlanceApp.swift" \
   || fail "accessory app does not install Edit menu for paste shortcuts"
-rg -q 'PasteboardCommands' "$ROOT_DIR/App/QuotaGlanceApp.swift" \
+rg -q 'PasteboardCommands' "$ROOT_DIR/Platforms/macOS/App/QuotaGlanceApp.swift" \
   || fail "Settings scene lacks pasteboard Commands for ⌘V"
-rg -q 'QuotaGlanceApplication' "$ROOT_DIR/App/Info.plist" \
+rg -q 'QuotaGlanceApplication' "$ROOT_DIR/Platforms/macOS/App/Info.plist" \
   || fail "Info.plist does not use QuotaGlanceApplication for edit shortcuts"
 rg -q '@objc\(QuotaGlanceApplication\)' \
-  "$ROOT_DIR/App/Compatibility/QuotaGlanceApplication.swift" \
+  "$ROOT_DIR/Platforms/macOS/App/Compatibility/QuotaGlanceApplication.swift" \
   || fail "QuotaGlanceApplication subclass is missing"
 rg -q 'APIKeyPasteShortcutBridge' \
-  "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+  "$ROOT_DIR/Platforms/macOS/App/Settings/AccountEditorView.swift" \
   || fail "account editor lacks ⌘V bridge for SecureField"
-rg -q 'func pasteAPIKey' "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+rg -q 'func pasteAPIKey' "$ROOT_DIR/Platforms/macOS/App/Settings/AccountEditorView.swift" \
   || fail "account editor lacks explicit Paste API key action"
-rg -q 'onPasteCommand' "$ROOT_DIR/App/Settings/AccountEditorView.swift" \
+rg -q 'onPasteCommand' "$ROOT_DIR/Platforms/macOS/App/Settings/AccountEditorView.swift" \
   || fail "API key SecureField lacks onPasteCommand"
 rg -Fq '"gauge"' \
-  "$ROOT_DIR/Sources/QuotaGlanceCore/Presentation/CompatibleSystemSymbolNames.swift" \
+  "$ROOT_DIR/Shared/SwiftCore/Sources/QuotaGlanceCore/Presentation/CompatibleSystemSymbolNames.swift" \
   || fail "compatible symbol fallback list is missing gauge"
 
 SCHEMES="$(
@@ -81,23 +81,23 @@ rg -q '^  QuotaGlanceNCWidget:$' "$ROOT_DIR/project.yml" \
   || fail "NC widget target is missing"
 rg -q '^  QuotaGlanceNCIntents:$' "$ROOT_DIR/project.yml" \
   || fail "NC intents target is missing"
-rg -q 'IntentConfiguration\(' "$ROOT_DIR/NCWidget/QuotaGlanceNCWidget.swift" \
+rg -q 'IntentConfiguration\(' "$ROOT_DIR/Platforms/macOS/NCWidget/QuotaGlanceNCWidget.swift" \
   || fail "NC widget does not use IntentConfiguration"
-rg -q 'IntentTimelineProvider' "$ROOT_DIR/NCWidget/NCWidgetTimelineProvider.swift" \
+rg -q 'IntentTimelineProvider' "$ROOT_DIR/Platforms/macOS/NCWidget/NCWidgetTimelineProvider.swift" \
   || fail "NC widget does not use an IntentTimelineProvider"
 rg -q 'NCWidgetAccountIntent\+Generated.swift in Sources' \
   "$ROOT_DIR/QuotaGlance.xcodeproj/project.pbxproj" \
   || fail "NC widget Intent source is missing from the Xcode project"
-INTENT_DEFINITION="$ROOT_DIR/NCWidget/NCWidgetAccountIntent.intentdefinition"
+INTENT_DEFINITION="$ROOT_DIR/Platforms/macOS/NCWidget/NCWidgetAccountIntent.intentdefinition"
 [[ "$(/usr/bin/plutil -extract INIntents.0.INIntentParameters.0.INIntentParameterType raw \
   "$INTENT_DEFINITION")" == "Object" ]] \
   || fail "NC widget Intent parameter is not an object"
 [[ "$(/usr/bin/plutil -extract INIntents.0.INIntentParameters.0.INIntentParameterObjectType raw \
   "$INTENT_DEFINITION")" == "NCWidgetAccountIntentChoice" ]] \
   || fail "NC widget Intent parameter lacks account choice display metadata"
-rg -q 'display: "Use App Default"' "$ROOT_DIR/NCIntents/NCWidgetAccountChoiceOptions.swift" \
+rg -q 'display: "Use App Default"' "$ROOT_DIR/Platforms/macOS/NCIntents/NCWidgetAccountChoiceOptions.swift" \
   || fail "NC widget options do not expose readable default labels"
-rg -q 'display: \$0.displayName' "$ROOT_DIR/NCIntents/NCWidgetAccountChoiceOptions.swift" \
+rg -q 'display: \$0.displayName' "$ROOT_DIR/Platforms/macOS/NCIntents/NCWidgetAccountChoiceOptions.swift" \
   || fail "NC widget options do not expose account display names"
 
 # XcodeGen stores host→extension links as opaque PBXTargetDependency IDs.

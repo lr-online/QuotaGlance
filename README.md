@@ -80,24 +80,24 @@ flowchart LR
 
 ## HarmonyOS 版本
 
-`HarmonyOS/` 目录是鸿蒙（HarmonyOS NEXT，手机/平板）版本。双端对齐的是 Provider、Aggregation 和 Alerts 的共享契约语义，不代表窗口、卡片、账户编辑、后台调度等产品能力完全一致；当前状态与补齐计划见[平台能力矩阵](docs/platform-capability-matrix.md)。账户 key 保存在系统 Asset Store（按账户独立 alias，首次解锁后可读），不会以明文落盘，也不会进入快照或日志。
+`Platforms/HarmonyOS/` 目录是鸿蒙（HarmonyOS NEXT，手机/平板）版本。双端对齐的是 Provider、Aggregation 和 Alerts 的共享契约语义，不代表窗口、卡片、账户编辑、后台调度等产品能力完全一致；当前状态与补齐计划见[平台能力矩阵](docs/platform-capability-matrix.md)。账户 key 保存在系统 Asset Store（按账户独立 alias，首次解锁后可读），不会以明文落盘，也不会进入快照或日志。
 
 - 双端解析逻辑通过共享契约 fixtures 防止漂移：`Contracts/Providers/` 是唯一事实来源，Swift 与 ArkTS 的契约测试各自跑同一份文件（鸿蒙侧由 `scripts/sync-contracts-to-harmonyos.sh` 同步进 ohosTest rawfile）。新增或修改 provider 时必须同时更新 fixtures 与两端测试，详见 [`Contracts/README.md`](Contracts/README.md)。
-- 构建：`scripts/build-harmonyos.sh`（本机需 DevEco Studio，CI 用 `ErBWs/setup-ohos`）；脚本会在首次构建时从受控的 `HarmonyOS/build-profile.template.json5` 初始化被忽略的本机 `build-profile.json5`。若先用 DevEco 打开新检出的工程，先执行 `cp HarmonyOS/build-profile.template.json5 HarmonyOS/build-profile.json5`，再由 DevEco 写入本机签名设置。图标由 `scripts/generate-harmonyos-icon.swift` 生成，与 macOS 图标同一设计。
+- 构建：`scripts/build-harmonyos.sh`（本机需 DevEco Studio，CI 用 `ErBWs/setup-ohos`）；脚本会在首次构建时从受控的 `Platforms/HarmonyOS/build-profile.template.json5` 初始化被忽略的本机 `build-profile.json5`。若先用 DevEco 打开新检出的工程，先执行 `cp Platforms/HarmonyOS/build-profile.template.json5 Platforms/HarmonyOS/build-profile.json5`，再由 DevEco 写入本机签名设置。图标由 `scripts/generate-harmonyos-icon.swift` 生成，与 macOS 图标同一设计。
 - 平台调研、密钥方案选型与实现状态：[`docs/research/harmonyos-integration.md`](docs/research/harmonyos-integration.md)。
 
 ## Android 版本
 
-`Android/` 是 Android 8.0+（API 26）版本。它以 Kotlin/Jetpack Compose 实现账户、概览、明细、刷新设置、本地通知和 Glance 小组件；API key 存放在 Android Keystore-backed encrypted preferences，不会写入 DataStore、快照、日志或 Git。Provider、Aggregation 和 Alerts 的契约与 Swift/ArkTS 使用同一份 `Contracts/` fixture，Android 专项约束和能力基线见 [`Android/AGENTS.md`](Android/AGENTS.md)。
+`Platforms/Android/` 是 Android 8.0+（API 26）版本。它以 Kotlin/Jetpack Compose 实现账户、概览、明细、刷新设置、本地通知和 Glance 小组件；API key 存放在 Android Keystore-backed encrypted preferences，不会写入 DataStore、快照、日志或 Git。Provider、Aggregation 和 Alerts 的契约与 Swift/ArkTS 使用同一份 `Contracts/` fixture，Android 专项约束和能力基线见 [`Platforms/Android/AGENTS.md`](Platforms/Android/AGENTS.md)。
 
-本地编译需要 JDK 17 和 Android SDK API 35 / Build Tools 35。配置 `Android/local.properties` 的 `sdk.dir` 后运行：
+本地编译需要 JDK 17 和 Android SDK API 35 / Build Tools 35。配置 `Platforms/Android/local.properties` 的 `sdk.dir` 后运行：
 
 ```bash
-cd Android
+cd Platforms/Android
 ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleRelease
 ```
 
-release APK 位于 `Android/app/build/outputs/apk/release/app-release.apk`。GitHub Actions 在每个 PR 上传带应用版本与短 commit SHA 的 debug/release APK artifact。正式 `Release` 仅能手动选择一个已有的 `vX.Y.Z` tag；它会将该版本写入 Android APK，并把 `QuotaGlance-<version>-android-universal.apk` 和 SHA-256 发布到 GitHub Release。开源下载版使用 Android debug 证书以避免在仓库保存私钥，适合测试和侧载安装，不适用于 Play Store 或长期生产签名。
+release APK 位于 `Platforms/Android/app/build/outputs/apk/release/app-release.apk`。GitHub Actions 在每个 PR 上传带应用版本与短 commit SHA 的 debug/release APK artifact。正式 `Release` 仅能手动选择一个已有的 `vX.Y.Z` tag；它会将该版本写入 Android APK，并把 `QuotaGlance-<version>-android-universal.apk` 和 SHA-256 发布到 GitHub Release。开源下载版使用 Android debug 证书以避免在仓库保存私钥，适合测试和侧载安装，不适用于 Play Store 或长期生产签名。
 
 
 ## 功能
@@ -140,20 +140,20 @@ release APK 位于 `Android/app/build/outputs/apk/release/app-release.apk`。Git
 1. 执行 `xcodegen generate`，然后打开 `QuotaGlance.xcodeproj`。
 2. 在 `QuotaGlance` 和 `QuotaGlanceWidget` 两个 target 的 Signing & Capabilities 中选择同一个 Team，并保持 Automatically manage signing 开启。
 3. 确认两个 target 都包含 App Groups capability，且组名均为 `group.com.liangrui.QuotaGlance`。
-4. 若该 App Group 已被其他开发者账号占用，请在 `project.yml`、两个 entitlements 文件和 `Sources/QuotaGlanceCore/Storage/SharedSnapshotStore.swift` 中统一改成属于你的唯一标识，然后重新执行 `xcodegen generate`。
+4. 若该 App Group 已被其他开发者账号占用，请在 `project.yml`、两个 entitlements 文件和 `Shared/SwiftCore/Sources/QuotaGlanceCore/Storage/SharedSnapshotStore.swift` 中统一改成属于你的唯一标识，然后重新执行 `xcodegen generate`。
 
 ## 构建与安装
 
 先运行核心测试：
 
 ```bash
-swift test
+swift test --package-path Shared/SwiftCore
 ```
 
 开发构建并启动：
 
 ```bash
-./script/build_and_run.sh
+./scripts/run-local.sh
 ```
 
 Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
@@ -187,10 +187,10 @@ Release 构建、本地安装并注册 Widget（macOS 14 完整版）：
 
 ## GitHub Actions
 
-- `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test`、版本构建约束、DMG 打包约束和本地安装安全检查。
+- `CI` 会在 pull request 和推送到 `main` 时自动执行仓库验证，包括 `swift test --package-path Shared/SwiftCore`、版本构建约束、DMG 打包约束和本地安装安全检查。
 - `Package macOS` 会在 pull request、`main` 和手动触发时构建 macOS DMG，并上传带 macOS 应用版本与短 commit SHA 的 artifact。
 - `Release` 只可手动触发，输入一个已存在的 `vX.Y.Z` tag。它从该 tag 构建 macOS 12/macOS 14 DMG 和 Android universal APK，所有下载包都附 SHA-256；发布说明取自上一个版本 tag 之后的非 merge 提交。
-- `Android` 会在 Android/Contracts 相关 PR 或 `main` 推送时同步契约、执行 JVM 测试和 lint，并上传带版本的 debug/release APK artifact。它不再独立创建 GitHub Release。
+- `Android` 会在 `Platforms/Android/` 或 `Contracts/` 相关 PR、以及 `main` 推送时同步契约、执行 JVM 测试和 lint，并上传带版本的 debug/release APK artifact。它不再独立创建 GitHub Release。
 - `HarmonyOS` 会上传带版本的未签名 HAP CI artifact，但不会附到 GitHub Release；公开可安装发布需要单独配置 HarmonyOS 签名。
 
 开发者要求发布时应遵循 [`releasing-quotaglance` Skill](skills/releasing-quotaglance/SKILL.md)：先查看最新 tag 和其后的提交，选择下一个版本，完成验证并再次确认，再创建 tag 并手动 dispatch `Release`。

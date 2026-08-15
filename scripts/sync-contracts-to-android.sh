@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_DIR="$REPO_ROOT/Contracts"
-TARGET_DIR="$REPO_ROOT/Android/app/src/test/resources/contracts"
+TARGET_DIR="$REPO_ROOT/Platforms/Android/app/src/test/resources/contracts"
 
 mkdir -p "$TARGET_DIR"
 find "$TARGET_DIR" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +

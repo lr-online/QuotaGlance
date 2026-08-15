@@ -68,7 +68,7 @@ Alerts contract parity remains a hard constraint; the following experience gaps 
   is the sole publisher of versioned Android GitHub Release assets.
 - Android device/emulator verification for notification permission, WorkManager,
   Glance, encrypted storage, and external links remains a manual gate until
-  device CI is available. See `Android/AGENTS.md` and the platform matrix.
+  device CI is available. See `Platforms/Android/AGENTS.md` and the platform matrix.
 
 ### macOS internationalization foundation (2026-08)
 
@@ -88,7 +88,7 @@ Alerts contract parity remains a hard constraint; the following experience gaps 
 - CI workflow (`ci.yml`, macos-14): `swift test`, `scripts/verify-provider-parity.sh`, and ScriptTests including `GitHubActionsTests.sh`, on pull requests and pushes to `main`.
 - Package macOS workflow (`package.yml`): DMG packaging and versioned artifact upload on PRs, pushes to `main`, and manual dispatch.
 - Release workflow (`release.yml`): manually selected existing `vX.Y.Z` tag, synchronized macOS/Android versioned builds, commit-derived notes, and GitHub Release publication. The unsigned HarmonyOS HAP is deliberately excluded.
-- HarmonyOS workflow (`harmonyos.yml`, ubuntu + OHOS SDK): contract sync, provider parity check, unsigned HAP build, and versioned artifact upload; path filters include `Contracts/**`, `HarmonyOS/**`, and parity scripts.
+- HarmonyOS workflow (`harmonyos.yml`, ubuntu + OHOS SDK): contract sync, provider parity check, unsigned HAP build, and versioned artifact upload; path filters include `Contracts/**`, `Platforms/HarmonyOS/**`, and parity scripts.
 - Quality workflow (`quality.yml`, ubuntu): actionlint, zizmor, ShellCheck on `scripts/` and `Tests/**/*.sh`, gitleaks, and a dedicated provider-contract job running `verify-provider-parity.sh` + `ProviderParityTests.sh` on PRs, pushes to `main`, and merge queue.
 - Dependabot for GitHub Actions; workflows pin third-party actions to commit SHAs and use read-only `contents` permissions where applicable.
 
@@ -105,4 +105,4 @@ Alerts contract parity remains a hard constraint; the following experience gaps 
 - Provider implementations on both platforms are now spec-driven: `Contracts/Providers/<provider>/spec.json` is the single source of truth, executed by one generic engine per platform (Swift `SpecDrivenProvider` + `ProviderSpec`; ArkTS `SpecDrivenProvider` + `SpecEngine`). All hand-written per-provider code was deleted except the named `miniMaxModelRemains` parse strategy; the spec schema in `Contracts/README.md` is now normative.
 - Provider contract fixtures now pin the HTTP request sequence (`<case>-requests.json`) in addition to the parsed snapshot, and the same fixture mechanism also drives ArkTS aggregation and alert contract suites (`AggregationContract.test.ets` / `AlertsContract.test.ets`) through synced `Contracts/Aggregation/` and `Contracts/Alerts/` rawfiles.
 - The `UsageProvider` interface was narrowed to `id` + `descriptor` + `detect(apiKey:)` + `fetch(apiKey:profile:)`, with provider metadata carried by `ProviderDescriptor` and assembly centralized in `ProviderCatalog` (both platforms build providers from the synced specs).
-- Sync discipline: `scripts/sync-specs-to-core.sh`, `scripts/sync-specs-to-harmonyos.sh`, `scripts/sync-contracts-to-harmonyos.sh`, gated by `scripts/verify-provider-parity.sh`. Working agreements for future agents: `AGENTS.md` (root) and `HarmonyOS/AGENTS.md`.
+- Sync discipline: `scripts/sync-specs-to-core.sh`, `scripts/sync-specs-to-harmonyos.sh`, `scripts/sync-contracts-to-harmonyos.sh`, gated by `scripts/verify-provider-parity.sh`. Working agreements for future agents: `AGENTS.md` (root) and `Platforms/HarmonyOS/AGENTS.md`.

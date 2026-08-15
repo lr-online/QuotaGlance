@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-WIDGET_CARD="$ROOT_DIR/HarmonyOS/entry/src/main/ets/widget/pages/WidgetCard.ets"
-FORM_ABILITY="$ROOT_DIR/HarmonyOS/entry/src/main/ets/entryformability/EntryFormAbility.ets"
+WIDGET_CARD="$ROOT_DIR/Platforms/HarmonyOS/entry/src/main/ets/widget/pages/WidgetCard.ets"
+FORM_ABILITY="$ROOT_DIR/Platforms/HarmonyOS/entry/src/main/ets/entryformability/EntryFormAbility.ets"
 WORKFLOW="$ROOT_DIR/.github/workflows/harmonyos.yml"
 
 fail() {

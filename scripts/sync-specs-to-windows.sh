@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sync Contracts/Providers/<id>/spec.json into the Windows portable client's
-# runtime input tree (Windows/src-tauri/assets/providerspecs/). Mirror of
+# runtime input tree (Platforms/Windows/src-tauri/assets/providerspecs/). Mirror of
 # scripts/sync-specs-to-android.sh; both consumers feed their respective
 # spec engines at runtime. The Windows engine (SpecDrivenProvider) loads
 # these via Tauri's `resources` glob declared in tauri.conf.json.
@@ -8,7 +8,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_DIR="$REPO_ROOT/Contracts/Providers"
-TARGET_DIR="$REPO_ROOT/Windows/src-tauri/assets/providerspecs"
+TARGET_DIR="$REPO_ROOT/Platforms/Windows/src-tauri/assets/providerspecs"
 
 mkdir -p "$TARGET_DIR"
 find "$TARGET_DIR" -mindepth 1 -maxdepth 1 -type f -name '*.json' -delete

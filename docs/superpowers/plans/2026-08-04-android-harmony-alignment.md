@@ -12,19 +12,19 @@
 
 ## File Map
 
-- Modify `Android/app/src/main/java/com/liangrui/quotaglance/MainActivity.kt`: launch-time notification permission request and result state.
-- Modify `Android/app/src/main/java/com/liangrui/quotaglance/data/PreferencesRepository.kt`: persisted `AppThemeMode` and preference codec.
-- Modify `Android/app/src/main/java/com/liangrui/quotaglance/ui/Theme.kt`: light/dark/system selection.
-- Create `Android/app/src/main/java/com/liangrui/quotaglance/ui/PermissionPolicy.kt`: pure SDK/grant decision seam.
-- Create `Android/app/src/main/java/com/liangrui/quotaglance/ui/OverviewPresentation.kt`: provider summary model and presenter.
-- Modify `Android/app/src/main/java/com/liangrui/quotaglance/ui/Presentation.kt`: account-selection helpers used by the overview and tab detail.
-- Modify `Android/app/src/main/java/com/liangrui/quotaglance/ui/QuotaGlanceApp.kt`: HarmonyOS-style app bar, overview panel, account tabs, onboarding, management/settings entry and localized copy.
-- Modify `Android/app/src/main/java/com/liangrui/quotaglance/widget/QuotaGlanceWidget.kt`: pass the persisted theme mode to Compose previews/configuration.
-- Modify `Android/app/build.gradle.kts`: add the Material icon dependency used by accessible toolbar actions.
-- Create `Android/app/src/test/java/com/liangrui/quotaglance/ui/PermissionPolicyTest.kt`: permission decision tests.
-- Modify `Android/app/src/test/java/com/liangrui/quotaglance/data/StorageCodecTest.kt`: theme raw-value round-trip/fallback tests.
-- Create `Android/app/src/test/java/com/liangrui/quotaglance/ui/OverviewPresentationTest.kt`: provider grouping and status tests.
-- Modify `Android/app/src/test/java/com/liangrui/quotaglance/ui/PresentationContractTest.kt`: account-tab/deleted-route selection tests.
+- Modify `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/MainActivity.kt`: launch-time notification permission request and result state.
+- Modify `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/data/PreferencesRepository.kt`: persisted `AppThemeMode` and preference codec.
+- Modify `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/Theme.kt`: light/dark/system selection.
+- Create `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/PermissionPolicy.kt`: pure SDK/grant decision seam.
+- Create `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/OverviewPresentation.kt`: provider summary model and presenter.
+- Modify `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/Presentation.kt`: account-selection helpers used by the overview and tab detail.
+- Modify `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/QuotaGlanceApp.kt`: HarmonyOS-style app bar, overview panel, account tabs, onboarding, management/settings entry and localized copy.
+- Modify `Platforms/Android/app/src/main/java/com/liangrui/quotaglance/widget/QuotaGlanceWidget.kt`: pass the persisted theme mode to Compose previews/configuration.
+- Modify `Platforms/Android/app/build.gradle.kts`: add the Material icon dependency used by accessible toolbar actions.
+- Create `Platforms/Android/app/src/test/java/com/liangrui/quotaglance/ui/PermissionPolicyTest.kt`: permission decision tests.
+- Modify `Platforms/Android/app/src/test/java/com/liangrui/quotaglance/data/StorageCodecTest.kt`: theme raw-value round-trip/fallback tests.
+- Create `Platforms/Android/app/src/test/java/com/liangrui/quotaglance/ui/OverviewPresentationTest.kt`: provider grouping and status tests.
+- Modify `Platforms/Android/app/src/test/java/com/liangrui/quotaglance/ui/PresentationContractTest.kt`: account-tab/deleted-route selection tests.
 
 ### Task 1: Automatic Permission and Theme Preference
 
@@ -49,7 +49,7 @@
 
 - [ ] **Step 2: Run the focused test and verify it fails for the missing function.**
 
-  Run `cd Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.PermissionPolicyTest`.
+  Run `cd Platforms/Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.PermissionPolicyTest`.
   Expected: compilation failure because `PermissionPolicy.kt` and the function do not exist.
 
 - [ ] **Step 3: Implement the permission seam and launch request.**
@@ -70,7 +70,7 @@
   }
   ```
 
-  Run `cd Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.data.StorageCodecTest`; expected failure until the enum exists.
+  Run `cd Platforms/Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.data.StorageCodecTest`; expected failure until the enum exists.
 
 - [ ] **Step 5: Implement preference persistence and theme selection.**
 
@@ -78,8 +78,8 @@
 
 - [ ] **Step 6: Run the focused tests and commit this task.**
 
-  Run `cd Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.PermissionPolicyTest --tests com.liangrui.quotaglance.data.StorageCodecTest`.
-  Expected: PASS. Commit with `git add Android/app/src/main/java/com/liangrui/quotaglance/MainActivity.kt Android/app/src/main/java/com/liangrui/quotaglance/data/PreferencesRepository.kt Android/app/src/main/java/com/liangrui/quotaglance/ui/PermissionPolicy.kt Android/app/src/main/java/com/liangrui/quotaglance/ui/Theme.kt Android/app/src/test && git commit -m "feat(android): request notification permission and persist theme"`.
+  Run `cd Platforms/Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.PermissionPolicyTest --tests com.liangrui.quotaglance.data.StorageCodecTest`.
+  Expected: PASS. Commit with `git add Platforms/Android/app/src/main/java/com/liangrui/quotaglance/MainActivity.kt Platforms/Android/app/src/main/java/com/liangrui/quotaglance/data/PreferencesRepository.kt Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/PermissionPolicy.kt Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/Theme.kt Platforms/Android/app/src/test && git commit -m "feat(android): request notification permission and persist theme"`.
 
 ### Task 2: Provider Overview Presentation
 
@@ -112,7 +112,7 @@
 
 - [ ] **Step 2: Run `OverviewPresentationTest` and verify the missing presenter fails.**
 
-  Run `cd Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.OverviewPresentationTest`.
+  Run `cd Platforms/Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.OverviewPresentationTest`.
   Expected: compilation failure for the missing model/presenter.
 
 - [ ] **Step 3: Implement the minimal provider grouping.**
@@ -121,12 +121,12 @@
 
 - [ ] **Step 4: Run the focused presenter tests and commit.**
 
-  Run `cd Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.OverviewPresentationTest --tests com.liangrui.quotaglance.ui.PresentationContractTest`.
-  Expected: PASS. Commit with `git add Android/app/src/main/java/com/liangrui/quotaglance/ui/OverviewPresentation.kt Android/app/src/main/java/com/liangrui/quotaglance/ui/Presentation.kt Android/app/src/test/java/com/liangrui/quotaglance/ui && git commit -m "feat(android): add provider overview presentation"`.
+  Run `cd Platforms/Android && ./gradlew --no-daemon :app:testDebugUnitTest --tests com.liangrui.quotaglance.ui.OverviewPresentationTest --tests com.liangrui.quotaglance.ui.PresentationContractTest`.
+  Expected: PASS. Commit with `git add Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/OverviewPresentation.kt Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui/Presentation.kt Platforms/Android/app/src/test/java/com/liangrui/quotaglance/ui && git commit -m "feat(android): add provider overview presentation"`.
 
 ### Task 3: HarmonyOS-Style Overview and Account Tabs
 
-**Files:** Modify `QuotaGlanceApp.kt`, `Presentation.kt`, and `Theme.kt` call sites; modify `Android/app/build.gradle.kts` for `androidx.compose.material:material-icons-extended`.
+**Files:** Modify `QuotaGlanceApp.kt`, `Presentation.kt`, and `Theme.kt` call sites; modify `Platforms/Android/app/build.gradle.kts` for `androidx.compose.material:material-icons-extended`.
 
 - [ ] **Step 1: Add the route-selection regression test before UI wiring.**
 
@@ -156,12 +156,12 @@
 
 - [ ] **Step 4: Run JVM presentation tests and compile the UI.**
 
-  Run `cd Android && ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug`.
+  Run `cd Platforms/Android && ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug`.
   Expected: all JVM tests and lint pass; no Compose compilation errors.
 
 - [ ] **Step 5: Commit the overview shell.**
 
-  Run `git diff --check`, then commit with `git add Android/app/build.gradle.kts Android/app/src/main/java/com/liangrui/quotaglance/ui && git commit -m "feat(android): align overview with HarmonyOS layout"`.
+  Run `git diff --check`, then commit with `git add Platforms/Android/app/build.gradle.kts Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui && git commit -m "feat(android): align overview with HarmonyOS layout"`.
 
 ### Task 4: Account Management and Settings Surfaces
 
@@ -185,8 +185,8 @@
 
 - [ ] **Step 5: Run the full JVM suite and commit.**
 
-  Run `cd Android && ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug`.
-  Expected: PASS. Commit with `git add Android/app/src/main/java/com/liangrui/quotaglance/ui Android/app/src/main/java/com/liangrui/quotaglance/data Android/app/src/main/java/com/liangrui/quotaglance/widget && git commit -m "feat(android): complete account and settings surfaces"`.
+  Run `cd Platforms/Android && ./gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug`.
+  Expected: PASS. Commit with `git add Platforms/Android/app/src/main/java/com/liangrui/quotaglance/ui Platforms/Android/app/src/main/java/com/liangrui/quotaglance/data Platforms/Android/app/src/main/java/com/liangrui/quotaglance/widget && git commit -m "feat(android): complete account and settings surfaces"`.
 
 ### Task 5: Verification and Device Handoff
 
@@ -199,7 +199,7 @@
   ```bash
   bash scripts/verify-provider-parity.sh
   bash scripts/verify-android-parity.sh
-  cd Android
+  cd Platforms/Android
   ./gradlew --no-daemon :app:testDebugUnitTest :app:lint :app:assembleDebug :app:assembleRelease
   ```
 
@@ -207,7 +207,7 @@
 
 - [ ] **Step 2: Check packaging and source hygiene.**
 
-  Run `git diff --check`; inspect `Android/app/build/outputs/apk/release/*.apk` with `apksigner verify --verbose` when available; run `git status --short` and confirm no credentials, generated assets, or build outputs are tracked.
+  Run `git diff --check`; inspect `Platforms/Android/app/build/outputs/apk/release/*.apk` with `apksigner verify --verbose` when available; run `git status --short` and confirm no credentials, generated assets, or build outputs are tracked.
 
 - [ ] **Step 3: Perform device/emulator checks.**
 

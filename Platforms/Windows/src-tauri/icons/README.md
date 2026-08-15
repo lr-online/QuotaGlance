@@ -10,7 +10,7 @@ This directory holds the icon files referenced by `tauri.conf.json`:
 
 Generate them from the existing QuotaGlance app icon set:
 
-- source: `App/Assets.xcassets/AppIcon.appiconset/icon-1024.png`
+- source: `Platforms/macOS/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png`
 - command: `bash scripts/generate-windows-icons.sh`
 
 Windows must reuse the same icon already used by the other clients. Do not

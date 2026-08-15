@@ -38,7 +38,7 @@ contract parity as complete product parity.
 ## Android Baseline
 
 Android is a third native client, not a wrapper around either existing host. The table
-below records the required new-platform capability audit for `Android/`. “Implemented”
+below records the required new-platform capability audit for `Platforms/Android/`. “Implemented”
 means the current Kotlin source and listed automated coverage support the behavior;
 device-only items remain an explicit manual-verification gap rather than an implied
 equivalence claim.

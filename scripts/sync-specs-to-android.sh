@@ -3,7 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_DIR="$REPO_ROOT/Contracts/Providers"
-TARGET_DIR="$REPO_ROOT/Android/app/src/main/assets/providerspecs"
+TARGET_DIR="$REPO_ROOT/Platforms/Android/app/src/main/assets/providerspecs"
 
 mkdir -p "$TARGET_DIR"
 find "$TARGET_DIR" -mindepth 1 -maxdepth 1 -type f -name '*.json' -delete

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WINDOWS_DIR="$REPO_ROOT/Windows"
+WINDOWS_DIR="$REPO_ROOT/Platforms/Windows"
 TAURI_DIR="$WINDOWS_DIR/src-tauri"
 
 cd "$REPO_ROOT"

@@ -83,7 +83,7 @@ jobs:
           /bin/bash scripts/sync-contracts-to-windows.sh
 
       - name: Run Swift tests
-        run: swift test
+        run: swift test --package-path Shared/SwiftCore
 
       - name: Verify provider parity
         run: /bin/bash scripts/verify-provider-parity.sh
@@ -157,7 +157,7 @@ jobs:
           bash scripts/verify-android-parity.sh
 
       - name: Test, lint, and build release APK
-        working-directory: Android
+        working-directory: Platforms/Android
         env:
           QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.version }}
           QUOTAGLANCE_VERSION_CODE: ${{ needs.prepare.outputs.android_version_code }}
@@ -173,7 +173,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
           asset="dist/QuotaGlance-${QUOTAGLANCE_VERSION}-android-universal.apk"
-          cp Android/app/build/outputs/apk/release/app-release.apk "$asset"
+          cp Platforms/Android/app/build/outputs/apk/release/app-release.apk "$asset"
           sha256sum "$asset" > "$asset.sha256"
 
       - name: Upload Android release asset
@@ -214,7 +214,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: Windows/package-lock.json
+          cache-dependency-path: Platforms/Windows/package-lock.json
 
       - name: Sync spec + contract sources into Windows assets
         shell: bash
@@ -223,7 +223,7 @@ jobs:
           bash scripts/sync-contracts-to-windows.sh
 
       - name: Install front-end dependencies
-        working-directory: Windows
+        working-directory: Platforms/Windows
         shell: pwsh
         run: npm ci
 
@@ -240,12 +240,12 @@ jobs:
         run: bash scripts/verify-windows-parity.sh
 
       - name: Cargo test (engine, aggregation, alerts)
-        working-directory: Windows/src-tauri
+        working-directory: Platforms/Windows/src-tauri
         shell: pwsh
         run: cargo test --verbose
 
       - name: Build and name Windows release assets
-        working-directory: Windows
+        working-directory: Platforms/Windows
         shell: pwsh
         env:
           QUOTAGLANCE_VERSION: ${{ needs.prepare.outputs.version }}

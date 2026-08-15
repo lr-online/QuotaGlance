@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-HARMONY_DIR="$ROOT_DIR/HarmonyOS"
+HARMONY_DIR="$ROOT_DIR/Platforms/HarmonyOS"
 BUILD_PROFILE="$HARMONY_DIR/build-profile.json5"
 BUILD_PROFILE_TEMPLATE="$HARMONY_DIR/build-profile.template.json5"
 BUILD_MODE="${HARMONYOS_BUILD_MODE:-debug}"
@@ -20,7 +20,7 @@ if [[ ! -f "$BUILD_PROFILE" ]]; then
     exit 1
   fi
   cp "$BUILD_PROFILE_TEMPLATE" "$BUILD_PROFILE"
-  echo "Initialized ignored HarmonyOS/build-profile.json5 from the tracked template"
+  echo "Initialized ignored Platforms/HarmonyOS/build-profile.json5 from the tracked template"
 fi
 
 cd "$HARMONY_DIR"

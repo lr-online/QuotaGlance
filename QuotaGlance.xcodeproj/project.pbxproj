@@ -250,7 +250,7 @@
 				2F79CC47C0AC06E7FA6A7889 /* QuotaGlanceNCWidget.swift */,
 				ED37E24E35D7A1BF4BF37366 /* QuotaGlanceNCWidgetBundle.swift */,
 			);
-			path = NCWidget;
+			path = Platforms/macOS/NCWidget;
 			sourceTree = "<group>";
 		};
 		6B313A67D712A8FDD5779846 /* Services */ = {
@@ -280,7 +280,7 @@
 				50310A25E2115AB3B292760B /* IntentHandler.swift */,
 				10809E5DD33B466D567C9583 /* NCWidgetAccountChoiceOptions.swift */,
 			);
-			path = NCIntents;
+			path = Platforms/macOS/NCIntents;
 			sourceTree = "<group>";
 		};
 		ACF0A69EB442CE24F1F917D6 /* App */ = {
@@ -297,7 +297,7 @@
 				6B313A67D712A8FDD5779846 /* Services */,
 				F086E3532ECAF773B1150BF2 /* Settings */,
 			);
-			path = App;
+			path = Platforms/macOS/App;
 			sourceTree = "<group>";
 		};
 		BDDEDCE658E202BEF8F48CB9 /* Compatibility */ = {
@@ -319,7 +319,7 @@
 				45AFA11C2B0136118BBA4CF1 /* QuotaGlanceWidgetBundle.swift */,
 				E2E65E4350977ACA208C7BA8 /* WidgetViews.swift */,
 			);
-			path = Widget;
+			path = Platforms/macOS/Widget;
 			sourceTree = "<group>";
 		};
 		D07B3C2CF093B6F542C3103C /* Packages */ = {
@@ -667,9 +667,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = NCWidget/QuotaGlanceNCWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/NCWidget/QuotaGlanceNCWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = NCWidget/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/NCWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -687,9 +687,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = NCIntents/QuotaGlanceNCIntents.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/NCIntents/QuotaGlanceNCIntents.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = NCIntents/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/NCIntents/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -832,9 +832,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = Widget/QuotaGlanceWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/Widget/QuotaGlanceWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = Widget/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/Widget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -852,9 +852,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = NCIntents/QuotaGlanceNCIntents.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/NCIntents/QuotaGlanceNCIntents.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = NCIntents/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/NCIntents/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -872,10 +872,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = App/QuotaGlance.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/App/QuotaGlance.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -891,9 +891,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = NCWidget/QuotaGlanceNCWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/NCWidget/QuotaGlanceNCWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = NCWidget/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/NCWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -911,10 +911,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = App/QuotaGlance.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/App/QuotaGlance.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -930,10 +930,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = App/QuotaGlance.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/App/QuotaGlance.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -949,9 +949,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
-				CODE_SIGN_ENTITLEMENTS = Widget/QuotaGlanceWidget.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/Widget/QuotaGlanceWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = Widget/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/Widget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -969,10 +969,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = App/QuotaGlance.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Platforms/macOS/App/QuotaGlance.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
-				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_FILE = Platforms/macOS/App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1046,7 +1046,7 @@
 /* Begin XCLocalSwiftPackageReference section */
 		F3213ACBB4C05471B0AF07BE /* XCLocalSwiftPackageReference "." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = .;
+			relativePath = Shared/SwiftCore;
 		};
 /* End XCLocalSwiftPackageReference section */
 
