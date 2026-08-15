@@ -4,6 +4,7 @@
 
 # --- Rust + Tauri build artefacts --------------------------------------------
 target/
+artifacts/
 src-tauri/gen/schemas/
 src-tauri/Cargo.lock
 
