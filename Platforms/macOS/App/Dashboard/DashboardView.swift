@@ -506,29 +506,9 @@ struct DashboardView: View {
     private var accountContent: some View {
         VStack(alignment: .leading, spacing: 24) {
             if let usage = presentation.usage {
-                balanceDetails(usage.balances)
-                if !chartDays.isEmpty {
-                    dashboardSection(L10n.string(.last7Days, language: language)) {
-                        UsageChartView(days: chartDays, language: language)
-                            .frame(maxWidth: 620)
-                    }
+                if usage.hasRequestDetails {
+                    requestDetails(usage)
                 }
-                if let limit = usage.spendingLimit { spendingLimitDetails(limit) }
-                if !usage.spend.isEmpty { spendDetails(usage.spend) }
-                quotaDetails(usage.quotaWindows)
-                if let today = usage.today {
-                    counterDetails(
-                        title: L10n.string(.todayMetrics, language: language),
-                        counters: today
-                    )
-                }
-                if let total = usage.total {
-                    counterDetails(
-                        title: L10n.string(.totalMetrics, language: language),
-                        counters: total
-                    )
-                }
-                modelDetails(presentation.modelRows)
                 providerDetails(usage)
             } else {
                 Text(L10n.string(.noData, language: language))
@@ -546,132 +526,119 @@ struct DashboardView: View {
         }
     }
 
-    @ViewBuilder
-    private func balanceDetails(_ balances: [MonetaryBalance]) -> some View {
-        if !balances.isEmpty {
-            dashboardSection(L10n.string(.balances, language: language)) {
-                VStack(spacing: 8) {
-                    ForEach(balances) { balance in
-                        valueRow(balance.label, MoneyFormatter.string(balance.available), emphasized: true)
-                        ForEach(balance.breakdown) { item in
-                            valueRow(item.label, MoneyFormatter.string(item.value))
-                                .padding(.leading, 16)
-                        }
-                    }
-                }
+    private func requestDetails(_ usage: ProviderUsageSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 24) {
+            Text(L10n.string(.requestDetails, language: language))
+                .font(.title3.weight(.semibold))
+            if let today = usage.today, today.hasRequestMetrics {
+                requestCounterSection(
+                    title: L10n.string(.todayMetrics, language: language),
+                    counters: today
+                )
             }
-        }
-    }
-
-    private func spendingLimitDetails(_ limit: SpendingLimit) -> some View {
-        dashboardSection(limit.label) {
-            VStack(alignment: .leading, spacing: 8) {
-                if let fraction = moneyProgress(limit) {
-                    ProgressView(value: fraction)
-                        .progressViewStyle(.linear)
-                        .frame(maxWidth: 520)
-                }
-                moneyValues([
-                    (L10n.string(.remaining, language: language), limit.remaining),
-                    (L10n.string(.used, language: language), limit.used),
-                    (L10n.string(.limit, language: language), limit.limit),
-                ])
-                if let reset = limit.resetDescription {
-                    Text(reset).font(.caption).foregroundStyle(.secondary)
-                }
+            if let total = usage.total, total.hasRequestMetrics {
+                requestCounterSection(
+                    title: L10n.string(.totalMetrics, language: language),
+                    counters: total
+                )
             }
+            dailyRequestDetails(usage.dailyUsage)
+            modelRequestDetails(usage.modelUsage)
         }
     }
 
-    private func spendDetails(_ spend: SpendSummary) -> some View {
-        dashboardSection(L10n.string(.spend, language: language)) {
-            moneyValues([
-                (L10n.string(.today, language: language), spend.today),
-                (L10n.string(.thisWeek, language: language), spend.week),
-                (L10n.string(.thisMonth, language: language), spend.month),
-                (L10n.string(.total, language: language), spend.total),
-            ])
-        }
-    }
-
-    @ViewBuilder
-    private func quotaDetails(_ windows: [QuotaWindow]) -> some View {
-        if !windows.isEmpty {
-            dashboardSection(L10n.string(.quotaWindows, language: language)) {
-                VStack(alignment: .leading, spacing: 14) {
-                    ForEach(windows) { window in
-                        VStack(alignment: .leading, spacing: 7) {
-                            Text(window.label).font(.body.weight(.medium))
-                            if let fraction = progress(window.used, window.limit) {
-                                ProgressView(value: fraction)
-                                    .progressViewStyle(.linear)
-                                    .frame(maxWidth: 520)
-                            }
-                            HStack(spacing: 20) {
-                                decimalMetric(.remaining, window.remaining, unit: window.unit)
-                                decimalMetric(.used, window.used, unit: window.unit)
-                                decimalMetric(.limit, window.limit, unit: window.unit)
-                            }
-                            if let resetsAt = window.resetsAt {
-                                Text(resetsAt, style: .relative)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func counterDetails(title: String, counters: UsageCounters) -> some View {
+    private func requestCounterSection(
+        title: String,
+        counters: UsageCounters
+    ) -> some View {
         dashboardSection(title) {
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 150), spacing: 14)],
                 alignment: .leading,
                 spacing: 10
             ) {
-                if let cost = counters.actualCost {
-                    overviewMetric(
-                        L10n.string(.spend, language: language),
-                        MoneyFormatter.string(cost)
-                    )
-                }
                 integerMetric(.requests, counters.requests)
+                integerMetric(.totalTokens, counters.totalTokens)
                 integerMetric(.inputTokens, counters.inputTokens)
                 integerMetric(.outputTokens, counters.outputTokens)
                 integerMetric(.cacheReadTokens, counters.cacheReadTokens)
                 integerMetric(.cacheCreationTokens, counters.cacheCreationTokens)
-                integerMetric(.totalTokens, counters.totalTokens)
             }
         }
     }
 
     @ViewBuilder
-    private func modelDetails(_ models: [ModelUsage]) -> some View {
-        if !models.isEmpty {
-            dashboardSection(L10n.string(.modelUsage, language: language)) {
+    private func dailyRequestDetails(_ days: [DailyUsage]) -> some View {
+        let requestDays = days.filter { $0.requests != nil || $0.totalTokens != nil }
+        if !requestDays.isEmpty {
+            dashboardSection(L10n.string(.dailyRequests, language: language)) {
                 VStack(spacing: 0) {
-                    ForEach(Array(models.enumerated()), id: \.element.id) { index, model in
+                    ForEach(Array(requestDays.suffix(7).reversed().enumerated()), id: \.element.id) { index, day in
                         if index > 0 { Divider() }
-                        HStack {
-                            Text(model.model).lineLimit(1).truncationMode(.middle)
-                            Spacer()
-                            if let cost = model.actualCost {
-                                Text(MoneyFormatter.string(cost))
+                        HStack(alignment: .firstTextBaseline, spacing: 20) {
+                            Text(day.date)
+                                .frame(width: 100, alignment: .leading)
+                            Spacer(minLength: 12)
+                            if let requests = day.requests {
+                                requestValue(
+                                    L10n.string(.requests, language: language),
+                                    requests.formatted()
+                                )
                             }
-                            if let requests = model.requests {
-                                Text(requests.formatted())
-                            }
-                            if let tokens = model.totalTokens {
-                                Text(tokens.formatted())
+                            if let tokens = day.totalTokens {
+                                requestValue(
+                                    L10n.string(.totalTokens, language: language),
+                                    tokens.formatted()
+                                )
                             }
                         }
-                        .font(.body)
                         .padding(.vertical, 10)
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func modelRequestDetails(_ models: [ModelUsage]) -> some View {
+        let requestModels = models.filter { $0.requests != nil || $0.totalTokens != nil }
+        if !requestModels.isEmpty {
+            dashboardSection(L10n.string(.requestsByModel, language: language)) {
+                VStack(spacing: 0) {
+                    ForEach(Array(requestModels.enumerated()), id: \.element.id) { index, model in
+                        if index > 0 { Divider() }
+                        HStack(alignment: .firstTextBaseline, spacing: 20) {
+                            Text(model.model)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer(minLength: 12)
+                            if let requests = model.requests {
+                                requestValue(
+                                    L10n.string(.requests, language: language),
+                                    requests.formatted()
+                                )
+                            }
+                            if let tokens = model.totalTokens {
+                                requestValue(
+                                    L10n.string(.totalTokens, language: language),
+                                    tokens.formatted()
+                                )
+                            }
+                        }
+                        .padding(.vertical, 10)
+                    }
+                }
+            }
+        }
+    }
+
+    private func requestValue(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.body.monospacedDigit())
         }
     }
 
@@ -718,26 +685,6 @@ struct DashboardView: View {
                 .multilineTextAlignment(.trailing)
         }
         .font(.body)
-    }
-
-    private func moneyValues(_ values: [(String, Money?)]) -> some View {
-        HStack(spacing: 24) {
-            ForEach(Array(values.enumerated()), id: \.offset) { _, item in
-                if let money = item.1 {
-                    overviewMetric(item.0, MoneyFormatter.string(money))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func decimalMetric(_ key: L10nKey, _ value: Decimal?, unit: String) -> some View {
-        if let value = value {
-            overviewMetric(
-                L10n.string(key, language: language),
-                PrimaryMetricFormatter.string(.quantity(value, unit: unit))
-            )
-        }
     }
 
     @ViewBuilder
@@ -820,17 +767,6 @@ struct DashboardView: View {
             : L10n.string(.accountCount, language: language, count)
     }
 
-    private func moneyProgress(_ limit: SpendingLimit) -> Double? {
-        guard let used = limit.used,
-              let total = limit.limit,
-              used.currency == total.currency else { return nil }
-        return progress(used.amount, total.amount)
-    }
-
-    private func progress(_ used: Decimal?, _ limit: Decimal?) -> Double? {
-        guard let used = used, let limit = limit, limit > 0 else { return nil }
-        return min(max(NSDecimalNumber(decimal: used / limit).doubleValue, 0), 1)
-    }
 }
 
 private struct DashboardWindowTitleUpdater: NSViewRepresentable {
@@ -848,5 +784,25 @@ private struct DashboardWindowTitleUpdater: NSViewRepresentable {
         DispatchQueue.main.async {
             nsView.window?.title = title
         }
+    }
+}
+
+private extension UsageCounters {
+    var hasRequestMetrics: Bool {
+        requests != nil
+            || inputTokens != nil
+            || outputTokens != nil
+            || cacheReadTokens != nil
+            || cacheCreationTokens != nil
+            || totalTokens != nil
+    }
+}
+
+private extension ProviderUsageSnapshot {
+    var hasRequestDetails: Bool {
+        (today?.hasRequestMetrics ?? false)
+            || (total?.hasRequestMetrics ?? false)
+            || dailyUsage.contains { $0.requests != nil || $0.totalTokens != nil }
+            || modelUsage.contains { $0.requests != nil || $0.totalTokens != nil }
     }
 }

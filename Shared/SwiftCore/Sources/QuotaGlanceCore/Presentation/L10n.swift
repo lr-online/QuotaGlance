@@ -121,6 +121,9 @@ public enum L10nKey: String, Sendable {
     case requestShare
     case todayMetrics
     case totalMetrics
+    case requestDetails
+    case dailyRequests
+    case requestsByModel
     case inputTokens
     case outputTokens
     case cacheReadTokens
@@ -666,6 +669,18 @@ public enum L10n {
         .totalMetrics: [
             .english: "All Time",
             .chinese: "累计指标",
+        ],
+        .requestDetails: [
+            .english: "Request Details",
+            .chinese: "请求明细",
+        ],
+        .dailyRequests: [
+            .english: "Daily Requests",
+            .chinese: "每日请求",
+        ],
+        .requestsByModel: [
+            .english: "Requests by Model",
+            .chinese: "按模型请求",
         ],
         .inputTokens: [
             .english: "Input tokens",
