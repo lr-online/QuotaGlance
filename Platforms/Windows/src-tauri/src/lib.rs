@@ -14,6 +14,7 @@ pub mod domain;
 pub mod providers;
 pub mod refresh;
 pub mod storage;
+pub mod service_status;
 pub mod tray;
 
 use crate::commands::AppState;
@@ -133,6 +134,7 @@ pub fn run() {
             crate::commands::show_notification,
             crate::commands::quit_app,
             crate::commands::get_intent_payload,
+            crate::commands::get_openai_service_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -90,6 +90,17 @@ class AssetProviderRegistry(
     override fun provider(id: ProviderId) = providers[id] ?: error("missing provider ${id.raw}")
 }
 
+class OpenAIServiceStatusClient(private val http: RawHttpClient = OkHttpRawHttpClient()) {
+    suspend fun fetch(): com.liangrui.quotaglance.core.OpenAIServiceStatus {
+        val response = http.execute(HttpRequest("GET", SUMMARY_URL, mapOf("Accept" to "application/json")))
+        if (response.statusCode !in 200..299) return com.liangrui.quotaglance.core.OpenAIServiceStatus(false)
+        return runCatching { com.liangrui.quotaglance.core.parseOpenAIServiceStatus(response.body) }
+            .getOrDefault(com.liangrui.quotaglance.core.OpenAIServiceStatus(false))
+    }
+
+    companion object { const val SUMMARY_URL = "https://status.openai.com/api/v2/summary.json" }
+}
+
 class AndroidNotificationDispatcher(
     private val context: Context,
     private val preferences: PreferencesRepository,

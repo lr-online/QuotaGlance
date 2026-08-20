@@ -91,6 +91,8 @@ import com.liangrui.quotaglance.core.ModelUsage
 import com.liangrui.quotaglance.core.ProviderId
 import com.liangrui.quotaglance.core.QuotaAccount
 import com.liangrui.quotaglance.core.UsageCounters
+import com.liangrui.quotaglance.core.OpenAIServiceStatus
+import com.liangrui.quotaglance.core.ServiceStatusLevel
 import com.liangrui.quotaglance.data.AppLanguage
 import com.liangrui.quotaglance.data.AppPreferences
 import com.liangrui.quotaglance.data.AppThemeMode
@@ -249,6 +251,7 @@ private fun OverviewScreen(
         contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
+        state.serviceStatus?.let { status -> item { ServiceStatusBanner(status) } }
         item { OverviewHero(dashboard, copy) }
         if (dashboard.aggregate.dailyUsage.isNotEmpty()) {
             item { DailyUsageSection(dashboard, copy) }
@@ -269,6 +272,26 @@ private fun OverviewScreen(
                 val snapshot = state.snapshots.firstOrNull { it.accountId == account.id }
                 AccountDetail(snapshot, account, copy)
             }
+        }
+    }
+}
+
+@Composable
+private fun ServiceStatusBanner(status: OpenAIServiceStatus) {
+    val color = when (status.overall) {
+        ServiceStatusLevel.Operational -> Color(0xFF1B7F5A)
+        ServiceStatusLevel.Degraded -> Color(0xFFB7791F)
+        ServiceStatusLevel.Outage -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(color = color.copy(alpha = 0.12f), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+            Text("OpenAI service status", color = color, fontWeight = FontWeight.Medium)
+            Text(status.summary ?: "Official status is temporarily unavailable", color = color, style = MaterialTheme.typography.bodySmall)
+            if (status.affectedComponents.isNotEmpty()) Text(
+                "Affected: " + status.affectedComponents.joinToString(", ") { it.name },
+                color = color, style = MaterialTheme.typography.labelSmall,
+            )
         }
     }
 }

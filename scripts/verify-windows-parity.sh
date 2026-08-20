@@ -264,7 +264,7 @@ else
       fail "Windows contract fixture tree out of sync for provider '$name'"
     fi
   done
-  for src_pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle"; do
+  for src_pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle" "ServiceStatus servicestatus"; do
     src="${src_pair%% *}"
     dst="${src_pair##* }"
     if [[ ! -d "$FIXTURE_TARGET/$dst" ]]; then

@@ -33,6 +33,7 @@ use crate::storage::account_store::AccountStore;
 use crate::storage::credential_vault::CredentialVault;
 use crate::storage::preferences::{Preferences, PreferencesStore};
 use crate::storage::snapshot_store::SnapshotStore;
+use crate::service_status::OpenAIServiceStatus;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AddAccountRequest {
@@ -60,6 +61,11 @@ pub struct AppState {
     pub snapshots: Arc<SnapshotStore>,
     pub vault: Arc<std::sync::Mutex<CredentialVault>>,
     pub preferences: Arc<std::sync::Mutex<PreferencesStore>>,
+}
+
+#[tauri::command]
+pub async fn get_openai_service_status() -> OpenAIServiceStatus {
+    crate::service_status::fetch().await
 }
 
 #[tauri::command]

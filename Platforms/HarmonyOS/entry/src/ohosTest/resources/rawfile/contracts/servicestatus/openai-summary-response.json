@@ -1,0 +1,15 @@
+{
+  "page": {
+    "name": "OpenAI",
+    "url": "https://status.openai.com/"
+  },
+  "status": {
+    "description": "All Systems Operational",
+    "indicator": "none"
+  },
+  "components": [
+    { "id": "responses", "name": "Responses", "status": "operational" },
+    { "id": "realtime", "name": "Realtime", "status": "operational" }
+  ],
+  "incidents": []
+}

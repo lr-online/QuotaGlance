@@ -29,6 +29,7 @@ import { applyLanguage } from '../utils/LanguageUtils';
 import { applyThemeMode, reapplyWindowBackground } from '../utils/ThemeUtils';
 import { AccountDetailView, markAccountsRefreshedThisLaunch } from '../components/AccountDetailView';
 import { updateAllCards } from '../services/CardUpdater';
+import { fetchOpenAIServiceStatus, OpenAIServiceStatus } from '../services/OpenAIServiceStatus';
 
 // Aggregate currency ordering: CNY first, then USD, then the rest
 // alphabetically (mirrors the mac app's CNY/USD emphasis).
@@ -152,6 +153,7 @@ struct Index {
   @State overviewToday: string = '';
   @State overviewPartial: boolean = false;
   @State providerBlocks: ProviderOverview[] = [];
+  @State openAIServiceStatus: OpenAIServiceStatus | null = null;
   private tabsController: TabsController = new TabsController();
   // Recompute the overview whenever any detail/tab view reports a successful
   // refresh (see LaunchRefresh). Bound once; the listener re-reads context.
@@ -194,6 +196,7 @@ struct Index {
   // before loadOverview left the panel empty with no log anywhere).
   private async reload(): Promise<void> {
     const context = getContext(this) as common.UIAbilityContext;
+    this.openAIServiceStatus = await fetchOpenAIServiceStatus();
     let service: AccountService | null = null;
     try {
       service = await AccountService.create(context);
@@ -584,6 +587,7 @@ struct Index {
       return;
     }
     this.refreshingAll = true;
+    this.openAIServiceStatus = await fetchOpenAIServiceStatus();
     const context = getContext(this) as common.UIAbilityContext;
     try {
       const service = await AccountService.create(context);
@@ -721,6 +725,9 @@ struct Index {
   @Builder
   overviewPanel() {
     Column({ space: 10 }) {
+      if (this.openAIServiceStatus !== null) {
+        this.serviceStatusPanel(this.openAIServiceStatus as OpenAIServiceStatus)
+      }
       Column({ space: 4 }) {
         Row() {
           Text($r('app.string.overview_label'))
@@ -778,6 +785,26 @@ struct Index {
         this.recalcTabsHeight();
       }
     })
+  }
+
+  @Builder
+  serviceStatusPanel(status: OpenAIServiceStatus) {
+    Row({ space: 8 }) {
+      Text(status.available && status.overall === 'operational' ? '●' : '▲')
+        .fontSize(13)
+        .fontColor(status.available && status.overall === 'operational' ? $r('app.color.accentTeal') : $r('app.color.warning'))
+      Column({ space: 3 }) {
+        Text('OpenAI service status').fontSize(12).fontWeight(FontWeight.Medium).fontColor($r('app.color.textPrimary'))
+        Text(status.summary ?? 'Official status is temporarily unavailable').fontSize(11).fontColor($r('app.color.textSecondary')).maxLines(2)
+        if (status.affectedComponents.length > 0) {
+          Text(`Affected: ${status.affectedComponents.join(', ')}`).fontSize(10).fontColor($r('app.color.warning')).maxLines(1)
+        }
+      }.layoutWeight(1)
+    }
+    .width('100%')
+    .padding({ left: 12, right: 12, top: 9, bottom: 9 })
+    .backgroundColor($r('app.color.cardBackground'))
+    .borderRadius(10)
   }
 
   @Builder

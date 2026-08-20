@@ -750,3 +750,18 @@ Current status of the six providers:
 | openrouter | yes | conditional second step + `credentialKindDetection` |
 | minimax | mostly | `miniMaxModelRemains` strategy for `quotaWindows`; everything else declarative |
 | biomapcoding | yes | `gotoStep` status fallback |
+
+## Service-status contracts
+
+`Contracts/ServiceStatus/` defines public, credential-free service-health
+parsing independently from provider/account usage. Each `*-response.json` is
+an upstream status-page payload and the matching `*-expected.json` is the
+portable output. The OpenAI source is
+`https://status.openai.com/api/v2/summary.json`.
+
+All clients map overall indicators `none` to `operational`, `minor` to
+`degraded`, `major`/`critical` to `outage`, and unknown values to `unknown`.
+Operational components are omitted; `degraded_performance` and
+`partial_outage` are degraded, `major_outage` is an outage. Resolved incidents
+are omitted. Fetch or decode failures are an unavailable source, not an OpenAI
+outage and must not block account refresh.

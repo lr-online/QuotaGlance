@@ -10,6 +10,15 @@ function invokeOrPreview<T>(command: string, args: Record<string, unknown>, prev
 
 export type ProviderID = "apiInfo" | "deepSeek" | "kimi" | "openRouter" | "miniMax" | "bioMapCoding";
 export type AccountHealth = "healthy" | "belowThreshold" | "stale" | "unavailable";
+export type ServiceStatusLevel = "operational" | "degraded" | "outage" | "unknown";
+export interface OpenAIServiceStatus {
+  source: "openAI";
+  available: boolean;
+  overall?: ServiceStatusLevel;
+  summary?: string;
+  affectedComponents: Array<{ name: string; status: ServiceStatusLevel }>;
+  activeIncidents: Array<{ title: string; status: string; url?: string }>;
+}
 
 export interface ProviderProfile {
   region: "global" | "china" | "international";
@@ -138,6 +147,7 @@ export const commands = {
     invokeOrPreview<void>("show_notification", { title, body }, undefined),
   quit: () => invokeOrPreview<void>("quit_app", {}, undefined),
   getIntentPayload: () => invokeOrPreview<string | null>("get_intent_payload", {}, null),
+  getOpenAIServiceStatus: () => invokeOrPreview<OpenAIServiceStatus>("get_openai_service_status", {}, { source: "openAI", available: false, affectedComponents: [], activeIncidents: [] }),
 };
 
 export const events = {

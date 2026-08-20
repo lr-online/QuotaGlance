@@ -1,0 +1,16 @@
+{
+  "source": "openAI",
+  "overall": "degraded",
+  "summary": "Some systems are experiencing degraded performance",
+  "affectedComponents": [
+    { "name": "Realtime", "status": "degraded" },
+    { "name": "Batch", "status": "degraded" }
+  ],
+  "activeIncidents": [
+    {
+      "title": "Elevated errors for Realtime",
+      "status": "investigating",
+      "url": "https://stspg.io/example"
+    }
+  ]
+}
