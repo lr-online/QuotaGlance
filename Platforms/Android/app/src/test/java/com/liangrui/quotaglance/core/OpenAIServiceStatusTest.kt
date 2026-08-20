@@ -1,12 +1,15 @@
 package com.liangrui.quotaglance.core
 
-import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class OpenAIServiceStatusTest {
     @Test fun `degraded fixture maps affected components and active incidents`() {
-        val body = File("src/test/resources/contracts/ServiceStatus/openai-degraded-response.json").readText()
+        val body = checkNotNull(javaClass.classLoader)
+            .getResourceAsStream("contracts/ServiceStatus/openai-degraded-response.json")
+            ?.bufferedReader()
+            ?.use { it.readText() }
+            ?: error("missing synced service-status fixture")
         val actual = parseOpenAIServiceStatus(body)
         assertEquals(true, actual.available)
         assertEquals("openAI", actual.source)
