@@ -51,7 +51,7 @@ const KNOWN_PROVIDER_IDS: string[] = [
 const KNOWN_REGIONS: string[] = ['global', 'china', 'international'];
 const KNOWN_KINDS: string[] = ['standard', 'management', 'tokenPlan'];
 const KNOWN_TRANSFORMS: string[] = ['trim', 'uppercase'];
-const KNOWN_VALUE_TYPES: string[] = ['decimal', 'string', 'int', 'bool'];
+const KNOWN_VALUE_TYPES: string[] = ['decimal', 'string', 'int', 'bool', 'date'];
 const KNOWN_STRATEGIES: string[] = ['miniMaxModelRemains'];
 const KNOWN_L10N_KEYS: string[] = [
   'notDetected',

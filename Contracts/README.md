@@ -421,7 +421,7 @@ descent operators. Arrays are handled structurally by `fromArray`,
 
 A *value expression* evaluates to a scalar or null. Closed set:
 
-- `{ "path": "<path>", "type": "decimal|string|int|bool" }` — typed
+- `{ "path": "<path>", "type": "decimal|string|int|bool|date" }` — typed
   extraction. `decimal` accepts a JSON number **or** a numeric string
   (trimmed; `ProviderDecimal` semantics). An unparseable value counts as
   absent unless `required: true` is set on the same object, in which case the
@@ -431,6 +431,8 @@ A *value expression* evaluates to a scalar or null. Closed set:
   empty-after-transform string → `invalidResponse`),
   `"transforms": ["trim", "uppercase"]` (strings, applied
   in order), `"nullIfEmpty": true` (empty-after-trim string → null).
+  `date` accepts an RFC 3339 / ISO 8601 timestamp and produces an absolute
+  instant for fields such as `QuotaWindow.resetsAt`.
 - `{ "literal": <json scalar> }`
 - `{ "value": "<name>" }` — a named value from the parse block's `values`
   (or `itemValues` inside an array item).

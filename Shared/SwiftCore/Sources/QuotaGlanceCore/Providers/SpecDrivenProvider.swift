@@ -113,6 +113,11 @@ enum SpecEngine {
         return bool
     }
 
+    static func dateValue(_ value: SpecJSONValue?) -> Date? {
+        guard case let .string(string)? = value else { return nil }
+        return ISO8601DateFormatter().date(from: string)
+    }
+
     /// Renders a scalar for `map` lookups and `credentialKindDetection` keys:
     /// bools as "true"/"false", numbers in canonical decimal form, strings
     /// verbatim.
@@ -282,6 +287,8 @@ enum SpecEngine {
                 parseable = integer(raw) != nil
             case "bool":
                 parseable = boolValue(raw) != nil
+            case "date":
+                parseable = dateValue(raw) != nil
             default:
                 throw ProviderSpecError.invalidSpec("unknown value type '\(type)'")
             }
@@ -452,6 +459,12 @@ enum SpecEngine {
                 return nil
             }
             return .bool(value)
+        case "date":
+            guard let value = dateValue(raw) else {
+                if builder.required { throw ProviderError.invalidResponse }
+                return nil
+            }
+            return .date(value)
         default:
             throw ProviderSpecError.invalidSpec(
                 "unknown value type '\(builder.type ?? "")'"

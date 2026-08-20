@@ -289,6 +289,14 @@ export function jsonBool(value: Object | null): boolean | null {
   return typeof value === 'boolean' ? value : null;
 }
 
+export function jsonDateMs(value: Object | null): number | null {
+  if (typeof value !== 'string' || value.length === 0) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 // Renders a scalar for map lookups and credentialKindDetection keys: bools as
 // "true"/"false", numbers in canonical decimal form, strings verbatim.
 export function scalarKey(value: Object | null): string | null {
@@ -505,6 +513,9 @@ function requireValue(
         break;
       case 'bool':
         parseable = jsonBool(raw) !== null;
+        break;
+      case 'date':
+        parseable = jsonDateMs(raw) !== null;
         break;
       default:
         throw specError(`unknown value type '${type}'`);
@@ -791,6 +802,16 @@ function evaluatePathBuilder(builder: Record<string, Object>, scope: EvalScope):
         return null;
       }
       return evBool(value);
+    }
+    case 'date': {
+      const value = jsonDateMs(raw);
+      if (value === null) {
+        if (required) {
+          throw engineError('invalidResponse');
+        }
+        return null;
+      }
+      return evDateMs(value);
     }
     default:
       throw specError(`unknown value type '${type}'`);

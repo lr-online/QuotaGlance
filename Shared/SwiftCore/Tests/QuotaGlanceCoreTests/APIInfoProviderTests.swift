@@ -157,6 +157,18 @@ struct APIInfoProviderTests {
                 == Money(amount: Decimal(string: "544.045471")!, currency: "USD")
         )
         #expect(
+            snapshot.quotaWindows == [
+                QuotaWindow(
+                    label: "1d",
+                    used: Decimal(string: "36.5"),
+                    limit: 100,
+                    remaining: Decimal(string: "63.5"),
+                    unit: "USD",
+                    resetsAt: Date(timeIntervalSince1970: 1_784_736_000)
+                )
+            ]
+        )
+        #expect(
             snapshot.spend.today
                 == Money(amount: Decimal(string: "12.34")!, currency: "USD")
         )

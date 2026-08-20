@@ -22,6 +22,15 @@
     "used": 6655.90
   },
   "remaining": 544.045471,
+  "rate_limits": [
+    {
+      "limit": 100,
+      "remaining": 63.5,
+      "reset_at": "2026-07-23T00:00:00+08:00",
+      "used": 36.5,
+      "window": "1d"
+    }
+  ],
   "status": "active",
   "unit": "USD",
   "usage": {

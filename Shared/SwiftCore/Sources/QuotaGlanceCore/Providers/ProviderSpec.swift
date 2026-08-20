@@ -1060,7 +1060,7 @@ extension ProviderSpec {
     }
 
     private static func validateValueType(_ type: String, context: String) throws {
-        guard ["decimal", "string", "int", "bool"].contains(type) else {
+        guard ["decimal", "string", "int", "bool", "date"].contains(type) else {
             throw ProviderSpecError.invalidSpec("\(context): unknown value type '\(type)'")
         }
     }

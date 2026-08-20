@@ -10,6 +10,16 @@
     "today": { "amount": "12.34", "currency": "USD" },
     "total": { "amount": "6650.22", "currency": "USD" }
   },
+  "quotaWindows": [
+    {
+      "label": "1d",
+      "used": 36.5,
+      "limit": 100,
+      "remaining": 63.5,
+      "unit": "USD",
+      "resetsAtMs": 1784736000000
+    }
+  ],
   "today": {
     "actualCost": { "amount": "12.34", "currency": "USD" },
     "requests": 42,

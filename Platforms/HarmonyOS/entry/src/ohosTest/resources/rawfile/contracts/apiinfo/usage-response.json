@@ -5,6 +5,16 @@
   "planName": "Standard",
   "unit": "USD",
   "remaining": 544.045471,
+  "rate_limits": [
+    {
+      "window": "1d",
+      "limit": 100,
+      "used": 36.5,
+      "remaining": 63.5,
+      "window_start": "2026-07-22T00:00:00+08:00",
+      "reset_at": "2026-07-23T00:00:00+08:00"
+    }
+  ],
   "usage": {
     "today": {
       "actual_cost": 12.34,

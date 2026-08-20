@@ -207,6 +207,7 @@ internal object SpecEngine {
             } ?: requiredOrNull(required)
             "int" -> integer(raw)?.let(EvalValue::Integer) ?: requiredOrNull(required)
             "bool" -> (raw as? JsonPrimitive)?.booleanOrNull?.let(EvalValue::Bool) ?: requiredOrNull(required)
+            "date" -> dateMillis(raw)?.let(EvalValue::DateMillis) ?: requiredOrNull(required)
             else -> invalidResponse()
         }
     }
@@ -317,6 +318,7 @@ internal object SpecEngine {
             "string" -> value is JsonPrimitive && value.isString
             "int" -> integer(value) != null
             "bool" -> (value as? JsonPrimitive)?.booleanOrNull != null
+            "date" -> dateMillis(value) != null
             else -> false
         }
         if (!valid) throw failure(error)
@@ -408,9 +410,14 @@ private fun Map<String, EvalValue>.text(name: String): String? = (this[name] as?
 private fun Map<String, EvalValue>.decimal(name: String): BigDecimal? = (this[name] as? EvalValue.Decimal)?.value?.value
 private fun Map<String, EvalValue>.long(name: String): Long? = when (val value = this[name]) {
     is EvalValue.Integer -> value.value
+    is EvalValue.DateMillis -> value.value
     is EvalValue.Decimal -> value.value.value.toLongExactOrNull()
     else -> null
 }
+private fun dateMillis(value: JsonElement?): Long? =
+    (value as? JsonPrimitive)?.contentOrNull?.let { raw ->
+        runCatching { Instant.parse(raw).toEpochMilli() }.getOrNull()
+    }
 private fun Map<String, EvalValue>.money(name: String): Money? = (this[name] as? EvalValue.MoneyValue)?.let {
     Money.fromString(it.amount.canonical, it.currency)
 }

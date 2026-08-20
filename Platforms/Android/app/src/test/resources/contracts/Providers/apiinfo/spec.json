@@ -94,6 +94,17 @@
                 }
               }
             },
+            "quotaWindows": {
+              "fromArray": "rate_limits",
+              "item": {
+                "label": { "path": "window", "type": "string", "required": true },
+                "used": { "path": "used", "type": "decimal" },
+                "limit": { "path": "limit", "type": "decimal" },
+                "remaining": { "path": "remaining", "type": "decimal" },
+                "unit": { "literal": "USD" },
+                "resetsAt": { "path": "reset_at", "type": "date" }
+              }
+            },
             "spend": {
               "object": {
                 "today": {

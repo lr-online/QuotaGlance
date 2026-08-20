@@ -527,6 +527,7 @@ fn parse_typed(value: &Value, kind: &str) -> Option<Value> {
         "string" => value.as_str().map(|value| Value::String(value.to_string())),
         "int" => value.as_i64().or_else(|| value.as_str()?.trim().parse().ok()).map(serde_json::Number::from).map(Value::Number),
         "bool" => value.as_bool().map(Value::Bool),
+        "date" => value.as_str().and_then(|raw| chrono::DateTime::parse_from_rfc3339(raw).ok()).map(|date| Value::String(date.with_timezone(&Utc).to_rfc3339())),
         _ => None,
     }
 }
