@@ -10,6 +10,7 @@ import {
   UsageProvider
 } from '../../../main/ets/providers/UsageProvider';
 import {
+  ApiInfoDetails,
   DailyUsage,
   ModelUsage,
   Money,
@@ -87,6 +88,16 @@ interface ExpectedQuotaWindow {
   resetsAtMs?: number;
 }
 
+interface ExpectedApiInfoDetails {
+  planName?: string;
+  mode?: string;
+  status?: string;
+  reportedBalance?: ExpectedMoney;
+  isValid?: boolean;
+  expiresAtMs?: number;
+  daysUntilExpiry?: number;
+}
+
 interface ExpectedSnapshot {
   balances?: ExpectedBalance[];
   spendingLimit?: ExpectedSpendingLimit;
@@ -96,6 +107,7 @@ interface ExpectedSnapshot {
   total?: ExpectedUsageCounters;
   dailyUsage?: ExpectedDailyUsage[];
   modelUsage?: ExpectedModelUsage[];
+  apiInfoDetails?: ExpectedApiInfoDetails;
   providerStatus?: string;
   metricsUnavailableReason?: string;
 }
@@ -376,6 +388,18 @@ function assertSnapshot(snapshot: UsageSnapshot, expected: ExpectedSnapshot): vo
   }
   if (expected.providerStatus !== undefined) {
     expect(snapshot.providerStatus).assertEqual(expected.providerStatus);
+  }
+  if (expected.apiInfoDetails !== undefined) {
+    const actual = snapshot.apiInfoDetails;
+    expect(actual !== undefined).assertTrue();
+    const details = actual as ApiInfoDetails;
+    expect(details.planName).assertEqual(expected.apiInfoDetails.planName);
+    expect(details.mode).assertEqual(expected.apiInfoDetails.mode);
+    expect(details.status).assertEqual(expected.apiInfoDetails.status);
+    expectMoney(details.reportedBalance, expected.apiInfoDetails.reportedBalance);
+    expect(details.isValid).assertEqual(expected.apiInfoDetails.isValid);
+    expect(details.expiresAtMs).assertEqual(expected.apiInfoDetails.expiresAtMs);
+    expect(details.daysUntilExpiry).assertEqual(expected.apiInfoDetails.daysUntilExpiry);
   }
   if (expected.metricsUnavailableReason !== undefined) {
     expect(snapshot.metricsUnavailableReason).assertEqual(expected.metricsUnavailableReason);

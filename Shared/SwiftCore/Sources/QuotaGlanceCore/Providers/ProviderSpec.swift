@@ -543,6 +543,7 @@ public struct ProviderSpec: Decodable, Sendable {
         "total",
         "dailyUsage",
         "modelUsage",
+        "apiInfoDetails",
         "providerStatus",
         "metricsUnavailableReason",
     ]

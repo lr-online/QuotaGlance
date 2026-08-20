@@ -76,6 +76,16 @@ struct ExpectedQuotaWindow: Decodable {
     let resetsAtMs: Int64?
 }
 
+struct ExpectedAPIInfoDetails: Decodable {
+    let planName: String?
+    let mode: String?
+    let status: String?
+    let reportedBalance: ExpectedMoney?
+    let isValid: Bool?
+    let expiresAtMs: Int64?
+    let daysUntilExpiry: Int64?
+}
+
 struct ExpectedSnapshot: Decodable {
     let balances: [ExpectedBalance]?
     let spendingLimit: ExpectedSpendingLimit?
@@ -85,6 +95,7 @@ struct ExpectedSnapshot: Decodable {
     let total: ExpectedUsageCounters?
     let dailyUsage: [ExpectedDailyUsage]?
     let modelUsage: [ExpectedModelUsage]?
+    let apiInfoDetails: ExpectedAPIInfoDetails?
     let providerStatus: String?
     let metricsUnavailableReason: String?
 }
@@ -280,7 +291,7 @@ func expectQuotaWindows(
 func expectSnapshot(
     _ snapshot: ProviderUsageSnapshot,
     _ expected: ExpectedSnapshot
-) {
+) throws {
     if let expectedBalances = expected.balances {
         expectBalances(snapshot.balances, expectedBalances)
     }
@@ -337,6 +348,18 @@ func expectSnapshot(
     if let expectedStatus = expected.providerStatus {
         #expect(snapshot.providerStatus == expectedStatus)
     }
+    if let expectedDetails = expected.apiInfoDetails {
+        let actual = try #require(snapshot.apiInfoDetails)
+        #expect(actual.planName == expectedDetails.planName)
+        #expect(actual.mode == expectedDetails.mode)
+        #expect(actual.status == expectedDetails.status)
+        expectMoney(actual.reportedBalance, expectedDetails.reportedBalance)
+        #expect(actual.isValid == expectedDetails.isValid)
+        if let expiresAtMs = expectedDetails.expiresAtMs {
+            #expect(actual.expiresAt == Date(timeIntervalSince1970: TimeInterval(expiresAtMs) / 1000))
+        }
+        #expect(actual.daysUntilExpiry == expectedDetails.daysUntilExpiry)
+    }
     if let expectedReason = expected.metricsUnavailableReason {
         #expect(snapshot.metricsUnavailableReason == expectedReason)
     }
@@ -357,7 +380,7 @@ struct DeepSeekContractTests {
             profile: ProviderProfile(region: .global, credentialKind: .standard)
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "deepseek", name: "balance"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "deepseek", name: "balance"))
         if let expectedRequests = try loadExpectedRequests(provider: "deepseek", name: "balance") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
@@ -379,7 +402,7 @@ struct APIInfoContractTests {
             profile: .apiInfo
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "apiinfo", name: "usage"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "apiinfo", name: "usage"))
         if let expectedRequests = try loadExpectedRequests(provider: "apiinfo", name: "usage") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
@@ -405,7 +428,7 @@ struct KimiContractTests {
             profile: ProviderProfile(region: .china, credentialKind: .standard)
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "kimi", name: "china"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "kimi", name: "china"))
         if let expectedRequests = try loadExpectedRequests(provider: "kimi", name: "china") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
@@ -427,7 +450,7 @@ struct OpenRouterContractTests {
             profile: ProviderProfile(region: .global, credentialKind: .standard)
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "openrouter", name: "key-standard"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "openrouter", name: "key-standard"))
         if let expectedRequests = try loadExpectedRequests(provider: "openrouter", name: "key-standard") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
@@ -448,7 +471,7 @@ struct OpenRouterContractTests {
             profile: ProviderProfile(region: .global, credentialKind: .management)
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "openrouter", name: "key-management"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "openrouter", name: "key-management"))
         if let expectedRequests = try loadExpectedRequests(provider: "openrouter", name: "key-management") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
@@ -474,7 +497,7 @@ struct MiniMaxContractTests {
             profile: ProviderProfile(region: .china, credentialKind: .tokenPlan)
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "minimax", name: "remains"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "minimax", name: "remains"))
         if let expectedRequests = try loadExpectedRequests(provider: "minimax", name: "remains") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
@@ -496,7 +519,7 @@ struct BioMapCodingContractTests {
             profile: ProviderProfile(region: .global, credentialKind: .standard)
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "biomapcoding", name: "budget"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "biomapcoding", name: "budget"))
         if let expectedRequests = try loadExpectedRequests(provider: "biomapcoding", name: "budget") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }
@@ -517,7 +540,7 @@ struct BioMapCodingContractTests {
             profile: ProviderProfile(region: .global, credentialKind: .standard)
         )
 
-        expectSnapshot(snapshot, try loadExpected(provider: "biomapcoding", name: "fallback"))
+        try expectSnapshot(snapshot, try loadExpected(provider: "biomapcoding", name: "fallback"))
         if let expectedRequests = try loadExpectedRequests(provider: "biomapcoding", name: "fallback") {
             expectRequests(await httpClient.recorder.requests, expectedRequests)
         }

@@ -65,5 +65,14 @@
       "requests": 2,
       "totalTokens": 50
     }
-  ]
+  ],
+  "apiInfoDetails": {
+    "planName": "Standard",
+    "mode": "subscription",
+    "status": "active",
+    "reportedBalance": { "amount": "544.045471", "currency": "USD" },
+    "isValid": true,
+    "expiresAtMs": 1788019200000,
+    "daysUntilExpiry": 10
+  }
 }

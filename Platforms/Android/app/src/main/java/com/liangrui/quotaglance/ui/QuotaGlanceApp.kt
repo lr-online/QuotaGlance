@@ -531,11 +531,13 @@ private fun AccountDetail(snapshot: AccountSnapshot?, account: QuotaAccount, cop
                 usage.total?.let { CountersSummary(copy.total, it, copy) }
                 if (usage.dailyUsage.isNotEmpty()) {
                     DailyUsageChart(usage.dailyUsage, copy)
+                    DailyRequestSummary(usage.dailyUsage, copy)
                 }
                 if (usage.modelUsage.isNotEmpty()) {
                     ModelUsageSummary(usage.modelUsage, copy)
                 }
                 usage.providerStatus?.let { DetailLine(copy.providerStatus, it) }
+                usage.apiInfoDetails?.let { ApiInfoDetailsSummary(it, copy) }
                 usage.metricsUnavailableReason?.let { DetailLine(copy.metricsUnavailable, it) }
                 DetailLine(copy.lastUpdated, formatUpdatedAt(usage.receivedAtMillis))
             }
@@ -629,11 +631,16 @@ private fun CountersSummary(title: String, counters: UsageCounters, copy: AppCop
         counters.totalTokens?.let { copy.totalTokens to formatCount(it) },
         counters.inputTokens?.let { copy.inputTokens to formatCount(it) },
         counters.outputTokens?.let { copy.outputTokens to formatCount(it) },
+        counters.cacheReadTokens?.let { copy.cacheReadTokens to formatCount(it) },
+        counters.cacheCreationTokens?.let { copy.cacheCreationTokens to formatCount(it) },
     )
     if (fields.isEmpty()) return
     DetailSectionTitle(title)
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        fields.take(3).forEach { (label, value) -> SpendTile(label, value, Modifier.weight(1f)) }
+    fields.chunked(3).forEach { row ->
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            row.forEach { (label, value) -> SpendTile(label, value, Modifier.weight(1f)) }
+            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+        }
     }
 }
 
@@ -645,9 +652,38 @@ private fun ModelUsageSummary(models: List<ModelUsage>, copy: AppCopy) {
             Text(model.model, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             model.actualCost?.let { Text(formatMoney(it), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
             model.requests?.let { Text(formatCount(it), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp)) }
+            model.totalTokens?.let { Text("${formatCount(it)} ${copy.totalTokens}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 10.dp)) }
         }
         if (index < models.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     }
+}
+
+@Composable
+private fun DailyRequestSummary(entries: List<DailyUsage>, copy: AppCopy) {
+    val days = entries.takeLast(7).filter { it.requests != null || it.totalTokens != null }
+    if (days.isEmpty()) return
+    DetailSectionTitle(copy.dailyRequestDetails)
+    days.reversed().forEach { day ->
+        DetailLine(
+            day.date,
+            listOfNotNull(
+                day.requests?.let { "${formatCount(it)} ${copy.requests}" },
+                day.totalTokens?.let { "${formatCount(it)} ${copy.totalTokens}" },
+            ).joinToString(" · "),
+        )
+    }
+}
+
+@Composable
+private fun ApiInfoDetailsSummary(details: com.liangrui.quotaglance.core.ApiInfoDetails, copy: AppCopy) {
+    DetailSectionTitle(copy.apiInfoAccount)
+    details.planName?.let { DetailLine(copy.planName, it) }
+    details.mode?.let { DetailLine(copy.billingMode, it) }
+    details.status?.let { DetailLine(copy.keyStatus, it) }
+    details.reportedBalance?.let { DetailLine(copy.reportedBalance, formatMoney(it)) }
+    details.isValid?.let { DetailLine(copy.credentialStatus, if (it) copy.valid else copy.invalid) }
+    details.expiresAtMillis?.let { DetailLine(copy.expiresAt, formatUpdatedAt(it)) }
+    details.daysUntilExpiry?.let { DetailLine(copy.daysUntilExpiry, "$it") }
 }
 
 @Composable
@@ -1097,6 +1133,17 @@ internal data class AppCopy(val preferredLanguage: AppLanguage) {
     val cacheReadTokens get() = if (chinese) "缓存读取 token" else "Cache-read tokens"
     val cacheCreationTokens get() = if (chinese) "缓存创建 token" else "Cache-creation tokens"
     val totalTokens get() = if (chinese) "总 token" else "Total tokens"
+    val dailyRequestDetails get() = if (chinese) "每日请求明细" else "Daily request details"
+    val apiInfoAccount get() = if (chinese) "API Info 账户信息" else "API Info account"
+    val planName get() = if (chinese) "计划" else "Plan"
+    val billingMode get() = if (chinese) "计费模式" else "Billing mode"
+    val keyStatus get() = if (chinese) "Key 状态" else "Key status"
+    val reportedBalance get() = if (chinese) "账户余额" else "Reported balance"
+    val credentialStatus get() = if (chinese) "凭证状态" else "Credential status"
+    val expiresAt get() = if (chinese) "到期时间" else "Expires at"
+    val daysUntilExpiry get() = if (chinese) "剩余天数" else "Days remaining"
+    val valid get() = if (chinese) "有效" else "Valid"
+    val invalid get() = if (chinese) "无效" else "Invalid"
     val account get() = if (chinese) "账户" else "Account"
     val widget get() = if (chinese) "QuotaGlance 小组件" else "QuotaGlance widget"
     val useAppDefault get() = if (chinese) "使用应用默认值" else "Use app default"

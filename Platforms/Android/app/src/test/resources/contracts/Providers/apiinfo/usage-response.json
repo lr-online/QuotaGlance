@@ -1,6 +1,9 @@
 {
   "balance": 544.045471,
   "isValid": true,
+  "status": "active",
+  "expires_at": "2026-08-30T00:00:00+08:00",
+  "days_until_expiry": 10,
   "mode": "subscription",
   "planName": "Standard",
   "unit": "USD",

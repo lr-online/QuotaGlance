@@ -305,6 +305,25 @@ pub struct QuotaWindow {
     pub resets_at: Option<DateTime<Utc>>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ApiInfoDetails {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub plan_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub reported_balance: Option<Money>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub is_valid: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(rename = "expires_at_ms")]
+    pub expires_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub days_until_expiry: Option<i64>,
+}
+
 // ---------------------------------------------------------------------------
 // Snapshot / failure / health / account / aggregate / envelope
 // ---------------------------------------------------------------------------
@@ -327,6 +346,8 @@ pub struct ProviderUsageSnapshot {
     pub daily_usage: Vec<DailyUsage>,
     #[serde(default)]
     pub model_usage: Vec<ModelUsage>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub api_info_details: Option<ApiInfoDetails>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub provider_status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -381,6 +402,7 @@ impl ProviderUsageSnapshot {
             total,
             daily_usage,
             model_usage,
+            api_info_details: None,
             provider_status,
             metrics_unavailable_reason,
             received_at,

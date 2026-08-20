@@ -40,6 +40,16 @@ export interface UsageCounters {
   total_tokens?: number;
 }
 
+export interface ApiInfoDetails {
+  plan_name?: string;
+  mode?: string;
+  status?: string;
+  reported_balance?: Money;
+  is_valid?: boolean;
+  expires_at?: string;
+  days_until_expiry?: number;
+}
+
 export interface ProviderUsageSnapshot {
   balances: Array<{ label: string; available: Money; breakdown: Array<{ label: string; value: Money }> }>;
   spending_limit?: { label: string; used?: Money; limit?: Money; remaining?: Money; reset_description?: string };
@@ -49,6 +59,7 @@ export interface ProviderUsageSnapshot {
   total?: UsageCounters;
   daily_usage: Array<{ date: string; actual_cost: Money; requests?: number; total_tokens?: number }>;
   model_usage: Array<{ model: string; actual_cost?: Money; requests?: number; total_tokens?: number }>;
+  api_info_details?: ApiInfoDetails;
   provider_status?: string;
   metrics_unavailable_reason?: string;
   received_at: string;

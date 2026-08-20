@@ -530,6 +530,13 @@ order: a later step overrides only the fields it sets. Field forms:
 spec. `providerStatus`, `metricsUnavailableReason`, `spend`,
 `spendingLimit`, `today`, `total` follow the same builder rules.
 
+`apiInfoDetails` is the optional API Info account metadata object. It is
+available only when an API Info spec supplies it and has these optional fields:
+`planName`, `mode`, `status`, `reportedBalance` (`Money`), `isValid`,
+`expiresAt` (date), and `daysUntilExpiry` (integer). It is a normal snapshot
+field, not a platform-side raw-response extension, so any added field must be
+implemented by all spec engines and covered by the API Info fixture.
+
 ### Request steps and status branches
 
 `fetch.steps` is an ordered array. Step schema:

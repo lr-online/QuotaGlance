@@ -131,6 +131,15 @@ public enum L10nKey: String, Sendable {
     case totalTokens
     case providerStatus
     case metricsUnavailable
+    case apiInfoAccount
+    case apiInfoPlan
+    case apiInfoBillingMode
+    case apiInfoCredentialStatus
+    case apiInfoReportedBalance
+    case apiInfoExpiresAt
+    case apiInfoDaysUntilExpiry
+    case valid
+    case invalid
     case lastSuccessfulRefresh
     case modelUsage
 
@@ -709,6 +718,42 @@ public enum L10n {
         .metricsUnavailable: [
             .english: "Metrics unavailable",
             .chinese: "指标不可用",
+        ],
+        .apiInfoAccount: [
+            .english: "API Info Account",
+            .chinese: "API Info 账户信息",
+        ],
+        .apiInfoPlan: [
+            .english: "Plan",
+            .chinese: "计划",
+        ],
+        .apiInfoBillingMode: [
+            .english: "Billing mode",
+            .chinese: "计费模式",
+        ],
+        .apiInfoCredentialStatus: [
+            .english: "Credential status",
+            .chinese: "凭证状态",
+        ],
+        .apiInfoReportedBalance: [
+            .english: "Reported balance",
+            .chinese: "账户余额",
+        ],
+        .apiInfoExpiresAt: [
+            .english: "Expires at",
+            .chinese: "到期时间",
+        ],
+        .apiInfoDaysUntilExpiry: [
+            .english: "Days remaining",
+            .chinese: "剩余天数",
+        ],
+        .valid: [
+            .english: "Valid",
+            .chinese: "有效",
+        ],
+        .invalid: [
+            .english: "Invalid",
+            .chinese: "无效",
         ],
         .lastSuccessfulRefresh: [
             .english: "Last successful refresh",

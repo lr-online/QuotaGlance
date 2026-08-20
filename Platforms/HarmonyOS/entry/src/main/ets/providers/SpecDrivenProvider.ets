@@ -79,6 +79,7 @@ const KNOWN_SNAPSHOT_FIELDS: string[] = [
   'total',
   'dailyUsage',
   'modelUsage',
+  'apiInfoDetails',
   'providerStatus',
   'metricsUnavailableReason'
 ];

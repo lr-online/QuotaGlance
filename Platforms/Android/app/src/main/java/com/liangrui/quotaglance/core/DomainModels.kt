@@ -98,6 +98,16 @@ data class QuotaWindow(
     val resetsAtMillis: Long? = null,
 )
 
+data class ApiInfoDetails(
+    val planName: String? = null,
+    val mode: String? = null,
+    val status: String? = null,
+    val reportedBalance: Money? = null,
+    val isValid: Boolean? = null,
+    val expiresAtMillis: Long? = null,
+    val daysUntilExpiry: Long? = null,
+)
+
 data class UsageCounters(
     val actualCost: Money? = null,
     val requests: Long? = null,
@@ -131,6 +141,7 @@ data class ProviderUsageSnapshot(
     val total: UsageCounters? = null,
     val dailyUsage: List<DailyUsage> = emptyList(),
     val modelUsage: List<ModelUsage> = emptyList(),
+    val apiInfoDetails: ApiInfoDetails? = null,
     val providerStatus: String? = null,
     val metricsUnavailableReason: String? = null,
     val receivedAtMillis: Long,
@@ -176,6 +187,17 @@ data class ProviderUsageSnapshot(
         total?.let { put("total", it.toFixtureJson()) }
         put("dailyUsage", JsonArray(dailyUsage.map { it.toFixtureJson() }))
         put("modelUsage", JsonArray(modelUsage.map { it.toFixtureJson() }))
+        apiInfoDetails?.let { details ->
+            put("apiInfoDetails", JsonObject(buildMap {
+                details.planName?.let { put("planName", JsonPrimitive(it)) }
+                details.mode?.let { put("mode", JsonPrimitive(it)) }
+                details.status?.let { put("status", JsonPrimitive(it)) }
+                details.reportedBalance?.let { put("reportedBalance", it.toFixtureJson()) }
+                details.isValid?.let { put("isValid", JsonPrimitive(it)) }
+                details.expiresAtMillis?.let { put("expiresAtMs", JsonPrimitive(it)) }
+                details.daysUntilExpiry?.let { put("daysUntilExpiry", JsonPrimitive(it)) }
+            }))
+        }
         providerStatus?.let { put("providerStatus", JsonPrimitive(it)) }
         metricsUnavailableReason?.let { put("metricsUnavailableReason", JsonPrimitive(it)) }
     })

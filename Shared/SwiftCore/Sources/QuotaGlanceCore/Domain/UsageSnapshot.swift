@@ -167,6 +167,34 @@ public struct QuotaWindow: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+public struct APIInfoDetails: Codable, Equatable, Sendable {
+    public var planName: String?
+    public var mode: String?
+    public var status: String?
+    public var reportedBalance: Money?
+    public var isValid: Bool?
+    public var expiresAt: Date?
+    public var daysUntilExpiry: Int64?
+
+    public init(
+        planName: String? = nil,
+        mode: String? = nil,
+        status: String? = nil,
+        reportedBalance: Money? = nil,
+        isValid: Bool? = nil,
+        expiresAt: Date? = nil,
+        daysUntilExpiry: Int64? = nil
+    ) {
+        self.planName = planName
+        self.mode = mode
+        self.status = status
+        self.reportedBalance = reportedBalance
+        self.isValid = isValid
+        self.expiresAt = expiresAt
+        self.daysUntilExpiry = daysUntilExpiry
+    }
+}
+
 public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
     public var balances: [MonetaryBalance]
     public var spendingLimit: SpendingLimit?
@@ -176,6 +204,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
     public var total: UsageCounters?
     public var dailyUsage: [DailyUsage]
     public var modelUsage: [ModelUsage]
+    public var apiInfoDetails: APIInfoDetails?
     public var providerStatus: String?
     public var metricsUnavailableReason: String?
     public var receivedAt: Date
@@ -189,6 +218,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
         total: UsageCounters? = nil,
         dailyUsage: [DailyUsage] = [],
         modelUsage: [ModelUsage] = [],
+        apiInfoDetails: APIInfoDetails? = nil,
         providerStatus: String? = nil,
         metricsUnavailableReason: String? = nil,
         receivedAt: Date
@@ -201,6 +231,7 @@ public struct ProviderUsageSnapshot: Codable, Equatable, Sendable {
         self.total = total
         self.dailyUsage = dailyUsage
         self.modelUsage = modelUsage
+        self.apiInfoDetails = apiInfoDetails
         self.providerStatus = providerStatus
         self.metricsUnavailableReason = metricsUnavailableReason
         self.receivedAt = receivedAt

@@ -11,6 +11,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.liangrui.quotaglance.core.AccountHealth
 import com.liangrui.quotaglance.core.AccountSnapshot
+import com.liangrui.quotaglance.core.ApiInfoDetails
 import com.liangrui.quotaglance.core.CredentialKind
 import com.liangrui.quotaglance.core.DailyUsage
 import com.liangrui.quotaglance.core.MonetaryBalance
@@ -175,6 +176,17 @@ object StorageJsonCodec {
             val model = item.objectValue()
             ModelUsage(model.requiredString("model"), model["actualCost"]?.let(::money), model.long("requests"), model.long("totalTokens"))
         },
+        apiInfoDetails = raw.objectValue("apiInfoDetails")?.let { details ->
+            ApiInfoDetails(
+                planName = details.string("planName"),
+                mode = details.string("mode"),
+                status = details.string("status"),
+                reportedBalance = details["reportedBalance"]?.let(::money),
+                isValid = details.booleanOrNull("isValid"),
+                expiresAtMillis = details.long("expiresAtMs"),
+                daysUntilExpiry = details.long("daysUntilExpiry"),
+            )
+        },
         providerStatus = raw.string("providerStatus"),
         metricsUnavailableReason = raw.string("metricsUnavailableReason"),
         receivedAtMillis = raw.long("receivedAtMillis") ?: 0,
@@ -202,6 +214,8 @@ object StorageJsonCodec {
     private fun JsonObject.requiredString(name: String): String = string(name) ?: error("missing $name")
     private fun JsonObject.bool(name: String, default: Boolean): Boolean =
         (this[name] as? JsonPrimitive)?.booleanOrNull ?: default
+    private fun JsonObject.booleanOrNull(name: String): Boolean? =
+        (this[name] as? JsonPrimitive)?.booleanOrNull
     private fun JsonObject.long(name: String): Long? = (this[name] as? JsonPrimitive)?.content?.toLongOrNull()
     private fun JsonObject.decimal(name: String): java.math.BigDecimal? = string(name)?.toBigDecimalOrNull()
 }

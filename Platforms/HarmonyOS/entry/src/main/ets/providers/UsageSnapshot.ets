@@ -43,6 +43,16 @@ export interface QuotaWindow {
   resetsAtMs?: number;
 }
 
+export interface ApiInfoDetails {
+  planName?: string;
+  mode?: string;
+  status?: string;
+  reportedBalance?: Money;
+  isValid?: boolean;
+  expiresAtMs?: number;
+  daysUntilExpiry?: number;
+}
+
 export interface UsageCounters {
   actualCost?: Money;
   requests?: number;
@@ -77,6 +87,7 @@ export interface UsageSnapshot {
   total?: UsageCounters;
   dailyUsage?: DailyUsage[];
   modelUsage?: ModelUsage[];
+  apiInfoDetails?: ApiInfoDetails;
   providerStatus?: string;
   metricsUnavailableReason?: string;
   receivedAtMs: number;

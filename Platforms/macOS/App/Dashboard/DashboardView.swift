@@ -644,9 +644,37 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func providerDetails(_ usage: ProviderUsageSnapshot) -> some View {
-        if usage.providerStatus != nil || usage.metricsUnavailableReason != nil {
+        if usage.apiInfoDetails != nil || usage.providerStatus != nil || usage.metricsUnavailableReason != nil {
             dashboardSection(L10n.string(.status, language: language)) {
                 VStack(spacing: 8) {
+                    if let details = usage.apiInfoDetails {
+                        valueRow(L10n.string(.apiInfoAccount, language: language), "")
+                        if let planName = details.planName {
+                            valueRow(L10n.string(.apiInfoPlan, language: language), planName)
+                        }
+                        if let mode = details.mode {
+                            valueRow(L10n.string(.apiInfoBillingMode, language: language), mode)
+                        }
+                        if let status = details.status {
+                            valueRow(L10n.string(.providerStatus, language: language), status)
+                        }
+                        if let balance = details.reportedBalance {
+                            valueRow(L10n.string(.apiInfoReportedBalance, language: language), MoneyFormatter.string(balance))
+                        }
+                        if let isValid = details.isValid {
+                            valueRow(L10n.string(.apiInfoCredentialStatus, language: language), L10n.string(isValid ? .valid : .invalid, language: language))
+                        }
+                        if let expiresAt = details.expiresAt {
+                            HStack {
+                                Text(L10n.string(.apiInfoExpiresAt, language: language))
+                                Spacer()
+                                Text(expiresAt, style: .date)
+                            }
+                        }
+                        if let days = details.daysUntilExpiry {
+                            valueRow(L10n.string(.apiInfoDaysUntilExpiry, language: language), days.formatted())
+                        }
+                    }
                     if let status = usage.providerStatus {
                         valueRow(L10n.string(.providerStatus, language: language), status)
                     }

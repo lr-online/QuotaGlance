@@ -246,6 +246,7 @@ internal object SpecEngine {
             total = (fields["total"] as? EvalValue.ObjectValue)?.let(::counters),
             dailyUsage = (fields["dailyUsage"] as? EvalValue.ArrayValue)?.values?.mapNotNull(::dailyUsage) ?: emptyList(),
             modelUsage = (fields["modelUsage"] as? EvalValue.ArrayValue)?.values?.map(::modelUsage) ?: emptyList(),
+            apiInfoDetails = (fields["apiInfoDetails"] as? EvalValue.ObjectValue)?.let(::apiInfoDetails),
             providerStatus = (fields["providerStatus"] as? EvalValue.Text)?.value,
             metricsUnavailableReason = (fields["metricsUnavailableReason"] as? EvalValue.Text)?.value,
             receivedAtMillis = nowMillis,
@@ -303,6 +304,16 @@ internal object SpecEngine {
         val fields = (value as? EvalValue.ObjectValue)?.fields ?: invalidResponse()
         return ModelUsage(fields.text("model") ?: invalidResponse(), fields.money("actualCost"), fields.long("requests"), fields.long("totalTokens"))
     }
+
+    private fun apiInfoDetails(value: EvalValue.ObjectValue): ApiInfoDetails = ApiInfoDetails(
+        planName = value.fields.text("planName"),
+        mode = value.fields.text("mode"),
+        status = value.fields.text("status"),
+        reportedBalance = value.fields.money("reportedBalance"),
+        isValid = (value.fields["isValid"] as? EvalValue.Bool)?.value,
+        expiresAtMillis = value.fields.long("expiresAtMs"),
+        daysUntilExpiry = value.fields.long("daysUntilExpiry"),
+    )
 
     private fun requireValue(
         value: JsonElement?, transforms: List<String>, required: Boolean, nonEmpty: Boolean,

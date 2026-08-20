@@ -351,6 +351,7 @@ fn apply_snapshot(
             "total" => snapshot.total = serde_json::from_value(normalized).map_err(|_| ProviderError::InvalidResponse)?,
             "dailyUsage" => snapshot.daily_usage = serde_json::from_value(normalized).map_err(|_| ProviderError::InvalidResponse)?,
             "modelUsage" => snapshot.model_usage = serde_json::from_value(normalized).map_err(|_| ProviderError::InvalidResponse)?,
+            "apiInfoDetails" => snapshot.api_info_details = serde_json::from_value(normalized).map_err(|_| ProviderError::InvalidResponse)?,
             "providerStatus" => snapshot.provider_status = normalized.as_str().map(str::to_string),
             "metricsUnavailableReason" => snapshot.metrics_unavailable_reason = normalized.as_str().map(str::to_string),
             _ => return Err(ProviderError::InvalidResponse),

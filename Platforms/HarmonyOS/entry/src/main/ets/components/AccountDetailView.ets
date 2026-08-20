@@ -6,6 +6,7 @@ import { getLaunchRefresh } from '../services/LaunchRefresh';
 import { Account, AccountStore } from '../storage/AccountStore';
 import { SnapshotStore, StoredSnapshot } from '../storage/SnapshotStore';
 import {
+  ApiInfoDetails,
   DailyUsage,
   ModelUsage,
   MonetaryBalance,
@@ -63,6 +64,8 @@ interface DetailViewModel {
   daysTotalText: string;
   spendItems: StatItem[];
   totalStats: StatItem[];
+  dailyRequestStats: StatItem[];
+  apiInfoDetails: ApiInfoDetails | null;
   statusLines: StatusLine[];
   requestsUnit: string;
 }
@@ -203,21 +206,11 @@ function counterStats(context: common.Context, counters: UsageCounters): StatIte
       label: getString(context, $r('app.string.stat_tokens')),
       value: formatTokenCount(counters.totalTokens)
     });
-  } else {
-    const parts: string[] = [];
-    if (counters.inputTokens !== undefined) {
-      parts.push(`${getString(context, $r('app.string.stat_input_short'))} ${formatTokenCount(counters.inputTokens)}`);
-    }
-    if (counters.outputTokens !== undefined) {
-      parts.push(`${getString(context, $r('app.string.stat_output_short'))} ${formatTokenCount(counters.outputTokens)}`);
-    }
-    if (parts.length > 0) {
-      items.push({
-        label: getString(context, $r('app.string.stat_tokens')),
-        value: parts.join(' · ')
-      });
-    }
   }
+  if (counters.inputTokens !== undefined) items.push({ label: getString(context, $r('app.string.stat_input_short')), value: formatTokenCount(counters.inputTokens) });
+  if (counters.outputTokens !== undefined) items.push({ label: getString(context, $r('app.string.stat_output_short')), value: formatTokenCount(counters.outputTokens) });
+  if (counters.cacheReadTokens !== undefined) items.push({ label: getString(context, $r('app.string.stat_cache_read')), value: formatTokenCount(counters.cacheReadTokens) });
+  if (counters.cacheCreationTokens !== undefined) items.push({ label: getString(context, $r('app.string.stat_cache_creation')), value: formatTokenCount(counters.cacheCreationTokens) });
   return items;
 }
 
@@ -356,6 +349,8 @@ function emptyViewModel(): DetailViewModel {
     daysTotalText: '',
     spendItems: [],
     totalStats: [],
+    dailyRequestStats: [],
+    apiInfoDetails: null,
     statusLines: [],
     requestsUnit: ''
   };
@@ -371,6 +366,7 @@ function buildViewModel(context: common.Context, account: Account, stored: Store
   const snapshot = stored.snapshot;
   vm.balances = snapshot.balances;
   vm.models = snapshot.modelUsage !== undefined ? snapshot.modelUsage : [];
+  vm.apiInfoDetails = snapshot.apiInfoDetails !== undefined ? snapshot.apiInfoDetails : null;
   vm.spendingLimit = limitView(context, snapshot);
   vm.quotaItems = quotaItems(context, snapshot.quotaWindows !== undefined ? snapshot.quotaWindows : []);
   if (snapshot.today !== undefined) {
@@ -384,6 +380,12 @@ function buildViewModel(context: common.Context, account: Account, stored: Store
   vm.spendItems = spendItems(context, snapshot);
   if (snapshot.total !== undefined) {
     vm.totalStats = counterStats(context, snapshot.total);
+  }
+  for (const day of daily.slice(-7).reverse()) {
+    const parts: string[] = [];
+    if (day.requests !== undefined) parts.push(`${formatCompactCount(day.requests)} ${vm.requestsUnit}`);
+    if (day.totalTokens !== undefined) parts.push(`${formatTokenCount(day.totalTokens)} ${getString(context, $r('app.string.stat_tokens'))}`);
+    if (parts.length > 0) vm.dailyRequestStats.push({ label: day.date, value: parts.join(' · ') });
   }
   if (stored.isStale) {
     vm.statusLines.push({ text: getString(context, $r('app.string.stale_text')), isWarning: true });
@@ -786,6 +788,13 @@ export struct AccountDetailView {
               .margin({ left: 8 })
               .maxLines(1)
           }
+          if (model.totalTokens !== undefined) {
+            Text(`${formatTokenCount(model.totalTokens)} ${getString(this.context, $r('app.string.stat_tokens'))}`)
+              .fontSize(12)
+              .fontColor($r('app.color.textSecondary'))
+              .margin({ left: 8 })
+              .maxLines(1)
+          }
         }
         .width('100%')
       }, (model: ModelUsage, index: number) => `${model.model}-${index}`)
@@ -849,6 +858,48 @@ export struct AccountDetailView {
   }
 
   @Builder
+  dailyRequestSection() {
+    Column({ space: 10 }) {
+      this.sectionHeader($r('app.string.detail_daily_requests'))
+      ForEach(this.vm.dailyRequestStats, (item: StatItem, index: number) => {
+        Row() {
+          Text(item.label).fontSize(12).fontColor($r('app.color.textSecondary')).layoutWeight(1)
+          Text(item.value).fontSize(12).fontColor(this.textPrimaryColor()).maxLines(1)
+        }.width('100%')
+      }, (item: StatItem, index: number) => `${item.label}-${index}`)
+    }
+    .cardStyle()
+    .backgroundColor(this.cardColor())
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  detailText(label: Resource, value: string) {
+    Row() {
+      Text(label).fontSize(12).fontColor($r('app.color.textSecondary')).layoutWeight(1)
+      Text(value).fontSize(12).fontColor(this.textPrimaryColor()).maxLines(1)
+    }
+    .width('100%')
+  }
+
+  @Builder
+  apiInfoSection(details: ApiInfoDetails) {
+    Column({ space: 10 }) {
+      this.sectionHeader($r('app.string.detail_api_info'))
+      if (details.planName !== undefined) { this.detailText($r('app.string.api_info_plan'), details.planName) }
+      if (details.mode !== undefined) { this.detailText($r('app.string.api_info_mode'), details.mode) }
+      if (details.status !== undefined) { this.detailText($r('app.string.api_info_key_status'), details.status) }
+      if (details.reportedBalance !== undefined) { this.detailText($r('app.string.api_info_balance'), `${formatAmount(details.reportedBalance.amount)} ${details.reportedBalance.currency}`) }
+      if (details.isValid !== undefined) { this.detailText($r('app.string.api_info_credential'), details.isValid ? getString(this.context, $r('app.string.api_info_valid')) : getString(this.context, $r('app.string.api_info_invalid'))) }
+      if (details.expiresAtMs !== undefined) { this.detailText($r('app.string.api_info_expires'), formatUpdatedAt(this.context, details.expiresAtMs)) }
+      if (details.daysUntilExpiry !== undefined) { this.detailText($r('app.string.api_info_days'), details.daysUntilExpiry.toString()) }
+    }
+    .cardStyle()
+    .backgroundColor(this.cardColor())
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
   sectionGrid() {
     // Component-width breakpoints: <600vp single column, ≥600vp two columns,
     // ≥1000vp three columns; the 最近7天 chart always spans the full row.
@@ -881,6 +932,11 @@ export struct AccountDetailView {
           this.daysSection()
         }
       }
+      if (this.vm.dailyRequestStats.length > 0) {
+        GridCol({ span: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4, xxl: 4 } }) {
+          this.dailyRequestSection()
+        }
+      }
       if (this.vm.models.length > 0) {
         GridCol({ span: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4, xxl: 4 } }) {
           this.modelsSection()
@@ -894,6 +950,11 @@ export struct AccountDetailView {
       if (this.vm.totalStats.length > 0) {
         GridCol({ span: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4, xxl: 4 } }) {
           this.countersSection($r('app.string.detail_total'), this.vm.totalStats)
+        }
+      }
+      if (this.vm.apiInfoDetails !== null) {
+        GridCol({ span: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4, xxl: 4 } }) {
+          this.apiInfoSection(this.vm.apiInfoDetails as ApiInfoDetails)
         }
       }
       GridCol({ span: { xs: 12, sm: 6, md: 4, lg: 4, xl: 4, xxl: 4 } }) {

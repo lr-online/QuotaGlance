@@ -192,6 +192,7 @@ pub const KNOWN_SNAPSHOT_FIELDS: &[&str] = &[
     "total",
     "dailyUsage",
     "modelUsage",
+    "apiInfoDetails",
     "providerStatus",
     "metricsUnavailableReason",
 ];

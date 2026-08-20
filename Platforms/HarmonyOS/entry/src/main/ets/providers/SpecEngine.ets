@@ -8,6 +8,7 @@
 // no Codable); structural validation lives in SpecDrivenProvider.ets.
 
 import {
+  ApiInfoDetails,
   DailyUsage,
   ModelUsage,
   MonetaryBalance,
@@ -1024,6 +1025,9 @@ export function assembleSnapshot(
       case 'modelUsage':
         snapshot.modelUsage = assembleModelUsage(value);
         break;
+      case 'apiInfoDetails':
+        snapshot.apiInfoDetails = assembleApiInfoDetails(value);
+        break;
       case 'providerStatus': {
         const status = assembleString(value);
         if (status !== null) {
@@ -1080,6 +1084,36 @@ function assembleMoney(value: EvalValue | undefined): Money | null {
     currency: value.currency as string
   };
   return money;
+}
+
+function assembleBool(value: EvalValue | undefined): boolean | null {
+  if (value === undefined) {
+    return null;
+  }
+  if (value.kind !== 'bool') {
+    throw engineError('invalidResponse');
+  }
+  return value.boolValue as boolean;
+}
+
+function assembleApiInfoDetails(value: EvalValue): ApiInfoDetails {
+  const fields = assembleObjectFields(value);
+  const details: ApiInfoDetails = {};
+  const planName = assembleString(fields['planName']);
+  if (planName !== null) details.planName = planName;
+  const mode = assembleString(fields['mode']);
+  if (mode !== null) details.mode = mode;
+  const status = assembleString(fields['status']);
+  if (status !== null) details.status = status;
+  const reportedBalance = assembleMoney(fields['reportedBalance']);
+  if (reportedBalance !== null) details.reportedBalance = reportedBalance;
+  const isValid = assembleBool(fields['isValid']);
+  if (isValid !== null) details.isValid = isValid;
+  const expiresAtMs = assembleNumber(fields['expiresAtMs']);
+  if (expiresAtMs !== null) details.expiresAtMs = expiresAtMs;
+  const daysUntilExpiry = assembleNumber(fields['daysUntilExpiry']);
+  if (daysUntilExpiry !== null) details.daysUntilExpiry = daysUntilExpiry;
+  return details;
 }
 
 function assembleObjectFields(value: EvalValue): Record<string, EvalValue> {

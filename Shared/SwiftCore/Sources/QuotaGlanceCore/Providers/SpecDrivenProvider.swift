@@ -847,6 +847,30 @@ enum SpecSnapshotAssembly {
             )
         }
     }
+
+    static func apiInfoDetails(_ value: SpecEvalValue) throws -> APIInfoDetails {
+        let fields = try object(value)
+        var expiresAt: Date?
+        if let raw = fields["expiresAtMs"] {
+            guard case let .date(date) = raw else { throw ProviderError.invalidResponse }
+            expiresAt = date
+        }
+        return APIInfoDetails(
+            planName: try string(fields["planName"]),
+            mode: try string(fields["mode"]),
+            status: try string(fields["status"]),
+            reportedBalance: try money(fields["reportedBalance"]),
+            isValid: try bool(fields["isValid"]),
+            expiresAt: expiresAt,
+            daysUntilExpiry: try int(fields["daysUntilExpiry"])
+        )
+    }
+
+    static func bool(_ value: SpecEvalValue?) throws -> Bool? {
+        guard let value else { return nil }
+        guard case let .bool(bool) = value else { throw ProviderError.invalidResponse }
+        return bool
+    }
 }
 
 /// A `UsageProvider` executing a declarative provider spec
@@ -1165,6 +1189,8 @@ public struct SpecDrivenProvider: UsageProvider {
                 snapshot.dailyUsage = try SpecSnapshotAssembly.dailyUsage(value)
             case "modelUsage":
                 snapshot.modelUsage = try SpecSnapshotAssembly.modelUsage(value)
+            case "apiInfoDetails":
+                snapshot.apiInfoDetails = try SpecSnapshotAssembly.apiInfoDetails(value)
             case "providerStatus":
                 snapshot.providerStatus = try SpecSnapshotAssembly.string(value)
             case "metricsUnavailableReason":

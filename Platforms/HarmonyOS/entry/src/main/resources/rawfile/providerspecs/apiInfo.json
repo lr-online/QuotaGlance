@@ -184,6 +184,22 @@
                 "totalTokens": { "path": "total_tokens", "type": "int" }
               }
             },
+            "apiInfoDetails": {
+              "object": {
+                "planName": { "path": "planName", "type": "string" },
+                "mode": { "path": "mode", "type": "string" },
+                "status": { "path": "status", "type": "string" },
+                "reportedBalance": {
+                  "money": {
+                    "amount": { "path": "balance", "type": "decimal" },
+                    "currency": { "value": "currency" }
+                  }
+                },
+                "isValid": { "path": "isValid", "type": "bool" },
+                "expiresAtMs": { "path": "expires_at", "type": "date" },
+                "daysUntilExpiry": { "path": "days_until_expiry", "type": "int" }
+              }
+            },
             "providerStatus": { "path": "status", "type": "string" }
           }
         }

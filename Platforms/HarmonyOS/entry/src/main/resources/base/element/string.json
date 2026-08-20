@@ -205,6 +205,58 @@
       "value": "出"
     },
     {
+      "name": "stat_cache_read",
+      "value": "缓存读"
+    },
+    {
+      "name": "stat_cache_creation",
+      "value": "缓存建"
+    },
+    {
+      "name": "detail_daily_requests",
+      "value": "每日请求明细"
+    },
+    {
+      "name": "detail_api_info",
+      "value": "API Info 账户信息"
+    },
+    {
+      "name": "api_info_plan",
+      "value": "计划"
+    },
+    {
+      "name": "api_info_mode",
+      "value": "计费模式"
+    },
+    {
+      "name": "api_info_key_status",
+      "value": "Key 状态"
+    },
+    {
+      "name": "api_info_balance",
+      "value": "账户余额"
+    },
+    {
+      "name": "api_info_credential",
+      "value": "凭证状态"
+    },
+    {
+      "name": "api_info_valid",
+      "value": "有效"
+    },
+    {
+      "name": "api_info_invalid",
+      "value": "无效"
+    },
+    {
+      "name": "api_info_expires",
+      "value": "到期时间"
+    },
+    {
+      "name": "api_info_days",
+      "value": "剩余天数"
+    },
+    {
       "name": "used_label",
       "value": "已用"
     },
