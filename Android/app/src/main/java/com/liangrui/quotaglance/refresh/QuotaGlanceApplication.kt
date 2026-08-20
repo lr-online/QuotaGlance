@@ -31,6 +31,7 @@ class AndroidAppContainer(application: Application) {
     val preferences = DataStorePreferencesRepository(application)
     val providers = AssetProviderRegistry(application)
     val accountSaveLogger = AndroidAccountSaveLogger()
+    val serviceStatus = OpenAIServiceStatusClient()
     val notificationDispatcher = AndroidNotificationDispatcher(application, preferences)
     private val refreshEngine = RefreshCoordinator(
         providers = providers,

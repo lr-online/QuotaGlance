@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.liangrui.quotaglance.core.AccountSnapshot
 import com.liangrui.quotaglance.core.ProviderId
 import com.liangrui.quotaglance.core.QuotaAccount
+import com.liangrui.quotaglance.core.OpenAIServiceStatus
 import com.liangrui.quotaglance.data.AppPreferences
 import com.liangrui.quotaglance.data.RefreshInterval
 import com.liangrui.quotaglance.data.AccountMutationService
@@ -31,6 +32,7 @@ data class QuotaGlanceUiState(
     val section: AppSection = AppSection.Overview,
     val refreshing: Boolean = false,
     val message: String? = null,
+    val serviceStatus: OpenAIServiceStatus? = null,
 )
 
 class QuotaGlanceViewModel(
@@ -68,6 +70,7 @@ class QuotaGlanceViewModel(
             }
         }
         reloadSnapshots()
+        viewModelScope.launch { mutableState.value = mutableState.value.copy(serviceStatus = container.serviceStatus.fetch()) }
     }
 
     fun setSection(section: AppSection) {
@@ -169,10 +172,12 @@ class QuotaGlanceViewModel(
 
     private suspend fun refreshAllInternal() = refreshMutex.withLock {
         mutableState.value = mutableState.value.copy(refreshing = true, message = null)
+        val serviceStatus = container.serviceStatus.fetch()
         runCatching { container.refreshRun.refreshAll() }
             .onFailure { mutableState.value = mutableState.value.copy(message = it.message ?: "Refresh failed") }
         reloadSnapshotsInternal()
         mutableState.value = mutableState.value.copy(refreshing = false)
+        mutableState.value = mutableState.value.copy(serviceStatus = serviceStatus)
     }
 }
 

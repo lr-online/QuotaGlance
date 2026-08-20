@@ -82,7 +82,7 @@ then
   fail "Kotlin provider contract registrations differ from shared fixtures"
 fi
 
-for section in Providers Aggregation Alerts RefreshLifecycle; do
+for section in Providers Aggregation Alerts RefreshLifecycle ServiceStatus; do
   diff -qr "$CONTRACTS_DIR/$section" "$FIXTURE_TARGET/$section" >/dev/null \
     || fail "Android contract sync differs for $section"
 done

@@ -1,0 +1,31 @@
+{
+  "page": {
+    "name": "OpenAI",
+    "url": "https://status.openai.com/"
+  },
+  "status": {
+    "description": "Some systems are experiencing degraded performance",
+    "indicator": "minor"
+  },
+  "components": [
+    { "id": "responses", "name": "Responses", "status": "operational" },
+    { "id": "realtime", "name": "Realtime", "status": "degraded_performance" },
+    { "id": "batch", "name": "Batch", "status": "partial_outage" }
+  ],
+  "incidents": [
+    {
+      "id": "incident-1",
+      "name": "Elevated errors for Realtime",
+      "status": "investigating",
+      "shortlink": "https://stspg.io/example",
+      "started_at": "2026-08-20T06:00:00.000Z"
+    },
+    {
+      "id": "incident-2",
+      "name": "Resolved incident",
+      "status": "resolved",
+      "shortlink": "https://stspg.io/resolved",
+      "started_at": "2026-08-19T06:00:00.000Z"
+    }
+  ]
+}

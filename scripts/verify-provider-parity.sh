@@ -401,6 +401,19 @@ check_paired_contract_fixtures() {
   done
 }
 
+check_service_status_fixtures() {
+  local dir="$REPO_ROOT/Contracts/ServiceStatus" case_name response expected
+  [[ -d "$dir" ]] || { fail "missing $dir"; return; }
+  for response in "$dir"/*-response.json; do
+    [[ -f "$response" ]] || continue
+    case_name="$(basename "$response" -response.json)"
+    expected="$dir/$case_name-expected.json"
+    [[ -f "$expected" ]] || fail "Contracts/ServiceStatus/$case_name missing expected fixture"
+    python3 -m json.tool "$response" >/dev/null 2>&1 || fail "invalid JSON: $response"
+    python3 -m json.tool "$expected" >/dev/null 2>&1 || fail "invalid JSON: $expected"
+  done
+}
+
 # --- Check 6: refresh-lifecycle fixtures have the public seam shape --------
 
 check_refresh_lifecycle_fixture_schema() {
@@ -691,7 +704,7 @@ check_ohostest_contracts() {
 
   # Behavior-contract trees map to lowercase rawfile directories.
   local src_dir dst_name
-  for pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle"; do
+  for pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle" "ServiceStatus servicestatus"; do
     src_dir="${pair%% *}"
     dst_name="${pair##* }"
     if ! diff_output="$(diff -r "$REPO_ROOT/Contracts/$src_dir" "$OHOSTEST_CONTRACTS_DIR/$dst_name" 2>&1)"; then
@@ -704,7 +717,7 @@ check_ohostest_contracts() {
   for entry in "$OHOSTEST_CONTRACTS_DIR"/*; do
     [[ -e "$entry" ]] || continue
     name="$(basename "$entry")"
-    [[ "$name" == "aggregation" || "$name" == "alerts" || "$name" == "refreshlifecycle" ]] && continue
+    [[ "$name" == "aggregation" || "$name" == "alerts" || "$name" == "refreshlifecycle" || "$name" == "servicestatus" ]] && continue
     [[ -d "$CONTRACTS_DIR/$name" ]] \
       || fail "ohosTest contract copies have unexpected entry '$name' ($hint)"
   done
@@ -732,7 +745,7 @@ check_windows_contracts() {
 
   # Behavior-contract trees map to lowercase asset directories.
   local src_dir dst_name
-  for pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle"; do
+  for pair in "Aggregation aggregation" "Alerts alerts" "RefreshLifecycle refreshlifecycle" "ServiceStatus servicestatus"; do
     src_dir="${pair%% *}"
     dst_name="${pair##* }"
     if ! diff_output="$(diff -r "$REPO_ROOT/Contracts/$src_dir" "$WINDOWS_CONTRACTS_DIR/$dst_name" 2>&1)"; then
@@ -745,7 +758,7 @@ check_windows_contracts() {
   for entry in "$WINDOWS_CONTRACTS_DIR"/*; do
     [[ -e "$entry" ]] || continue
     name="$(basename "$entry")"
-    [[ "$name" == "Providers" || "$name" == "aggregation" || "$name" == "alerts" || "$name" == "refreshlifecycle" ]] && continue
+    [[ "$name" == "Providers" || "$name" == "aggregation" || "$name" == "alerts" || "$name" == "refreshlifecycle" || "$name" == "servicestatus" ]] && continue
     [[ -d "$WINDOWS_CONTRACTS_DIR/Providers/$name" ]] \
       || fail "Windows contract copies have unexpected entry '$name' ($hint)"
   done
@@ -769,6 +782,7 @@ check_protocol_allow_lists
 check_usage_provider_interface
 check_contract_fixtures
 check_paired_contract_fixtures
+check_service_status_fixtures
 check_refresh_lifecycle_fixture_schema
 check_contract_case_registration
 check_contract_case_step_urls
@@ -786,10 +800,10 @@ echo "OK: ProviderID sets match (Swift <-> ArkTS <-> Rust)"
 echo "OK: protocol enums, error tokens, snapshot fields, and spec versions match"
 echo "OK: UsageProvider shared interface members are present on both platforms"
 echo "OK: contract fixture triples complete under Contracts/Providers/"
-echo "OK: aggregation, alert, and refresh-lifecycle fixture pairs are complete"
+echo "OK: aggregation, alert, refresh-lifecycle, and service-status fixtures are complete"
 echo "OK: refresh-lifecycle fixtures conform to the shared seam schema"
 echo "OK: every provider contract fixture case is registered in ArkTS CONTRACT_CASES"
 echo "OK: ArkTS CONTRACT_CASES step URLs match requests fixtures"
 echo "OK: spec.json copies byte-identical (Contracts <-> Swift core <-> HarmonyOS <-> Windows)"
-echo "OK: ohosTest contract copies in sync with Contracts/ (Providers + Aggregation + Alerts + RefreshLifecycle)"
-echo "OK: Windows contract copies in sync with Contracts/ (Providers + Aggregation + Alerts + RefreshLifecycle)"
+echo "OK: ohosTest contract copies in sync with Contracts/ (Providers + Aggregation + Alerts + RefreshLifecycle + ServiceStatus)"
+echo "OK: Windows contract copies in sync with Contracts/ (Providers + Aggregation + Alerts + RefreshLifecycle + ServiceStatus)"

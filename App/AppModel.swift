@@ -12,6 +12,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var isRefreshing = false
     @Published private(set) var lastErrorMessage: String?
     @Published private(set) var notificationPermission: NotificationPermissionState = .notDetermined
+    @Published private(set) var openAIServiceStatus: OpenAIServiceStatus?
     @Published var selectedAccountID: UUID?
 
     private let preferencesStore: AccountPreferencesStore
@@ -94,6 +95,7 @@ final class AppModel: ObservableObject {
             lastErrorMessage = message(for: error)
         }
         restartSchedule()
+        await refreshOpenAIServiceStatus()
         if accounts.contains(where: \.isEnabled) {
             await refresh(credentialAccessMode: .nonInteractive)
         }
@@ -103,7 +105,12 @@ final class AppModel: ObservableObject {
         await refresh(credentialAccessMode: .interactive)
     }
 
+    func refreshOpenAIServiceStatus() async {
+        openAIServiceStatus = try? await OpenAIServiceStatusClient().fetch()
+    }
+
     private func refresh(credentialAccessMode: CredentialAccessMode) async {
+        Task { await refreshOpenAIServiceStatus() }
         guard accounts.contains(where: \.isEnabled) else {
             publishCachedState()
             return

@@ -259,6 +259,9 @@ struct DashboardView: View {
 
     private var allAccountsContent: some View {
         VStack(alignment: .leading, spacing: 24) {
+            if let serviceStatus = model.openAIServiceStatus {
+                openAIServiceStatus(serviceStatus)
+            }
             summaryTiles
             if !chartDays.isEmpty {
                 dashboardSection(L10n.string(.last7Days, language: language)) {
@@ -269,6 +272,44 @@ struct DashboardView: View {
             if let overview = presentation.providerOverview {
                 providerOverview(overview)
             }
+        }
+    }
+
+    private func openAIServiceStatus(_ status: OpenAIServiceStatus) -> some View {
+        dashboardSection("OpenAI service status") {
+            HStack(alignment: .top, spacing: 10) {
+                Circle()
+                    .fill(serviceStatusColor(status.overall))
+                    .frame(width: 9, height: 9)
+                    .padding(.top, 5)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(status.summary).font(.body.weight(.medium))
+                    if !status.affectedComponents.isEmpty {
+                        Text(status.affectedComponents.map(\.name).joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(status.activeIncidents) { incident in
+                        if let url = incident.url {
+                            Link(incident.title, destination: url).font(.caption)
+                        } else {
+                            Text(incident.title).font(.caption)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+                Link("status.openai.com", destination: URL(string: "https://status.openai.com/")!)
+                    .font(.caption)
+            }
+        }
+    }
+
+    private func serviceStatusColor(_ level: ServiceStatusLevel) -> Color {
+        switch level {
+        case .operational: .green
+        case .degraded: .orange
+        case .outage: .red
+        case .unknown: .secondary
         }
     }
 

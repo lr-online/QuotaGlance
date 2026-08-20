@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CirclePlus, RefreshCw } from "lucide-react";
+import { CircleAlert, CircleCheck, CirclePlus, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -8,7 +8,7 @@ import { PageShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
-import { commands, events, type AccountSummary, type AggregateSnapshot } from "@/lib/tauri-bindings";
+import { commands, events, type AccountSummary, type AggregateSnapshot, type OpenAIServiceStatus } from "@/lib/tauri-bindings";
 import { formatMoney, formatNumber, healthKind, PROVIDER_NAMES, relativeTime } from "@/lib/format";
 
 export default function Overview() {
@@ -19,16 +19,19 @@ export default function Overview() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [serviceStatus, setServiceStatus] = useState<OpenAIServiceStatus | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [accountRows, snapshot] = await Promise.all([
+      const [accountRows, snapshot, status] = await Promise.all([
         commands.listAccounts(),
         commands.getAggregateSnapshot(),
+        commands.getOpenAIServiceStatus(),
       ]);
       setAccounts(accountRows.sort((a, b) => a.sort_order - b.sort_order));
       setAggregate(snapshot);
+      setServiceStatus(status);
     } catch (cause) {
       setError(String(cause));
     } finally {
@@ -48,6 +51,7 @@ export default function Overview() {
     setError(null);
     try {
       const report = await commands.refreshAll();
+      setServiceStatus(await commands.getOpenAIServiceStatus());
       if (report.failures > 0) setError(report.last_failure_reason ?? t("app.refreshPartial"));
       await load();
     } catch (cause) {
@@ -76,6 +80,7 @@ export default function Overview() {
     >
       {error ? <p className="qg-error" role="alert">{error}</p> : null}
       {loading ? <p className="qg-section-note">{t("status.loading")}</p> : null}
+      {serviceStatus ? <a href="https://status.openai.com/" target="_blank" rel="noreferrer" className={`flex items-start gap-2 border-l-4 px-3 py-2 text-sm ${serviceStatus.available && serviceStatus.overall === "operational" ? "border-emerald-500 bg-emerald-50" : serviceStatus.overall === "outage" ? "border-red-500 bg-red-50" : "border-amber-500 bg-amber-50"}`}><span>{serviceStatus.available && serviceStatus.overall === "operational" ? <CircleCheck size={16} /> : <CircleAlert size={16} />}</span><span><strong>OpenAI service status</strong><span className="ml-2">{serviceStatus.summary ?? "Official status is temporarily unavailable"}</span>{serviceStatus.affectedComponents.length ? <span className="block text-xs">Affected: {serviceStatus.affectedComponents.map((item) => item.name).join(", ")}</span> : null}</span></a> : null}
       {!loading && accounts.length === 0 ? (
         <section className="qg-empty">
           <CirclePlus aria-hidden="true" size={32} className="text-qg-blue" />
