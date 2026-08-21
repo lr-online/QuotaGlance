@@ -14,6 +14,12 @@
 		0A1100000000000000000002 /* AppThemePreference+SwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000011 /* AppThemePreference+SwiftUI.swift */; };
 		0A1100000000000000000003 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000012 /* DashboardView.swift */; };
 		0A1100000000000000000004 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000012 /* DashboardView.swift */; };
+		0A1100000000000000000031 /* CCSwitchUsageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000041 /* CCSwitchUsageView.swift */; };
+		0A1100000000000000000032 /* CCSwitchUsageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000042 /* CCSwitchUsageViewModel.swift */; };
+		0A1100000000000000000033 /* CCSwitchDatabaseAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000043 /* CCSwitchDatabaseAccess.swift */; };
+		0A1100000000000000000034 /* CCSwitchUsageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000041 /* CCSwitchUsageView.swift */; };
+		0A1100000000000000000035 /* CCSwitchUsageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000042 /* CCSwitchUsageViewModel.swift */; };
+		0A1100000000000000000036 /* CCSwitchDatabaseAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A1100000000000000000043 /* CCSwitchDatabaseAccess.swift */; };
 		0C41E4D56654F5087E03CAAE /* NCWidgetAccountIntent+Generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E0B43CCC620D0F1E84A985 /* NCWidgetAccountIntent+Generated.swift */; };
 		0C4E1943904C8FF820A46766 /* NCWidgetAccountIntentChoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44E3977E4A5A5885BC2490D1 /* NCWidgetAccountIntentChoice.swift */; };
 		1292B68322AABEFC4BEEE058 /* UsageChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2D42E265FC32DC931F8A6EA /* UsageChartView.swift */; };
@@ -141,6 +147,9 @@
 		07DFB7E297E0D88831C554BD /* AccountEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountEditorView.swift; sourceTree = "<group>"; };
 		0A1100000000000000000011 /* AppThemePreference+SwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppThemePreference+SwiftUI.swift"; sourceTree = "<group>"; };
 		0A1100000000000000000012 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		0A1100000000000000000041 /* CCSwitchUsageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CCSwitchUsageView.swift; sourceTree = "<group>"; };
+		0A1100000000000000000042 /* CCSwitchUsageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CCSwitchUsageViewModel.swift; sourceTree = "<group>"; };
+		0A1100000000000000000043 /* CCSwitchDatabaseAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CCSwitchDatabaseAccess.swift; sourceTree = "<group>"; };
 		10809E5DD33B466D567C9583 /* NCWidgetAccountChoiceOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NCWidgetAccountChoiceOptions.swift; sourceTree = "<group>"; };
 		1C0E87E249C1FC94CD06DA7C /* QuotaGlanceNCWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaGlanceNCWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1F6E1AFBA8768CD98FA38B91 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -239,6 +248,15 @@
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
+		0A1100000000000000000051 /* CCSwitch */ = {
+			isa = PBXGroup;
+			children = (
+				0A1100000000000000000041 /* CCSwitchUsageView.swift */,
+				0A1100000000000000000042 /* CCSwitchUsageViewModel.swift */,
+			);
+			path = CCSwitch;
+			sourceTree = "<group>";
+		};
 		6AB02869AA6FC0CCBBD27550 /* NCWidget */ = {
 			isa = PBXGroup;
 			children = (
@@ -258,6 +276,7 @@
 			children = (
 				A9A030DF83E171017402EB2F /* LaunchAtLoginService.swift */,
 				56FA82CF2B4BECD91167B38B /* NotificationService.swift */,
+				0A1100000000000000000043 /* CCSwitchDatabaseAccess.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -293,6 +312,7 @@
 				A5FB8DB8C1E073D7322774EA /* QuotaGlanceApp.swift */,
 				BDDEDCE658E202BEF8F48CB9 /* Compatibility */,
 				0A1100000000000000000021 /* Dashboard */,
+				0A1100000000000000000051 /* CCSwitch */,
 				146CF1D0FC44D5465CD5263E /* MenuBar */,
 				6B313A67D712A8FDD5779846 /* Services */,
 				F086E3532ECAF773B1150BF2 /* Settings */,
@@ -560,6 +580,9 @@
 				6DCE05707FBFC267061CD4A0 /* ApplicationMenuInstaller.swift in Sources */,
 				3AF1CB36FD56FD621F32B731 /* CompatibleFormStyle.swift in Sources */,
 				0A1100000000000000000003 /* DashboardView.swift in Sources */,
+				0A1100000000000000000031 /* CCSwitchUsageView.swift in Sources */,
+				0A1100000000000000000032 /* CCSwitchUsageViewModel.swift in Sources */,
+				0A1100000000000000000033 /* CCSwitchDatabaseAccess.swift in Sources */,
 				8DB28F1D53817506F8BA6B41 /* CompatibleSystemSymbol.swift in Sources */,
 				A233C809A25B929BD899AD42 /* LaunchAtLoginService.swift in Sources */,
 				AC695D6FB1D9EC98FFDCBE7B /* MenuBarDashboardView.swift in Sources */,
@@ -619,6 +642,9 @@
 				EB8FB62A634B25FB2E1CE6D9 /* ApplicationMenuInstaller.swift in Sources */,
 				8B6B38C8CBC47B32B1B7C231 /* CompatibleFormStyle.swift in Sources */,
 				0A1100000000000000000004 /* DashboardView.swift in Sources */,
+				0A1100000000000000000034 /* CCSwitchUsageView.swift in Sources */,
+				0A1100000000000000000035 /* CCSwitchUsageViewModel.swift in Sources */,
+				0A1100000000000000000036 /* CCSwitchDatabaseAccess.swift in Sources */,
 				935BE7D877D170C4F4A1B805 /* CompatibleSystemSymbol.swift in Sources */,
 				7399855A0C9D4D9F9F272B7C /* LaunchAtLoginService.swift in Sources */,
 				D982EB7094658B5F5CFAECDB /* MenuBarDashboardView.swift in Sources */,

@@ -143,6 +143,25 @@ public enum L10nKey: String, Sendable {
     case lastSuccessfulRefresh
     case modelUsage
 
+    // Local cc-switch usage
+    case ccSwitchUsage
+    case ccSwitchUsageSubtitle
+    case chooseDatabase
+    case changeDatabase
+    case databaseNotSelected
+    case databaseSelectionHint
+    case noRequestsInRange
+    case tokenActivity
+    case tokenRate
+    case medianLatency
+    case timeToFirstToken
+    case failureRate
+    case applications
+    case providers
+    case recentRequests
+    case quotaAccounts
+    case localActivity
+
     case sevenDayUsage
     case currencyBalance
 
@@ -762,6 +781,74 @@ public enum L10n {
         .modelUsage: [
             .english: "Model Usage",
             .chinese: "模型用量",
+        ],
+        .ccSwitchUsage: [
+            .english: "CC Switch",
+            .chinese: "CC Switch",
+        ],
+        .ccSwitchUsageSubtitle: [
+            .english: "Local proxy activity",
+            .chinese: "本地代理请求活动",
+        ],
+        .chooseDatabase: [
+            .english: "Choose database",
+            .chinese: "选择数据库",
+        ],
+        .changeDatabase: [
+            .english: "Change database",
+            .chinese: "更换数据库",
+        ],
+        .databaseNotSelected: [
+            .english: "No cc-switch database selected",
+            .chinese: "尚未选择 cc-switch 数据库",
+        ],
+        .databaseSelectionHint: [
+            .english: "Default: ~/.cc-switch/cc-switch.db. Choose the .cc-switch folder once to grant read-only access.",
+            .chinese: "默认路径：~/.cc-switch/cc-switch.db。请选择 .cc-switch 文件夹以授予只读权限。",
+        ],
+        .noRequestsInRange: [
+            .english: "No requests in this time range.",
+            .chinese: "该时间范围内没有请求。",
+        ],
+        .tokenActivity: [
+            .english: "Token activity",
+            .chinese: "Token 活动",
+        ],
+        .tokenRate: [
+            .english: "Token rate",
+            .chinese: "Token 速率",
+        ],
+        .medianLatency: [
+            .english: "Median latency",
+            .chinese: "中位延迟",
+        ],
+        .timeToFirstToken: [
+            .english: "Time to first token",
+            .chinese: "首 Token 时间",
+        ],
+        .failureRate: [
+            .english: "Failure rate",
+            .chinese: "失败率",
+        ],
+        .applications: [
+            .english: "Applications",
+            .chinese: "应用分布",
+        ],
+        .providers: [
+            .english: "Providers",
+            .chinese: "供应商分布",
+        ],
+        .recentRequests: [
+            .english: "Recent requests",
+            .chinese: "最近请求",
+        ],
+        .quotaAccounts: [
+            .english: "Quota accounts",
+            .chinese: "配额账户",
+        ],
+        .localActivity: [
+            .english: "Local activity",
+            .chinese: "本地活动",
         ],
         .sevenDayUsage: [
             .english: "Seven day usage",

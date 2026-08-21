@@ -23,6 +23,12 @@ final class AppWindowCoordinator {
         presentDashboard()
     }
 
+    func showCCSwitch() {
+        model.isShowingSettings = false
+        model.isShowingCCSwitch = true
+        presentDashboard()
+    }
+
     private func presentDashboard() {
         ApplicationMenuInstaller.installMainMenuIfNeeded()
 

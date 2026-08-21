@@ -15,6 +15,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var openAIServiceStatus: OpenAIServiceStatus?
     @Published var selectedAccountID: UUID?
     @Published var isShowingSettings = false
+    @Published var isShowingCCSwitch = false
 
     private let preferencesStore: AccountPreferencesStore
     private let credentialStore: any CredentialStore
@@ -377,6 +378,7 @@ final class AppModel: ObservableObject {
     @discardableResult
     func selectDashboard(_ selection: DashboardSelection) -> DashboardSelection {
         isShowingSettings = false
+        isShowingCCSwitch = false
         let resolved: DashboardSelection
         switch selection {
         case .allAccounts:

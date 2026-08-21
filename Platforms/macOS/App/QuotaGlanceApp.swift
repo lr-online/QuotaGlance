@@ -36,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     ) ?? .allAccounts
                 )
             },
+            openCCSwitch: { [weak self] in
+                self?.windowCoordinator.showCCSwitch()
+            },
             openSettings: { [weak self] in
                 guard let self else { return }
                 self.windowCoordinator.showSettings()

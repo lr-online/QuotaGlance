@@ -10,6 +10,7 @@ final class StatusBarController: NSObject {
     init(
         model: AppModel,
         openDashboard: @escaping () -> Void,
+        openCCSwitch: @escaping () -> Void,
         openSettings: @escaping () -> Void
     ) {
         statusItem = NSStatusBar.system.statusItem(
@@ -41,6 +42,10 @@ final class StatusBarController: NSObject {
                 openDashboard: { [weak self] in
                     self?.closePopover()
                     openDashboard()
+                },
+                openCCSwitch: { [weak self] in
+                    self?.closePopover()
+                    openCCSwitch()
                 },
                 openSettings: { [weak self] in
                     self?.closePopover()

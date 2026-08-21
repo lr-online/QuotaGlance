@@ -62,6 +62,7 @@ struct DashboardView: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
+                    sidebarSectionLabel(L10n.string(.quotaAccounts, language: language))
                     sidebarButton(
                         title: L10n.string(.allAccounts, language: language),
                         subtitle: accountCountText(model.accounts.count),
@@ -88,6 +89,28 @@ struct DashboardView: View {
                             selection: .account(account.id)
                         )
                     }
+                    sidebarSectionLabel(L10n.string(.localActivity, language: language))
+                    Button {
+                        model.isShowingSettings = false
+                        model.isShowingCCSwitch = true
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "chart.xyaxis.line")
+                                .frame(width: 18)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(L10n.string(.ccSwitchUsage, language: language))
+                                    .font(.body.weight(model.isShowingCCSwitch ? .semibold : .regular))
+                                Text(L10n.string(.ccSwitchUsageSubtitle, language: language))
+                                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 9)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 6).fill(model.isShowingCCSwitch ? Color.accentColor.opacity(0.16) : .clear))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(8)
             }
@@ -102,6 +125,7 @@ struct DashboardView: View {
 
             Button {
                 model.isShowingSettings = true
+                model.isShowingCCSwitch = false
             } label: {
                 Label(
                     L10n.string(.settings, language: language),
@@ -175,7 +199,7 @@ struct DashboardView: View {
         isDisabled: Bool,
         selection target: DashboardSelection
     ) -> some View {
-        let isSelected = selection == target
+        let isSelected = !model.isShowingCCSwitch && !model.isShowingSettings && selection == target
         return Button {
             model.selectDashboard(target)
         } label: {
@@ -215,12 +239,25 @@ struct DashboardView: View {
         .opacity(isDisabled ? 0.7 : 1)
     }
 
+    private func sidebarSectionLabel(_ title: String) -> some View {
+        Text(title.uppercased(with: language.locale))
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 2)
+    }
+
     private var detail: some View {
         VStack(spacing: 0) {
-            toolbar
-            Divider()
+            if !model.isShowingCCSwitch {
+                toolbar
+                Divider()
+            }
             if model.isShowingSettings {
                 SettingsView(model: model, isEmbedded: true)
+            } else if model.isShowingCCSwitch {
+                CCSwitchUsageView(language: language)
             } else if model.accounts.isEmpty {
                 emptyState
             } else {

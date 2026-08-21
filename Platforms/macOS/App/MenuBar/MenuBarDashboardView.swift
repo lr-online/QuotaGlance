@@ -5,15 +5,19 @@ import SwiftUI
 struct MenuBarDashboardView: View {
     @ObservedObject var model: AppModel
     let openDashboard: () -> Void
+    let openCCSwitch: () -> Void
     let openSettings: () -> Void
+    @StateObject private var ccSwitchModel = CCSwitchUsageViewModel()
 
     init(
         model: AppModel,
         openDashboard: @escaping () -> Void = {},
+        openCCSwitch: @escaping () -> Void = {},
         openSettings: @escaping () -> Void = {}
     ) {
         self.model = model
         self.openDashboard = openDashboard
+        self.openCCSwitch = openCCSwitch
         self.openSettings = openSettings
     }
 
@@ -45,13 +49,20 @@ struct MenuBarDashboardView: View {
             Divider()
 
             Group {
-                if model.accounts.isEmpty {
+                if model.accounts.isEmpty && ccSwitchModel.dashboard == nil {
                     emptyState
                 } else if let presentation {
                     ScrollView {
-                        dashboard(presentation)
+                        VStack(alignment: .leading, spacing: 16) {
+                            dashboard(presentation)
+                            if let ccSwitch = ccSwitchModel.dashboard {
+                                ccSwitchSection(ccSwitch)
+                            }
+                        }
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                } else if let ccSwitch = ccSwitchModel.dashboard {
+                    ScrollView { ccSwitchSection(ccSwitch) }
                 } else {
                     unavailableState
                 }
@@ -80,6 +91,17 @@ struct MenuBarDashboardView: View {
         .onOpenURL { url in
             if model.handle(url: url) != nil {
                 openDashboard()
+            }
+        }
+        .onAppear { ccSwitchModel.start(requestAccess: false) }
+        .onChange(of: model.isShowingCCSwitch) { _ in
+            ccSwitchModel.start(requestAccess: false)
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { return }
+                ccSwitchModel.refresh()
             }
         }
     }
@@ -165,6 +187,71 @@ struct MenuBarDashboardView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private func ccSwitchSection(_ dashboard: CCSwitchUsageDashboard) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 7) {
+                Image(systemName: "chart.xyaxis.line")
+                    .foregroundStyle(Color.accentColor)
+                Text(L10n.string(.ccSwitchUsage, language: language))
+                    .font(.headline)
+                Spacer()
+                Button {
+                    openCCSwitch()
+                } label: {
+                    Image(systemName: "arrow.up.right.square")
+                }
+                .buttonStyle(.borderless)
+                .help(L10n.string(.openDashboard, language: language))
+            }
+            Text(L10n.string(.ccSwitchUsageSubtitle, language: language))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(spacing: 14) {
+                compactMetric(
+                    L10n.string(.requests, language: language),
+                    dashboard.summary.requests.formatted()
+                )
+                compactMetric(
+                    L10n.string(.totalTokens, language: language),
+                    compactNumber(dashboard.summary.totalTokens)
+                )
+                compactMetric(
+                    L10n.string(.failureRate, language: language),
+                    dashboard.summary.failureRate.formatted(.percent.precision(.fractionLength(1)))
+                )
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 7)
+                .fill(Color.accentColor.opacity(0.08))
+        )
+    }
+
+    private func compactMetric(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.headline.monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func compactNumber(_ value: Int64) -> String {
+        switch value {
+        case 1_000_000...:
+            return "\((Double(value) / 1_000_000).formatted(.number.precision(.fractionLength(1))))M"
+        case 1_000...:
+            return "\((Double(value) / 1_000).formatted(.number.precision(.fractionLength(1))))K"
+        default:
+            return value.formatted()
         }
     }
 
@@ -553,6 +640,11 @@ struct MenuBarDashboardView: View {
                     systemImage: "macwindow"
                 )
             }
+            Button(action: openCCSwitch) {
+                Image(systemName: "chart.xyaxis.line")
+            }
+            .buttonStyle(.borderless)
+            .help(L10n.string(.ccSwitchUsage, language: language))
             Spacer(minLength: 6)
             if let lastSuccessAt = presentation?.lastSuccessAt {
                 HStack(spacing: 4) {
